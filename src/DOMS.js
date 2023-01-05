@@ -477,3 +477,39 @@ class Modal {
     }
 
 }
+
+class AccordionItem {
+	constructor(id, header_title, accordion, is_new = false) {
+		this.id = id;
+		this.parent = accordion;
+		this.header_title = header_title;
+		this.div = Field.quick('div', 'accordion-item');
+		this.new = is_new;
+		this.create();
+	}
+	create() {
+		let header = Field.quick('div', 'accordion-header');
+		header.id = this.id + '-header';
+		let header_button = Field.quick('button', this.new ? 'btn btn-primary m-2' : 'accordion-button h4', this.header_title);
+        header_button.type = 'button'
+		header_button.setAttribute('data-bs-toggle', 'collapse');
+		header_button.setAttribute('data-bs-target', '#' + this.id)
+		header_button.ariaControls = this.id;
+		header.appendChild(header_button);
+		
+		this.body = Field.quick('div', 'accordion-collapse collapse');
+		this.body.id = this.id;
+		this.body.setAttribute('aria-labelledby', this.id + '-header');
+		this.body.setAttribute('data-bs-parent', '#' + this.parent);
+
+		this.div.appendChild(header);
+		this.div.appendChild(this.body);
+		
+	}
+	fill(content) {
+		let card_body = Field.quick('div', 'accordion-body');
+		card_body.appendChild(content);
+		this.body.appendChild(card_body)
+		return this.div;
+	}
+}
