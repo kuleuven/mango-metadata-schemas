@@ -268,7 +268,6 @@ class BasicForm {
         input_div.appendChild(input_tag);
 
         if (description) {
-            console.log(description)
             let input_desc = Field.quick('div', 'form-text', description);
             input_desc.id = 'help-' + input_id;
             input_div.appendChild(input_desc);
