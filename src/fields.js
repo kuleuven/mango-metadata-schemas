@@ -180,15 +180,22 @@ class TypedInput extends InputField {
     manage_min_max(form, format) {
         // Add or remove the fields to set minimum and maximum value when input is numeric
         let has_values = Object.keys(this.values).indexOf('minimum') > -1;
+        
+        let min_id = `${this.id}-min`;
+        let max_id = `${this.id}-max`;
+            
         if (format == "number") {
-            form.add_input("Minimum", `${this.id}-min`, '0', has_values ? this.values.minimum : false);
-            form.form.querySelector(`#${this.id}-min`).type = 'number';
-            form.add_input("Maximum", `${this.id}-max`, '100', has_values ? this.values.maximum : false);
-            form.form.querySelector(`#${this.id}-max`).type = 'number';
+            form.add_input("Minimum", min_id, '0', has_values ? this.values.minimum : false);
+            form.form.querySelector('#' + min_id).type = 'number';
+            form.form.querySelector('#' + min_id).setAttribute('step', 'any');
+
+            form.add_input("Maximum", max_id, '100', has_values ? this.values.maximum : false);
+            form.form.querySelector('#' + max_id).type = 'number';
+            form.form.querySelector('#' + max_id).setAttribute('step', 'any');
         } else {
             if (form.form.querySelectorAll('.form-container').length > 3) {
-                form.form.removeChild(document.getElementById(`div-${this.id}-min`));
-                form.form.removeChild(document.getElementById(`div-${this.id}-max`));
+                form.form.removeChild(document.getElementById(`div-${min_id}`));
+                form.form.removeChild(document.getElementById(`div-${max_id}`));
             }
             if (has_values) {
                 delete this.values.minimum;
