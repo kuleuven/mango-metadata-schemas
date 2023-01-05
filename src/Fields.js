@@ -89,8 +89,8 @@ class InputField {
                 this.register_fields(schema, form);
                 form.classList.remove('was-validated');
                 this.modal.toggle();
-                let parent_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById(schema.modal_id));
-                parent_modal.toggle();
+                // let parent_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById(schema.modal_id));
+                // parent_modal.toggle();
             }
         }, false);
     }

@@ -59,7 +59,7 @@ class ComplexField {
         this.field_ids.splice(this.new_field_idx, 0, form_object.id);
         this.fields[form_object.id] = form_object;
 
-        let clicked_button = document.getElementById(this.modal_id).querySelectorAll('.adder')[this.new_field_idx];
+        let clicked_button = document.getElementById(this.card_id).querySelectorAll('.adder')[this.new_field_idx];
         let below = clicked_button.nextSibling;
         let moving_viewer = form_object.view(this);
         let new_button = this.create_button();
@@ -87,7 +87,7 @@ class ComplexField {
     update_field(form_object) {
         // TODO have checks so we don't just replace everything
         this.fields[form_object.id] = form_object;
-        let viewer = document.getElementById(this.modal_id).querySelector('#' + form_object.id);
+        let viewer = document.getElementById(this.card_id).querySelector('#' + form_object.id);
         viewer.querySelector('label').innerHTML = form_object.required ? form_object.viewer_title + '*' : form_object.viewer_title;
         let form_field = viewer.querySelector('.form-field');
         let new_input = form_object.viewer_input();
@@ -140,15 +140,20 @@ class ObjectEditor extends ComplexField {
 }
 
 class Schema extends ComplexField {
-    constructor(modal_id) {
+    constructor(card_id) {
         super('formChoice');
-        this.modal_id = modal_id;
+        this.card_id = card_id;
+        this.init_card();
     }
     get name() {
-        return document.getElementById(this.modal_id).querySelector("#template-name").value;
+        return document.getElementById(this.card_id).querySelector("#template-name").value;
     }
 
-    init_modal() {
+    get accordion_item() {
+        return this.card.div;
+    }
+
+    init_card() {
         this.display_options('formTemplates');
         let form = new BasicForm('schema');
         form.add_input("Metadata template name", "template-name", "first-schema");
@@ -171,13 +176,14 @@ class Schema extends ComplexField {
                     viewer.remove();
                 });
 
-                this.modal.toggle();
+                this.card.toggle();
+
+                // this.modal.toggle();
             }            
 
         });
 
-        let schema_editor_modal = new Modal(this.modal_id, "Metadata schema", "schemaEditorHead")
-        schema_editor_modal.create_modal([form.form]);
-        this.modal = new bootstrap.Modal(document.getElementById(this.modal_id), {});
+        this.card = new AccordionItem(this.card_id, 'New schema', 'metadata_template_list_container', true);
+        this.card.fill(form.form)
     }
 }

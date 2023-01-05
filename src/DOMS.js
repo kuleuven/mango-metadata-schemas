@@ -505,11 +505,14 @@ class AccordionItem {
 		this.div.appendChild(header);
 		this.div.appendChild(this.body);
 		
+        this.collapse = new bootstrap.Collapse(this.body, { toggle: false });
 	}
 	fill(content) {
 		let card_body = Field.quick('div', 'accordion-body');
 		card_body.appendChild(content);
-		this.body.appendChild(card_body)
-		return this.div;
+		this.body.appendChild(card_body);
 	}
+    toggle() {
+        this.collapse.toggle();
+    }
 }

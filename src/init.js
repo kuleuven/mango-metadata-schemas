@@ -11,16 +11,14 @@ let container = document.getElementById('metadata_template_list_container');
 
 container.className = 'accordion accordion-flush';
 // first the button
-let new_card = new AccordionItem('new-schema', 'New schema', 'metadata_template_list_container', is_new = true);
-let new_contents = Field.quick('p', 'mb-2', 'Here you can design a new schema'); // with new Schema() or whatever
-let new_div = new_card.fill(new_contents);
-container.appendChild(new_div);
+let starting_schema = new Schema('schema-editor');
+container.appendChild(starting_schema.accordion_item);
 
 // then the templates
 let current_templates = ['animals', 'some-schema', 'another-template'];
 for (template of current_templates) {
 	let template_card = new AccordionItem(template, template + ' schema', 'metadata_template_list_container');
 	let card_contents = Field.quick('p', 'mb-2', `Here you can edit the ${template} schema.`); // with new Schema() or whatever
-    let template_div = template_card.fill(card_contents);
-	container.appendChild(template_div);
+    template_card.fill(card_contents);
+	container.appendChild(template_card.div);
 }
