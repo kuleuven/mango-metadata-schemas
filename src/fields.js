@@ -50,13 +50,14 @@ class InputField {
     setup_form() {
         let form = new BasicForm(this.id);
         form.add_input(
-            `ID for ${this.form_type}`, `${this.id}-id`,
-            "Use lowercase, no spaces, no special characters other than '_'.",
-            this.field_id);
+            `ID for ${this.form_type} (underlying label)`, `${this.id}-id`,
+            {description : "Use lowercase, no spaces, no special characters other than '_'.",
+            value : this.field_id}
+            );
         form.add_input(
-            `Label for ${this.form_type}`, `${this.id}-label`,
-            "Description of the input field.",
-            this.title);
+            `Label for ${this.form_type} (display name)`, `${this.id}-label`,
+            {description : "This is what an user will see when inserting metadata.",
+            value : this.title});
         return form;
     }
 
@@ -185,11 +186,15 @@ class TypedInput extends InputField {
         let max_id = `${this.id}-max`;
             
         if (format == "number") {
-            form.add_input("Minimum", min_id, '0', has_values ? this.values.minimum : false);
+            form.add_input("Minimum", min_id,
+                {placeholder : '0',
+                value : has_values ? this.values.minimum : false});
             form.form.querySelector('#' + min_id).type = 'number';
             form.form.querySelector('#' + min_id).setAttribute('step', 'any');
 
-            form.add_input("Maximum", max_id, '100', has_values ? this.values.maximum : false);
+            form.add_input("Maximum", max_id,
+                {placeholder : '100',
+                value : has_values ? this.values.maximum : false});
             form.form.querySelector('#' + max_id).type = 'number';
             form.form.querySelector('#' + max_id).setAttribute('step', 'any');
         } else {
