@@ -174,6 +174,7 @@ class MovingChoice extends MovingField {
         let input_tag = Field.quick("input", "form-control mover");
         input_tag.id = `mover-${this.idx}`;
         input_tag.name = `mover-${this.idx}`;
+        input_tag.setAttribute('required', '');
         if (this.value) {
             input_tag.value = this.value;
         }
