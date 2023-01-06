@@ -185,7 +185,7 @@ class TypedInput extends InputField {
     to_json() {
         let json = { title: this.title, type: this.type, ...this.values };
         if (this.type == 'number' || this.type == 'float') {
-            delete json.values.format;
+            delete json.format;
         }
         return json;
     }
@@ -197,6 +197,8 @@ class TypedInput extends InputField {
             form.removeChild(document.getElementById(`div-${this.id}-max`));
         }
         form.reset();
+        
+        form.classList.remove('was-validated');
     }
 
     manage_min_max(format) {
@@ -341,6 +343,7 @@ class MultipleInput extends InputField {
             MovingChoice.remove_div(form.querySelector(".blocked"));
         }
         form.reset();
+        form.classList.remove('was-validated');
     }
 
 }
