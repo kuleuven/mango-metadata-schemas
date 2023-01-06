@@ -120,18 +120,15 @@ class InputField {
             this.required = false;
 
             clone.id = this.id // temporarily, to recover data
-            clone.viewer_title = clone.title;
 
             if (this.constructor.name == 'ObjectInput') {
                 // this will have to change to adapt to creating filled-schemas (attached to new ids)
                 clone.editor = this.editor;
-                console.log(clone.editor)
                 delete this.editor;
                 this.create_editor();
             }
            
             clone.recover_fields(data);
-            clone.viewer_title = clone.form_type === "text" ? clone.viewer_title : clone.title;
             clone.id = clone.field_id;
             this.reset(); // specific
 
@@ -170,6 +167,8 @@ class TypedInput extends InputField {
     }
 
     viewer_input() {
+        let div = document.createElement('div');
+        let subtitle = Field.quick('p', 'card-subtitle', this.viewer_subtitle);
         let input;
         if (this.values.format != 'text box') {
             input = Field.quick("input", "form-control input-view");
@@ -178,7 +177,9 @@ class TypedInput extends InputField {
             input = Field.quick("textarea", "form-control input-view");
         }
         input.setAttribute('readonly', '');
-        return input;
+        div.appendChild(subtitle);
+        div.appendChild(input);
+        return div;
     }
 
     to_json() {
@@ -186,6 +187,7 @@ class TypedInput extends InputField {
         if (this.type == 'number' || this.type == 'float') {
             delete json.values.format;
         }
+        return json;
     }
 
     reset() {
@@ -250,14 +252,15 @@ class TypedInput extends InputField {
             this.values.maximum = data.get(`${this.id}-max`);
             // this.type = "number";
             this.type = format == 'integer' ? 'number' : format;
-            par_text = `between ${this.values.minimum} and ${this.values.maximum}`
+            par_text = `${format} between ${this.values.minimum} and ${this.values.maximum}`
         } else {
             this.values.format = format;
         }
-        this.viewer_title = `${this.title} (${par_text})`;
+        this.viewer_subtitle = `Input type: ${par_text}`;
     }
 
 }
+
 class ObjectInput extends InputField {
     constructor() {
         super();
@@ -284,7 +287,7 @@ class ObjectInput extends InputField {
             let subfield = this.editor.fields[field_id];
             let small_div = Field.quick('div', 'viewer');
             let label = BasicForm.labeller(
-                subfield.required ? subfield.viewer_title + '*' : subfield.viewer_title,
+                subfield.required ? subfield.title + '*' : subfield.title,
                 `viewer-${subfield.id}`
             );
             let input = subfield.viewer_input();

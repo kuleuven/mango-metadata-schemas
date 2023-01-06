@@ -46,8 +46,7 @@ class MovingViewer extends MovingField {
     // Specific class for viewing fields of a schema
     constructor(form, schema) {
         super(form.id);
-        
-        this.title = form.required ? form.viewer_title + '*' : form.viewer_title;
+        this.title = form.required ? form.title + '*' : form.title;
         this.div = Field.quick("div", "card border-primary viewer");
         this.div.id = form.id;
         this.body = form.viewer_input();
