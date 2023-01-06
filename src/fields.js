@@ -48,13 +48,17 @@ class InputField {
         this.form_field = new BasicForm(this.id);
         this.form_field.add_input(
             `ID for ${this.form_type} (underlying label)`, `${this.id}-id`,
-            {description : "Use lowercase, no spaces, no special characters other than '_'.",
-            value : this.field_id}
-            );
+            {
+                description: "Use lowercase, no spaces, no special characters other than '_'.",
+                value: this.field_id
+            }
+        );
         this.form_field.add_input(
             `Label for ${this.form_type} (display name)`, `${this.id}-label`,
-            {description : "This is what an user will see when inserting metadata.",
-            value : this.title});
+            {
+                description: "This is what an user will see when inserting metadata.",
+                value: this.title
+            });
     }
 
     end_form() {
@@ -77,7 +81,7 @@ class InputField {
         edit_modal.create_modal([form], 'lg');
         this.modal = bootstrap.Modal.getOrCreateInstance(document.getElementById(modal_id));
         let modal_dom = document.getElementById(modal_id);
-                
+
         // let modal = document.getElementById(`${this.mode}-${this.id}`);
         form.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -85,7 +89,8 @@ class InputField {
                 e.stopPropagation();
                 form.classList.add('was-validated');
             } else {
-                this.register_fields(schema);
+                console.log('successfully submitted')
+                let clone = this.register_fields(schema);
                 form.classList.remove('was-validated');
                 this.modal.toggle();
                 if (schema.constructor.name == 'ObjectEditor') {
@@ -94,8 +99,22 @@ class InputField {
                     parent_modal.toggle();
                 }
                 modal_dom.querySelector('.modal-body').appendChild(form);
+
+                let clone_modal_id = `${clone.mode}-${clone.id}`;
+                if (clone_modal_id != modal_id) {
+                    let clone_modal_dom = document.getElementById(clone_modal_id);
+                    let clone_form = clone.form_field.form;
+                    clone_modal_dom.querySelector('.modal-body').appendChild(clone_form);
+                }
             }
         }, false);
+
+        // the lines below are a hack to avoid a new empty form from showing up as validated
+        modal_dom.addEventListener('shown.bs.modal', (e) => {
+            if (this.mode == 'add') {
+                form.classList.remove('was-validated');
+            }
+        })
     }
 
     register_fields(schema) {
@@ -110,6 +129,7 @@ class InputField {
             this.title = data.get(`${this.id}-label`);
             this.recover_fields(data);
             schema.update_field(this);
+            return this;
         } else {
             let clone = new this.constructor(this.parent_modal);
             clone.field_id = new_id;
@@ -127,7 +147,7 @@ class InputField {
                 delete this.editor;
                 this.create_editor();
             }
-           
+
             clone.recover_fields(data);
             clone.id = clone.field_id;
             this.reset(); // specific
@@ -139,8 +159,12 @@ class InputField {
                 schema.add_field(clone);
                 clone.create_modal(schema);
             }
+            clone.create_form();
+            return clone;
         }
+
     }
+
     view(schema) {
         // Method to view the created form
         return new MovingViewer(this, schema);
@@ -197,31 +221,34 @@ class TypedInput extends InputField {
             form.removeChild(document.getElementById(`div-${this.id}-max`));
         }
         form.reset();
-        
         form.classList.remove('was-validated');
     }
 
     manage_min_max(format) {
         // Add or remove the fields to set minimum and maximum value when input is numeric
         let has_values = Object.keys(this.values).indexOf('minimum') > -1;
-        
+
         let min_id = `${this.id}-min`;
         let max_id = `${this.id}-max`;
-            
+
         if (format == "integer" | format == 'float') {
             this.form_field.add_input("Minimum", min_id,
-                {placeholder : '0',
-                value : has_values ? this.values.minimum : false});
-                this.form_field.form.querySelector('#' + min_id).type = 'number';
-                
-                this.form_field.add_input("Maximum", max_id,
-                {placeholder : '100',
-                value : has_values ? this.values.maximum : false});
-                this.form_field.form.querySelector('#' + max_id).type = 'number';
-                if (format == 'float') {
-                    this.form_field.form.querySelector('#' + min_id).setAttribute('step', 'any');
-                    this.form_field.form.querySelector('#' + max_id).setAttribute('step', 'any');
-                }
+                {
+                    placeholder: '0',
+                    value: has_values ? this.values.minimum : false
+                });
+            this.form_field.form.querySelector('#' + min_id).type = 'number';
+
+            this.form_field.add_input("Maximum", max_id,
+                {
+                    placeholder: '100',
+                    value: has_values ? this.values.maximum : false
+                });
+            this.form_field.form.querySelector('#' + max_id).type = 'number';
+            if (format == 'float') {
+                this.form_field.form.querySelector('#' + min_id).setAttribute('step', 'any');
+                this.form_field.form.querySelector('#' + max_id).setAttribute('step', 'any');
+            }
         } else {
             if (this.form_field.form.querySelectorAll('.form-container').length > 3) {
                 this.form_field.form.removeChild(document.getElementById(`div-${min_id}`));
