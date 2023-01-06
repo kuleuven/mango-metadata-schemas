@@ -77,6 +77,8 @@ class InputField {
         let form = this.form_field.form;
         edit_modal.create_modal([form], 'lg');
         this.modal = bootstrap.Modal.getOrCreateInstance(document.getElementById(modal_id));
+        let modal_dom = document.getElementById(modal_id);
+                
         // let modal = document.getElementById(`${this.mode}-${this.id}`);
         form.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -88,9 +90,11 @@ class InputField {
                 form.classList.remove('was-validated');
                 this.modal.toggle();
                 if (schema.constructor.name == 'ObjectEditor') {
-                    let parent_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById(schema.card_id));
+                    let parent_modal_dom = document.getElementById(schema.card_id);
+                    let parent_modal = bootstrap.Modal.getOrCreateInstance(parent_modal_dom);
                     parent_modal.toggle();
-                }                
+                }
+                modal_dom.querySelector('.modal-body').appendChild(form);
             }
         }, false);
     }
@@ -147,7 +151,7 @@ class InputField {
     }
 
     reset() {
-        this.form_field.form.reset();
+        this.form_field.reset();
     }
 }
 
@@ -157,7 +161,7 @@ class TypedInput extends InputField {
         super();
         this.form_type = "text";
         this.button_title = "Text input";
-        this.description = "Text options: regular text, number, date, time, e-mail or URL.<br>"
+        this.description = "Text options: regular text, number (integer or float), date, time, e-mail or URL.<br>"
         this.values = { format: "text" };
     }
 
@@ -171,7 +175,7 @@ class TypedInput extends InputField {
         let input;
         if (this.values.format != 'text box') {
             input = Field.quick("input", "form-control input-view");
-            input.type = this.values.format;
+            input.type = this.values.format == 'float' | this.values.format == 'integer' ? 'number' : this.values.format;
         } else {
             input = Field.quick("textarea", "form-control input-view");
         }
@@ -195,18 +199,20 @@ class TypedInput extends InputField {
         let min_id = `${this.id}-min`;
         let max_id = `${this.id}-max`;
             
-        if (format == "number") {
+        if (format == "integer" | format == 'float') {
             this.form_field.add_input("Minimum", min_id,
                 {placeholder : '0',
                 value : has_values ? this.values.minimum : false});
                 this.form_field.form.querySelector('#' + min_id).type = 'number';
-                this.form_field.form.querySelector('#' + min_id).setAttribute('step', 'any');
-
+                
                 this.form_field.add_input("Maximum", max_id,
                 {placeholder : '100',
                 value : has_values ? this.values.maximum : false});
                 this.form_field.form.querySelector('#' + max_id).type = 'number';
-                this.form_field.form.querySelector('#' + max_id).setAttribute('step', 'any');
+                if (format == 'float') {
+                    this.form_field.form.querySelector('#' + min_id).setAttribute('step', 'any');
+                    this.form_field.form.querySelector('#' + max_id).setAttribute('step', 'any');
+                }
         } else {
             if (this.form_field.form.querySelectorAll('.form-container').length > 3) {
                 this.form_field.form.removeChild(document.getElementById(`div-${min_id}`));
@@ -221,7 +227,7 @@ class TypedInput extends InputField {
 
     create_form() {
         this.setup_form();
-        let text_options = ["text", "text box", "date", "email", "time", "url", "number"];
+        let text_options = ["text", "text box", "date", "email", "time", "url", "integer", "float"];
         this.form_field.add_select("Text type", `${this.id}-format`, text_options, this.values.format);
         this.manage_min_max(this.values.format);
         this.form_field.form.querySelector(".form-select").addEventListener('change', () => {
@@ -232,13 +238,15 @@ class TypedInput extends InputField {
     }
 
     recover_fields(data) {
-        this.values.format = data.get(`${this.id}-format`);
-        let par_text = this.values.format;
-        if (this.values.format === "number") {
+        let format = data.get(`${this.id}-format`);
+        let par_text = format;
+        if (format === "integer" | format == 'float') {
             this.values.minimum = data.get(`${this.id}-min`);
             this.values.maximum = data.get(`${this.id}-max`);
             this.type = "number";
             par_text = `between ${this.values.minimum} and ${this.values.maximum}`
+        } else {
+            this.values.format = format;
         }
         this.viewer_title = `${this.title} (${par_text})`;
     }
@@ -302,7 +310,7 @@ class MultipleInput extends InputField {
     }
 
     reset() {
-        let form = this.form_field.form;s
+        let form = this.form_field.form;
         while (form.querySelectorAll(".blocked").length > 2) {
             MovingChoice.remove_div(form.querySelector(".blocked"));
         }
