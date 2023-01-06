@@ -112,7 +112,7 @@ class ComplexField {
         button.setAttribute("data-bs-target", `#${this.choice_id}`);
 
         button.addEventListener('click', () => {
-            this.new_field_idx = div.previousSibling.className == 'viewer' ?
+            this.new_field_idx = div.previousSibling.classList.contains('viewer') ?
             this.field_ids.indexOf(div.previousSibling.id) + 1 :
             0;
         });
@@ -177,6 +177,7 @@ class Schema extends ComplexField {
                     viewer.nextSibling.remove();
                     viewer.remove();
                 });
+                form.form.classList.remove('was-validated');
 
                 this.card.toggle();
 

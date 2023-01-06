@@ -81,18 +81,19 @@ class MovingViewer extends MovingField {
         // Method to move a viewing field downwards
         // It has an edit button and no working input field
         // The "input field" (with no effect) depends on the kind of field
+        // this.below is defined in schema.js as the 'add element' button below it
         let form_index = this.schema.field_ids.indexOf(this.idx);
-        let sibling = this.below.nextSibling;
-        let sibling_button = sibling.nextSibling;
+        let sibling = this.below.nextSibling; // element under the bottom button
+        let sibling_button = sibling.nextSibling; // button under the bottom button
         
         this.div.parentElement.insertBefore(sibling, this.div);
         this.div.parentElement.insertBefore(sibling_button, this.div);
-        if (sibling.previousSibling.previousSibling.className != "viewer") {
+        if (!sibling.previousSibling.previousSibling.classList.contains("viewer")) {
             // if the other div went to first place        
             sibling.querySelector(".up").setAttribute("disabled", "");
             this.up.removeAttribute("disabled");
         }
-        if (this.below.nextSibling.className != "adder") {
+        if (!this.below.nextSibling.classList.contains("viewer")) {
             // if this dev went to the last place
             sibling.querySelector(".down").removeAttribute("disabled");
             this.down.setAttribute("disabled", "")
@@ -109,12 +110,12 @@ class MovingViewer extends MovingField {
         let sibling = this.div.previousSibling.previousSibling;
         this.div.parentElement.insertBefore(this.div, sibling);
         this.div.parentElement.insertBefore(this.below, sibling);
-        if (this.div.previousSibling.previousSibling.className != "viewer") {
+        if (!this.div.previousSibling.previousSibling.classList.contains("viewer")) {
             // if this div went to first place
             this.up.setAttribute("disabled", "");
             sibling.querySelector(".up").removeAttribute("disabled");
         }
-        if (sibling.nextSibling.className != "adder") {
+        if (!sibling.nextSibling.classList.contains("adder")) {
             // if we were in the last place
             this.down.removeAttribute("disabled");
             sibling.querySelector(".down").setAttribute("disabled", "")

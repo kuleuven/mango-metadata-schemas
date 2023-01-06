@@ -285,7 +285,7 @@ class ObjectInput extends InputField {
         let div = Field.quick('div', 'input-view');
         this.editor.field_ids.forEach((field_id) => {
             let subfield = this.editor.fields[field_id];
-            let small_div = Field.quick('div', 'viewer');
+            let small_div = Field.quick('div', 'mini-viewer');
             let label = BasicForm.labeller(
                 subfield.required ? subfield.title + '*' : subfield.title,
                 `viewer-${subfield.id}`
