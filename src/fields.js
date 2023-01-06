@@ -78,6 +78,7 @@ class InputField {
         let modal_id = `${this.mode}-${this.id}`;
         let edit_modal = new Modal(modal_id, `Add ${this.button_title}`, `title-${this.form_type}`);
         let form = this.form_field.form;
+        console.log(form)
         edit_modal.create_modal([form], 'lg');
         this.modal = bootstrap.Modal.getOrCreateInstance(document.getElementById(modal_id));
         let modal_dom = document.getElementById(modal_id);
@@ -89,7 +90,6 @@ class InputField {
                 e.stopPropagation();
                 form.classList.add('was-validated');
             } else {
-                console.log('successfully submitted')
                 let clone = this.register_fields(schema);
                 form.classList.remove('was-validated');
                 this.modal.toggle();
@@ -157,9 +157,10 @@ class InputField {
             } else {
                 clone.mode = 'mod';
                 schema.add_field(clone);
+
+                clone.create_form();
                 clone.create_modal(schema);
             }
-            clone.create_form();
             return clone;
         }
 
