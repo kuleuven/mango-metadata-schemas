@@ -14,27 +14,19 @@ class MovingField {
     // Parent class for a form element that can move around
     // to use in the design of multiple choice elements and to view form fields of a schema
     
-    constructor(label_text, idx) {
+    constructor(idx) {
         // Each field will have an id and a label / title
         // This creates a div with, a label and three buttons: up, down and remove
-        this.label = BasicForm.labeller(label_text, `mover-${idx}`);
         this.idx = idx;
-        this.sub_div = Field.quick("div", "form-field");
         this.up = this.add_btn('up', 'arrow-up-circle', () => this.move_up());
         this.down = this.add_btn('down', 'arrow-down-circle', () => this.move_down());
         this.rem = this.add_btn('rem', 'trash', () => this.remove());
     }
-
-    assemble() {
-        // General method to add label, remove button and others to the main div
-        this.sub_div.appendChild(this.rem);
-        this.div.appendChild(this.label);
-        this.div.appendChild(this.sub_div);
-    }
     
     add_btn(className, symbol, action = false) {
         // Method to create a button, e.g. up, down, remove and edit
-        let btn = Field.quick('button', `btn btn-primary mover ${className}`);
+        let button_color = this.constructor.name == 'MovingViewer' ? 'btn-outline-primary' : 'btn-primary'
+        let btn = Field.quick('button', `btn ${button_color} mover ${className}`);
         btn.id = `${className}-${this.idx}`;
         if (action) {
             btn.addEventListener('click', (e) => {
@@ -53,24 +45,37 @@ class MovingField {
 class MovingViewer extends MovingField {
     // Specific class for viewing fields of a schema
     constructor(form, schema) {
-        super(
-            form.required ? form.viewer_title + '*' : form.viewer_title,
-            form.id
-            );
+        super(form.id);
         
-        this.div = Field.quick("div", "viewer");
+        this.title = form.required ? form.viewer_title + '*' : form.viewer_title;
+        this.div = Field.quick("div", "card border-primary viewer");
         this.div.id = form.id;
-        this.input_tag = form.viewer_input();
+        this.body = form.viewer_input();
         this.edit = this.add_btn('edit', 'pencil');
         this.edit.setAttribute('data-bs-toggle', 'modal');
         this.edit.setAttribute('data-bs-target', `#mod-${form.id}`);
 
-        this.sub_div.appendChild(this.input_tag);
-        this.sub_div.appendChild(this.up);
-        this.sub_div.appendChild(this.down);
-        this.sub_div.appendChild(this.edit);        
         this.assemble();
         this.schema = schema;        
+    }
+
+    assemble() {
+        let header = Field.quick('div', 'card-header mover-header');
+        let header_title = document.createElement('h5');
+        header_title.innerHTML = this.title;
+        let header_buttons = Field.quick('div', 'btn-list');
+        for (let button of [this.up, this.down, this.edit, this.rem]) {
+            header_buttons.appendChild(button);
+        }
+        header.appendChild(header_title);
+        header.appendChild(header_buttons);
+
+        let body = Field.quick('div', 'card-body');
+        body.appendChild(this.body);
+
+        this.div.appendChild(header);
+        this.div.appendChild(body);
+
     }
 
     move_down() {
@@ -144,15 +149,24 @@ class MovingChoice extends MovingField {
     // Specific class for multiple choice editor
     // It has a working text input field and no edit button
     constructor(label_text, idx, value = false) {
-        super(label_text, idx);
+        super(idx);
+        this.label = BasicForm.labeller(label_text, `mover-${idx}`);
         this.div = Field.quick("div", "blocked");
         this.value = value;
         this.div.id = `block-${idx}`;
         this.input_tag = this.add_input();
+        this.sub_div = Field.quick("div", "form-field");
+        this.assemble();
+    }
+
+    assemble() {
+        // General method to add label, remove button and others to the main div
         this.sub_div.appendChild(this.input_tag);
         this.sub_div.appendChild(this.up);
         this.sub_div.appendChild(this.down);
-        this.assemble();
+        this.sub_div.appendChild(this.rem);
+        this.div.appendChild(this.label);
+        this.div.appendChild(this.sub_div);
     }
 
     add_input() {

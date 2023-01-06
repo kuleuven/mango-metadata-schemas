@@ -1,4 +1,3 @@
-
 class InputField {
     constructor() {
         this.description = ""; // description to show in the options viewer
@@ -155,7 +154,6 @@ class InputField {
     }
 }
 
-
 class TypedInput extends InputField {
     constructor() {
         super();
@@ -181,6 +179,13 @@ class TypedInput extends InputField {
         }
         input.setAttribute('readonly', '');
         return input;
+    }
+
+    to_json() {
+        let json = { title: this.title, type: this.type, ...this.values };
+        if (this.type == 'number' || this.type == 'float') {
+            delete json.values.format;
+        }
     }
 
     reset() {
@@ -243,7 +248,8 @@ class TypedInput extends InputField {
         if (format === "integer" | format == 'float') {
             this.values.minimum = data.get(`${this.id}-min`);
             this.values.maximum = data.get(`${this.id}-max`);
-            this.type = "number";
+            // this.type = "number";
+            this.type = format == 'integer' ? 'number' : format;
             par_text = `between ${this.values.minimum} and ${this.values.maximum}`
         } else {
             this.values.format = format;
@@ -272,6 +278,23 @@ class ObjectInput extends InputField {
         this.editor.display_options("objectTemplates");
     }
 
+    viewer_input() {
+        let div = Field.quick('div', 'input-view');
+        this.editor.field_ids.forEach((field_id) => {
+            let subfield = this.editor.fields[field_id];
+            let small_div = Field.quick('div', 'viewer');
+            let label = BasicForm.labeller(
+                subfield.required ? subfield.viewer_title + '*' : subfield.viewer_title,
+                `viewer-${subfield.id}`
+            );
+            let input = subfield.viewer_input();
+            small_div.appendChild(label);
+            small_div.appendChild(input);
+            div.appendChild(small_div);
+        });
+        return div;
+    }
+
     create_form() {
         this.setup_form();
         this.create_editor();
@@ -285,7 +308,7 @@ class ObjectInput extends InputField {
         this.required_fields = [];
         this.properties = {};
         this.editor.field_ids.forEach((field_id) => {
-            let field = this.fields[field_id];
+            let field = this.editor.fields[field_id];
             this.properties[field_id] = field.json;
             if (field.required) {
                 this.required_fields.push(field_id);
