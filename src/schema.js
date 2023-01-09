@@ -239,11 +239,65 @@ class Schema extends ComplexField {
         });
 
         this.card = new AccordionItem(this.card_id, 'New schema', 'metadata_template_list_container', true);
-        this.card.fill(form.form)
+        this.card.fill([form.form])
+    }
+
+    create_viewer_editor() {
+        // design navbar
+        this.nav_bar = Field.quick('ul', 'nav justify-content-end nav-pills');
+        this.nav_bar.role = 'tablist';
+        this.nav_bar.id = 'pills-tab-' + this._name;
+        
+        let view_li = Field.quick('li', 'nav-item');
+        let view_button = Field.quick('a', 'nav-link active', 'View');
+        view_button.id = 'view-tab-' + this._name;
+        view_button.setAttribute('data-bs-toggle', 'pill');
+        view_button.setAttribute('data-bs-target', `#view-pane-${this._name}`);
+        view_button.type = 'button';
+        view_button.role = 'tab';
+        view_button.setAttribute('aria-controls', `view-pane-${this._name}`);
+        this.nav_bar.appendChild(view_li);
+        view_li.appendChild(view_button);
+        
+        let edit_li = Field.quick('li', 'nav-item');
+        let edit_button = Field.quick('a', 'nav-link', 'Edit');
+        edit_button.id = 'edit-tab-' + this._name;
+        edit_button.setAttribute('data-bs-toggle', 'pill');
+        edit_button.setAttribute('data-bs-target', `#edit-pane-${this._name}`);
+        edit_button.type = 'button';
+        edit_button.role = 'tab';
+        edit_button.setAttribute('aria-controls', `edit-pane-${this._name}`);
+        this.nav_bar.appendChild(edit_li);
+        edit_li.appendChild(edit_button);
+
+        // design tabs
+        this.tab_content = Field.quick('div', 'tab-content');
+        let viewer_tab = Field.quick('div', 'tab-pane fade show active');
+        viewer_tab.id = 'view-pane-' + this._name;
+        viewer_tab.role = 'tabpanel';
+        viewer_tab.setAttribute('aria-labelledby', 'view-tab-' + this._name);
+        viewer_tab.tabIndex = '0';
+
+        let viewer = ComplexField.create_viewer(this);
+        viewer_tab.appendChild(viewer);
+        
+        let editor_tab = Field.quick('div', 'tab-pane fade');
+        editor_tab.id = 'edit-pane-' + this._name;
+        editor_tab.role = 'tabpanel';
+        editor_tab.setAttribute('aria-labelledby', 'edit-tab-' + this._name);
+        editor_tab.tabIndex = '0';
+        
+        let editor = Field.quick('div', 'border border-primary', 'Here will come the editor');
+        editor_tab.appendChild(editor);
+
+        this.tab_content.appendChild(viewer_tab);
+        this.tab_content.appendChild(editor_tab);
+
     }
 
     view() {
         this.card = new AccordionItem(this.card_id, this._name, 'metadata_template_list_container');
-        this.card.fill(ComplexField.create_viewer(this));
+        this.create_viewer_editor();
+        this.card.fill([this.nav_bar, this.tab_content]);
     }
 }

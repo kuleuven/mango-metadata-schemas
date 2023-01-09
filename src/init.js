@@ -28,7 +28,7 @@ url_tag.remove();
 // 		let template_card = new AccordionItem(name, name + ' schema', 'metadata_template_list_container');
 // 		let card_text = `Here you can edit the <em>${name}</em> schema; its url is <code>${template.url}</code>.`;
 // 		let card_contents = Field.quick('p', 'mb-2', card_text); // with new Schema() or whatever
-// 		template_card.fill(card_contents);
+// 		template_card.fill([card_contents]);
 // 		container.appendChild(template_card.div);
 // 	}
 // 	const temp_url = '/static/metadata-templates/basic.json';

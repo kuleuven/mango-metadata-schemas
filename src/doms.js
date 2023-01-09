@@ -532,7 +532,8 @@ class AccordionItem {
 	}
 	fill(content) {
 		let card_body = Field.quick('div', 'accordion-body');
-		card_body.appendChild(content);
+        content.forEach((element) => card_body.appendChild(element));
+		// card_body.appendChild(content);
 		this.body.appendChild(card_body);
 	}
     toggle() {
