@@ -43,6 +43,7 @@ class ComplexField {
         this.field_ids = Object.keys(data.properties);
         for (let entry of Object.entries(data.properties)) {
             let new_field = InputField.choose_class(entry);
+            new_field.create_modal(this);
             new_field.required = data.required.indexOf(entry[0]) > -1;
             this.fields[entry[0]] = new_field;
         }
@@ -65,12 +66,7 @@ class ComplexField {
         });
     }
 
-    add_field(form_object) {
-        // Register a created form field, add it to the fields dictionary and view it
-        this.field_ids.splice(this.new_field_idx, 0, form_object.id);
-        this.fields[form_object.id] = form_object;
-        console.log(this.card_id);
-
+    view_field(form_object) {
         let clicked_button = document.getElementById(this.card_id).querySelectorAll('.adder')[this.new_field_idx];
         let below = clicked_button.nextSibling;
         let moving_viewer = form_object.view(this);
@@ -92,6 +88,13 @@ class ComplexField {
                 viewers[viewers.length - 2].querySelector('.down').removeAttribute('disabled');
             }
         }
+    }
+
+    add_field(form_object) {
+        // Register a created form field, add it to the fields dictionary and view it
+        this.field_ids.splice(this.new_field_idx, 0, form_object.id);
+        this.fields[form_object.id] = form_object;
+        this.view_field(form_object);
 
         console.log(this.json);
     }
@@ -185,9 +188,11 @@ class ObjectEditor extends ComplexField {
 }
 
 class Schema extends ComplexField {
-    constructor(card_id, name = null) {
+    constructor(card_id, container_id) {
         super('formChoice');
         this.card_id = card_id;
+        this._name = card_id;
+        this.container = container_id;
     }
 
     get name() {
@@ -197,7 +202,7 @@ class Schema extends ComplexField {
 
     set name(name) {
         this._name = name;
-        let form_title = document.getElementById(this.card_id)
+        let form_title = document.getElementById(this.card_id);
         if (form_title != null) {
             form_title.querySelector("#template-name").value = this._name;
         }
@@ -207,7 +212,7 @@ class Schema extends ComplexField {
         return this.card.div;
     }
 
-    init_card() {
+    create_editor() {
         this.display_options('formTemplates');
         let form = new BasicForm('schema');
         form.add_input("Metadata template name", "template-name", "first-schema");
@@ -232,17 +237,19 @@ class Schema extends ComplexField {
                 form.form.classList.remove('was-validated');
 
                 this.card.toggle();
-
-                // this.modal.toggle();
             }            
-
         });
-
-        this.card = new AccordionItem(this.card_id, 'New schema', 'metadata_template_list_container', true);
-        this.card.fill([form.form])
+        return form;
     }
 
-    create_viewer_editor() {
+    create_creator() {
+        let form = this.create_editor();
+        this.card = new AccordionItem(this.card_id, 'New schema', 'metadata_template_list_container', true);
+        document.getElementById(this.container).appendChild(this.accordion_item);
+        this.card.append(form.form);
+    }
+
+    create_navbar() {
         // design navbar
         this.nav_bar = Field.quick('ul', 'nav justify-content-end nav-pills');
         this.nav_bar.role = 'tablist';
@@ -287,8 +294,9 @@ class Schema extends ComplexField {
         editor_tab.setAttribute('aria-labelledby', 'edit-tab-' + this._name);
         editor_tab.tabIndex = '0';
         
-        let editor = Field.quick('div', 'border border-primary', 'Here will come the editor');
-        editor_tab.appendChild(editor);
+        let form = this.create_editor();
+        form.form.querySelector('#template-name').value = this._name;
+        editor_tab.appendChild(form.form);
 
         this.tab_content.appendChild(viewer_tab);
         this.tab_content.appendChild(editor_tab);
@@ -297,7 +305,13 @@ class Schema extends ComplexField {
 
     view() {
         this.card = new AccordionItem(this.card_id, this._name, 'metadata_template_list_container');
-        this.create_viewer_editor();
-        this.card.fill([this.nav_bar, this.tab_content]);
+        document.getElementById(this.container).appendChild(this.accordion_item);
+        this.create_navbar();
+        this.card.append(this.nav_bar);
+        this.card.append(this.tab_content);
+        this.field_ids.forEach((field_id, idx) => {
+            this.new_field_idx = idx;
+            this.view_field(this.fields[field_id]);
+        })
     }
 }
