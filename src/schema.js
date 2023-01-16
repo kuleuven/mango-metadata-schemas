@@ -31,7 +31,9 @@ class ComplexField {
             let field = this.fields[field_id];
             base_data.properties[field_id] = field.json;
         });
-        return base_data;
+        let json = {};
+        json[this.name] = base_data;
+        return json;
     }
 
     from_json(data) {
@@ -40,7 +42,6 @@ class ComplexField {
         for (let entry of Object.entries(data.properties)) {
             let new_field = InputField.choose_class(entry);
             new_field.create_modal(this);
-            new_field.required = data.required.indexOf(entry[0]) > -1;
             this.fields[entry[0]] = new_field;
         }
     }
@@ -63,6 +64,7 @@ class ComplexField {
     }
 
     view_field(form_object) {
+        console.log(this.card_id);
         let clicked_button = document.getElementById(this.card_id).querySelectorAll('.adder')[this.new_field_idx];
         let below = clicked_button.nextSibling;
         let moving_viewer = form_object.view(this);
@@ -100,7 +102,7 @@ class ComplexField {
         this.fields[form_object.id] = form_object;
         let viewer = document.getElementById(this.card_id).querySelector('#' + form_object.id);
         viewer.querySelector('h5').innerHTML = form_object.required ? form_object.title + '*' : form_object.title;
-        let rep_icon = Field.quick('i', 'bi bi-stack mx-2');
+        let rep_icon = Field.quick('i', 'bi bi-stack');
         if (form_object.repeatable) {
             viewer.querySelector('h5').appendChild(rep_icon);
         } else if (viewer.querySelector('.bi-stack') != null) {
@@ -166,7 +168,7 @@ class ComplexField {
 
 class ObjectEditor extends ComplexField {
     constructor(parent_form, parent) {
-        super('objectChoice');
+        super('objectChoice' + parent.id);
         this.form = parent_form;
         this.card_id = `${parent.mode}-${parent.id}`;
         this.id_field = `${parent.id}-id`

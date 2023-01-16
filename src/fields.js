@@ -144,6 +144,7 @@ class InputField {
             clone.field_id = new_id;
             clone.form_field = this.form_field;
             clone.title = data.get(`${this.id}-label`);
+            console.log(clone.title);
 
             clone.required = this.required;
             this.required = false;
@@ -188,13 +189,12 @@ class InputField {
     }
 
     static choose_class([id, data] = []) {
-        let properties = Object.keys(data);
         let new_field;
-        if (properties.type == 'object') {
+        if (data.type == 'object') {
             new_field = new ObjectInput();
-        } else if (properties.type == 'select') {
-            console.log(properties.multiple);
-            new_field = properties.multiple ? new CheckboxInput() : new SelectInput();
+        } else if (data.type == 'select') {
+            console.log(data.multiple);
+            new_field = data.multiple ? new CheckboxInput() : new SelectInput();
         } else {
             new_field = new TypedInput();
         }
@@ -234,7 +234,7 @@ class TypedInput extends InputField {
         let div = document.createElement('div');
         let subtitle = Field.quick('p', 'card-subtitle', this.viewer_subtitle);
         let input;
-        if (this.type != 'text box') {
+        if (this.type != 'textarea') {
             input = Field.quick("input", "form-control input-view");
             input.type = this.type == 'float' | this.type == 'integer' ? 'number' : this.type;
         } else {
@@ -380,7 +380,7 @@ class ObjectInput extends InputField {
     }
 
     to_json() {
-        let json = this.editor.json;
+        let json = Object.values(this.editor.json)[0];
         json.title = this.title;
         if (this.required) json.required = this.required;
         if (this.repeatable) json.repeatable = this.repeatable;
