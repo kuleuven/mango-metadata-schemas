@@ -1,11 +1,6 @@
 const container_id = 'metadata_template_list_container';
 const container = document.getElementById(container_id);
 
-container.className = 'accordion accordion-flush';
-// first the button
-let starting_schema = new Schema('schema-editor', container_id);
-starting_schema.create_creator();
-
 let url_tag = document.getElementsByTagName('url-list')[0];
 let url_list = url_tag.attributes;
 let urls = {};
@@ -13,6 +8,11 @@ for (let url of url_list) {
 	urls[url.name] = url.value;
 }
 url_tag.remove();
+
+container.className = 'accordion accordion-flush';
+// first the button
+let starting_schema = new Schema('schema-editor', container_id, urls.new);
+starting_schema.create_creator();
 
 // function reqPrinter() {
 // 	console.log(JSON.parse(this.responseText));
@@ -44,16 +44,16 @@ url_tag.remove();
 
 
 // get one template
-const temp_url = '/static/metadata-templates/basic.json';
-function read_schema() {
-	let response = JSON.parse(this.responseText);
-	console.log(response);
-	let schema = new Schema('basic', container_id);
-	schema.from_json(response);
-	schema.view();
-}
+// const temp_url = '/static/metadata-templates/basic.json';
+// function read_schema() {
+// 	let response = JSON.parse(this.responseText);
+// 	console.log(response);
+// 	let schema = new Schema('basic', container_id, urls.new);
+// 	schema.from_json(response);
+// 	schema.view();
+// }
 
-const schema_rq = new XMLHttpRequest();
-schema_rq.addEventListener('load', read_schema);
-schema_rq.open('GET', temp_url);
-schema_rq.send();
+// const schema_rq = new XMLHttpRequest();
+// schema_rq.addEventListener('load', read_schema);
+// schema_rq.open('GET', temp_url);
+// schema_rq.send();

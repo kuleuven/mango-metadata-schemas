@@ -390,6 +390,7 @@ class BasicForm {
 
     add_requirer(id, required = false) {
         // Add a radio switch to select a field as required
+        // I'm adding the radio switch for "repeatable" here as well
         let div = Field.quick("div", "col-3 mt-2");
         let subdiv = Field.quick("div", "form-check form-switch form-check-inline");
         
@@ -422,6 +423,10 @@ class BasicForm {
 
     reset() {
         this.form.reset();
+        let checkboxes = this.form.querySelectorAll('[type="checkbox"]');
+        for (checkbox of checkboxes) {
+            checkbox.removeAttribute('checked');
+        }
         this.form.classList.remove('was-validated');
     }
 

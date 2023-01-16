@@ -25,15 +25,11 @@ class ComplexField {
         let base_data = {
             title: this.name,
             type: "object",
-            required: [],
             properties: {}
         }
         this.field_ids.forEach((field_id) => {
             let field = this.fields[field_id];
             base_data.properties[field_id] = field.json;
-            if (field.required) {
-                base_data.required.push(field_id);
-            }
         });
         return base_data;
     }
@@ -188,11 +184,12 @@ class ObjectEditor extends ComplexField {
 }
 
 class Schema extends ComplexField {
-    constructor(card_id, container_id) {
+    constructor(card_id, container_id, url) {
         super('formChoice');
         this.card_id = card_id;
         this._name = card_id;
         this.container = container_id;
+        this.url = url
     }
 
     get name() {
@@ -228,7 +225,8 @@ class Schema extends ComplexField {
                 form.form.classList.add('was-validated');
             } else {
                 // save form!
-                console.log(this.json);
+                // console.log(this.json);
+                this.post();
                 form.reset();
                 form.form.querySelectorAll('.viewer').forEach((viewer) => {
                     viewer.nextSibling.remove();
@@ -313,5 +311,16 @@ class Schema extends ComplexField {
             this.new_field_idx = idx;
             this.view_field(this.fields[field_id]);
         })
+    }
+
+    post() {
+        const to_post = new FormData();
+        to_post.append('template_name', this.name + ".json");
+        to_post.append('template_json', JSON.stringify(this.json));
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', this.url, true);
+        xhr.send(to_post);
+        console.log(this.name, ' posted.');
     }
 }
