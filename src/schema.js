@@ -100,6 +100,12 @@ class ComplexField {
         this.fields[form_object.id] = form_object;
         let viewer = document.getElementById(this.card_id).querySelector('#' + form_object.id);
         viewer.querySelector('h5').innerHTML = form_object.required ? form_object.title + '*' : form_object.title;
+        let rep_icon = Field.quick('i', 'bi bi-stack mx-2');
+        if (form_object.repeatable) {
+            viewer.querySelector('h5').appendChild(rep_icon);
+        } else if (viewer.querySelector('.bi-stack') != null) {
+            viewer.querySelector('h5').removeChild(rep_icon);
+        }
         let form_field = viewer.querySelector('.card-body');
         let new_input = form_object.viewer_input();
         form_field.replaceChild(new_input, form_field.firstChild);

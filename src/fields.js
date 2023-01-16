@@ -67,12 +67,19 @@ class InputField {
     end_form() {
         // Add require switch and submit button to form
         this.form_field.form.appendChild(document.createElement('br'));
-        this.form_field.add_requirer(this.id, this.required);
-        let switch_input = this.form_field.form.querySelector('.form-switch').querySelector('input');
-        switch_input.addEventListener('change', () => {
+        this.form_field.add_requirer(this.id, this.required, this.repeatable);
+
+        let req_input = this.form_field.form.querySelector(`#${this.id}-required`);
+        req_input.addEventListener('change', () => {
             this.required = !this.required;
-            this.required ? switch_input.setAttribute('checked', '') : switch_input.removeAttribute('checked');
+            this.required ? req_input.setAttribute('checked', '') : req_input.removeAttribute('checked');
         });
+        let rep_input = this.form_field.form.querySelector(`#${this.id}-repeatable`);
+        rep_input.addEventListener('change', () => {
+            this.repeatable = !this.repeatable;
+            this.repeatable ? rep_input.setAttribute('checked', '') : rep_input.removeAttribute('checked');
+        });
+        
         this.form_field.add_submitter("Submit");
 
     }
@@ -141,6 +148,9 @@ class InputField {
             clone.required = this.required;
             this.required = false;
 
+            clone.repeatable = this.repeatable;
+            this.repeatable = false;
+
             clone.id = this.id // temporarily, to recover data
 
             if (this.constructor.name == 'ObjectInput') {
@@ -198,8 +208,6 @@ class InputField {
     from_json(data) {
         this.title = data.title;
         this.type = data.type;
-        if (data.required) this.required = data.required;
-        if (data.repeatable) this.repeatable = data.repeatable;
         this.create_form();
     }
 }
@@ -262,8 +270,9 @@ class TypedInput extends InputField {
             form.removeChild(document.getElementById(`div-${this.id}-min`));
             form.removeChild(document.getElementById(`div-${this.id}-max`));
         }
-        form.reset();
-        form.classList.remove('was-validated');
+        super.reset();
+        // form.reset();
+        // form.classList.remove('was-validated');
     }
 
     manage_min_max(format) {
@@ -403,8 +412,9 @@ class MultipleInput extends InputField {
         while (form.querySelectorAll(".blocked").length > 2) {
             MovingChoice.remove_div(form.querySelector(".blocked"));
         }
-        form.reset();
-        form.classList.remove('was-validated');
+        super.reset();
+        // form.reset();
+        // form.classList.remove('was-validated');
     }
 
     recover_fields(data) {
