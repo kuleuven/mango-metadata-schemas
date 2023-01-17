@@ -53,9 +53,9 @@ class InputField {
         this.form_field.add_input(
             `ID for ${this.form_type} (underlying label)`, `${this.id}-id`,
             {
-                description: "Use lowercase, no spaces, no special characters other than '_'.",
-                value: this.field_id, validation_message: "This field is compulsory. Use only lowercase and '_'.",
-                pattern: "[a-z_]+"
+                description: "Use lowercase or numbers, no spaces, no special characters other than '_'.",
+                value: this.field_id, validation_message: "This field is compulsory. Use only lowercase, numbers, and '_'.",
+                pattern: "[a-z0-9_]+"
             }
         );
         this.form_field.add_input(
