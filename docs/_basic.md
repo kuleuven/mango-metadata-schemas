@@ -1,3 +1,4 @@
+```json
 {
     "sample-schema": {
         "title": "Book schema as an example",
@@ -104,9 +105,10 @@
                 "title": "Website"
             },
             "synopsis": {
-                "type": "textarea",
+                "type": "textbox",
                 "title": "Synopsis"
             }
         }
     }
 }
+```
