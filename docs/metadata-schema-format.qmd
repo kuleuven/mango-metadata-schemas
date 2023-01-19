@@ -4,14 +4,14 @@ format:
     html:
         embed-resources: true
         theme: default
+    pdf:
+        language: en-GB
 date: 2023-01-13
 date-modified: today
 author: Mariana Montes
 number-sections: true
 toc: true
 ---
-
-<!-- Can I embed a file? -->
 
 # Main structure
 
@@ -51,7 +51,7 @@ required
 
 repeatable
 
-:    Any object that represents a field may contain an optional boolean `repeatable` attribute. If "true", the field may be used multiple times to assign the same attribute name with different values as metadata of the same collection or data object. If this attribute is missing, it is read as "false".
+:    Any object that represents a scalar field or an object field may contain an optional boolean `repeatable` attribute. If "true", the field may be used multiple times to assign the same attribute name with different values as metadata of the same collection or data object. If this attribute is missing, it is read as "false".
 
 # Types of items {#sec-items}
 

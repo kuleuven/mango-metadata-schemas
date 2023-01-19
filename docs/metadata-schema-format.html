@@ -2651,7 +2651,7 @@ vertical-align: -.125em;
     <div>
     <div class="quarto-title-meta-heading">Modified</div>
     <div class="quarto-title-meta-contents">
-      <p class="date-modified">January 13, 2023</p>
+      <p class="date-modified">January 19, 2023</p>
     </div>
   </div>
     
@@ -2660,7 +2660,6 @@ vertical-align: -.125em;
 
 </header>
 
-<!-- Can I embed a file? -->
 <section id="main-structure" class="level1" data-number="1">
 <h1 data-number="1"><span class="header-section-number">1</span> Main structure</h1>
 <p>A metadata schema will be stored in a json file with a series of nested key-value pairs. At the top level, there is only one pair, with the id of the schema as key and the contents of the schema as values:</p>
@@ -2702,7 +2701,7 @@ Tip
 </dd>
 <dt>repeatable</dt>
 <dd>
-<p>Any object that represents a field may contain an optional boolean <code>repeatable</code> attribute. If “true”, the field may be used multiple times to assign the same attribute name with different values as metadata of the same collection or data object. If this attribute is missing, it is read as “false”.</p>
+<p>Any object that represents a scalar field or an object field may contain an optional boolean <code>repeatable</code> attribute. If “true”, the field may be used multiple times to assign the same attribute name with different values as metadata of the same collection or data object. If this attribute is missing, it is read as “false”.</p>
 </dd>
 </dl>
 </section>
