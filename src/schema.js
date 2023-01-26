@@ -153,7 +153,7 @@ class ComplexField {
                 label.id = `viewer-${subfield.id}`;
                 small_div.className = small_div.className + ' border border-1 border-secondary rounded p-3 my-1'
             } else {
-                label = BasicForm.labeller(
+                label = Field.Labeller(
                     subfield.required ? subfield.title + '*' : subfield.title,
                     `viewer-${subfield.id}`
                 );
