@@ -27,7 +27,9 @@ class TemplatesRequest extends MangoRequest {
             let template_names = [...new Set(templates.map((template) => template.schema_name))]; // get unique names
             let grouped_templates = template_names.map((schema) => ({
                 schema_name : schema,
-                template_list : templates.filter((template) => template.schema_name == schema)
+                template_list : templates
+                    .filter((template) => template.schema_name == schema)
+                    .sort((t1, t2) => (t1.name) > (t2.name) ? 1 : -1)
             })); // match unique names and versions
             for (let template of grouped_templates) {
                 new SchemaGroup(template, container_id);
@@ -57,6 +59,8 @@ class TemplateReader extends MangoRequest {
             let json = Object.values(this.json)[0];
             let schema = new Schema(this.schema_name, this.container_id, this.url_new);
             schema.from_json(json);
+            schema.version = json.version;
+            schema.status = json.status;
             schema.view();
         })
     }

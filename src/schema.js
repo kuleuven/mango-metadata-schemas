@@ -31,6 +31,8 @@ class ComplexField {
     to_json() {
         let base_data = {
             title: this.name,
+            version: this.version,
+            status: this.status,
             type: "object",
             properties: {}
         }
@@ -272,7 +274,9 @@ class Schema extends ComplexField {
         return form;
     }
 
-    create_creator() {
+    create_creator(version) {
+        this.status = 'draft';
+        this.version = version;
         let form = this.create_editor();
         this.card = new AccordionItem(this.card_id, 'New schema', this.container, true);
         document.getElementById(this.container).appendChild(this.accordion_item);
@@ -283,34 +287,44 @@ class Schema extends ComplexField {
         // design navbar
         let nav_bar = new NavBar(this._name, ['justify-content-end', 'nav-pills']);
         nav_bar.add_item('view', 'View', true);
-        nav_bar.add_item('edit', 'Edit');
-        
+
         let viewer = ComplexField.create_viewer(this);
         nav_bar.add_tab_content('view', viewer);
         
-        let form = this.create_editor();
-        console.log(form.form);
-        form.form.querySelector('input.form-control').value = this._name;
-        nav_bar.add_tab_content('edit', form.form);
+        if (this.status == 'draft') {
+            nav_bar.add_item('edit', 'Edit');
 
+            let form = this.create_editor();
+            form.form.querySelector('input.form-control').value = this._name;
+            nav_bar.add_tab_content('edit', form.form);
+
+            nav_bar.add_item('discard', 'Discard');
+        } else if (this.status == 'published') {
+            nav_bar.add_item('new', 'New version');
+            nav_bar.add_item('child', 'Create child');
+            nav_bar.add_item('archive', 'Archive');
+        }
+        
         this.nav_bar = nav_bar.nav_bar;
         this.tab_content = nav_bar.tab_content;
 
     }
 
     view() {
-        // this.card = new AccordionItem(this.card_id, this._name, this.container);
-        // document.getElementById(this.container).appendChild(this.accordion_item);
+        console.log('This is version', this.version, 'of', this._name, 'which has status:', this.status);
+
         this.create_navbar();
         this.card = document.createElement('div')        
         this.card.id = this.card_id;
         this.card.appendChild(this.nav_bar);
         this.card.appendChild(this.tab_content);
         document.getElementById(this.container).appendChild(this.card);
-        
+
         this.field_ids.forEach((field_id, idx) => {
             this.new_field_idx = idx;
-            this.view_field(this.fields[field_id]);
+            if (this.status == 'draft') {
+                this.view_field(this.fields[field_id]);
+            }
         })
     }
 
