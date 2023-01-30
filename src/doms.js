@@ -299,6 +299,12 @@ class BasicForm {
         this.form.id = `form-${id}`;
         this.form.setAttribute('novalidate', '')
         this.option_indices = [];
+        
+        this.divider = document.createElement('hr');
+        this.form.appendChild(this.divider);
+        this.rowsub = Field.quick('div', 'row justify-content-between');
+        this.rowsub.id = 'submitters';
+        this.form.appendChild(this.rowsub);
     }    
 
     add_input(label_text, input_id, {
@@ -317,9 +323,6 @@ class BasicForm {
         if (value) {
             input_tag.value = value;
         }
-        // input_tag.addEventListener('input', () => {
-        //     if (input_tag.validity.valueMissing) input_tag.reportValidity();
-        // })
         let label = Field.labeller(label_text, input_id)
 
         let validator = Field.quick('div', 'invalid-feedback', validation_message);
@@ -337,13 +340,16 @@ class BasicForm {
 
         input_div.appendChild(validator);
 
-        if (this.form.childNodes.length == 0 || this.form.lastChild.classList.contains('form-container')) {
-            // the second part checks that the last element is not the submit button (or div with, in this case)
-            this.form.appendChild(input_div);
-        } else {
-            let br = this.form.querySelector('br');
-            this.form.insertBefore(input_div, br);
-        }
+        this.form.insertBefore(input_div, this.divider);
+
+
+        // if (this.form.childNodes.length == 0 || this.form.lastChild.classList.contains('form-container')) {
+        //     // the second part checks that the last element is not the submit button (or div with, in this case)
+        //     this.form.appendChild(input_div);
+        // } else {
+        //     let br = this.form.querySelector('br');
+        //     this.form.insertBefore(input_div, br);
+        // }
     }
 
     add_select(label_text, select_id, options, selected = false) {
@@ -369,7 +375,8 @@ class BasicForm {
         let input_div = Field.quick('div', 'mb-3 form-container');
         input_div.appendChild(Field.labeller(label_text, select_id));
         input_div.appendChild(select);
-        this.form.appendChild(input_div);
+        // this.form.appendChild(input_div);
+        this.form.insertBefore(input_div, this.divider);
     }
 
     add_mover(label_text, idx, value = false) {
@@ -400,7 +407,7 @@ class BasicForm {
             if (i == options.length - 1) {
                 input.querySelector(".down").setAttribute("disabled", "");
             }
-            this.form.appendChild(input);
+            this.form.insertBefore(input, this.divider);
         }
         
         let plus_div = Field.quick('div', 'd-grid gap-2 mover mt-2');
@@ -427,7 +434,8 @@ class BasicForm {
         });
         plus_div.appendChild(plus);
         
-       this.form.appendChild(plus_div);
+    //    this.form.appendChild(plus_div);
+        this.form.insertBefore(plus_div, this.divider);
     }
 
     add_switches(id, switchnames = ['required', 'repeatable'],
@@ -463,19 +471,21 @@ class BasicForm {
         }
         
         div.appendChild(subdiv);
-        this.form.appendChild(div);
+        this.form.insertBefore(div, this.divider);
+        // this.form.appendChild(div);
     }
 
-    add_submitter(submit_text) {
-        let div = Field.quick("div", "col-6 mt-3");
-        let button = Field.quick("button", "btn btn-success", submit_text);
+    add_action_button(text, id = 'draft', color = 'success') {
+        let div = Field.quick("div", "col-auto mt-3");
+        let button = Field.quick("button", "btn btn-" + color, text);
+        button.id = id;
         button.type = "submit";
         div.appendChild(button);
-        this.form.appendChild(div);
+        this.rowsub.appendChild(div);
     }
 
-    add_submit_action(action) {
-        this.form.querySelector("[type='submit']").addEventListener('click', action);
+    add_submit_action(id, action) {
+        this.form.querySelector("[type='submit']#" + id).addEventListener('click', action);
     }
 
     reset() {
@@ -611,16 +621,23 @@ class AccordionItem {
 
 class NavBar {
     constructor(id, extra_classes = []) {
-        this.nav_bar = Field.quick('ul', 'nav')
-        this.nav_bar.role = 'tablist';
-        this.nav_bar.id = 'nav-tab-' + id;
+        this.nav_bar = document.getElementById('nav-tab-' + id);
+        if (this.nav_bar == null) {
+            this.nav_bar = Field.quick('ul', 'nav');
+            this.nav_bar.role = 'tablist';
+            this.nav_bar.id = 'nav-tab-' + id;    
+            this.tab_content = Field.quick('div', 'tab-content');
+        } else {
+            console.log(this.nav_bar);
+            console.log(this.nav_bar.nextSibling)
+            this.tab_content = this.nav_bar.nextSibling;
+        }
         this.id = id;
         for (let extra_class of extra_classes) {
             // pills would be called with extra_classes = ['justify-content-end', 'nav-pills']
             this.nav_bar.classList.add(extra_class)
         }
-
-        this.tab_content = Field.quick('div', 'tab-content');
+            
     }
 
     add_item(item_id, button_text, active = false) {
@@ -660,6 +677,18 @@ class NavBar {
 
     add_tab_content(item_id, content) {
         this.tab_content.querySelector(`#${item_id}-pane-${this.id}`).appendChild(content);
+    }
+
+    add_action_button(text, color, action) {
+        let btn = Field.quick('button', `btn btn-outline-${color}`, text);
+        let id = text.toLowerCase().replaceAll(' ', '-');
+        btn.id = `${id}-${this.id}`;
+        btn.type = 'button';
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            action();
+        });
+        this.nav_bar.appendChild(btn);
     }
 
 }
