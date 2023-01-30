@@ -140,8 +140,8 @@ class ComplexField {
 
         button.addEventListener('click', () => {
             this.new_field_idx = div.previousSibling.classList.contains('viewer') ?
-            this.field_ids.indexOf(div.previousSibling.id) + 1 :
-            0;
+                this.field_ids.indexOf(div.previousSibling.id) + 1 :
+                0;
         });
         div.appendChild(button);
         return div;
@@ -166,7 +166,7 @@ class ComplexField {
             }
             if (subfield.repeatable) {
                 label.appendChild(Field.quick('i', 'bi bi-stack px-2'));
-            }     
+            }
             let input = subfield.viewer_input();
             small_div.appendChild(label);
             small_div.appendChild(input);
@@ -196,7 +196,7 @@ class Schema extends ComplexField {
         super('formChoice', card_id);
         this.card_id = card_id + '-schema';
         this.name = card_id.replace(`-${version}`, '');
-        this.full_name = card_id; 
+        this.full_name = card_id;
         this.version = version;
         this.container = container_id;
         this.url = url;
@@ -207,10 +207,102 @@ class Schema extends ComplexField {
         return this.card.div;
     }
 
+    save_draft(form, id, action) {
+        // action indicates whether it's saved or published
+        let is_new = this.card_id.startsWith('schema-editor');
+        let is_copy = id == 'copy';
+        let status = action == 'publish' ? 'published' : 'draft'
+        if (is_new | is_copy) {
+            // create a child/copy from a published version
+            let name = form.form.querySelector(`#${this.card_id}-name`).value;
+            let json_contents = Object.values(this.to_json())[0];
+            json_contents.title = name;
+            json_contents.version = '1.0.0';
+            json_contents.status = status;
+            if (is_copy) {
+                json_contents.parent = this.full_name;
+            }
+
+            let template = {
+                schema_name: name,
+                template_list: [{
+                    name: `${name}-v1.0.0-${status}`
+                }]
+            };
+            // container_id is the GLOBAL variable
+            new SchemaGroup(template, container_id);
+            let new_schema = new Schema(`${name}-100`,
+                `v100-pane-${name}`, this.url,
+                "1.0.0", [status]);
+            new_schema.from_json(json_contents);
+            new_schema.view();
+            // new_schema.post(new_schema.to_json);
+
+            if (is_new) {
+                form.reset();
+                form.form.querySelectorAll('.viewer').forEach((viewer) => {
+                    viewer.nextSibling.remove();
+                    viewer.remove();
+
+                    this.reset();
+                    this.card.toggle();
+                });
+            }
+        } else if (id == 'draft') {
+            // this schema was modified
+            this.name = form.form.querySelector(`#${this.card_id}-name`).value;
+            this.status = status;
+
+            // update badge
+            let status_badge = document
+                .querySelectorAll(`#v${this.version.replaceAll('.', '')}-tab-${this.name} img`)[1];
+            status_badge.setAttribute('alt', 'status published');
+            status_badge.setAttribute('name', 'published');
+            status_badge.setAttribute('src', `${SchemaGroup.badge_url}-${status}-${SchemaGroup.status_colors[status]}`)
+
+            // update internal tabs
+            if (action == 'published') {
+                // change the full thing: no edit, archive instead of discard, copy and new version...
+                // check if a published version exists and archive it
+            } else {
+                let old_input_view = document
+                    .querySelector(`#view-pane-${this.full_name}`)
+                    .querySelector('.input-view');
+                let new_input_view = ComplexField.create_viewer(this);
+                old_input_view.parentElement.replaceChild(new_input_view, old_input_view);
+            }
+
+            
+            // this.post(this.to_json());
+            let trigger = document.querySelector(`#nav-tab-${this.full_name} button`);
+            bootstrap.Tab.getOrCreateInstance(trigger).show();
+
+        } else if (id == 'new') {
+            // create the new version
+            let incremented_major = parseInt(this.version.split('.')[0]) + 1;
+            let new_version = `${incremented_major}.0.0`;
+            let no_dots = new_version.replaceAll('.', '');
+
+            let badges = SchemaGroup.add_version(new_version, status);
+            let nav_bar = new NavBar(this.name);
+            nav_bar.add_item('v' + no_dots, badges);
+
+            let new_schema = new Schema(`${this.name}-${no_dots}`,
+                'v' + incremented_major + this.container.slice(2), // adapt to other increments
+                this.url, new_version);
+            let json_contents = Object.values(this.to_json())[0];
+            json_contents.version = new_version;
+            json_contents.status = status;
+            new_schema.view();
+            new_schema.post(new_schema(to_json()));
+
+        }
+    }
+
     create_editor(id) {
         let form = new BasicForm(`${this.card_id}-${id}`);
         form.add_input("Metadata template name", this.card_id + '-name', {
-            placeholder : "schema-name", validation_message: "This field is compulsory, please only use lower case letters and '-'.",
+            placeholder: "schema-name", validation_message: "This field is compulsory, please only use lower case letters and '-'.",
             pattern: "[a-z0-9-]+"
         });
 
@@ -224,101 +316,22 @@ class Schema extends ComplexField {
                 form.form.classList.add('was-validated');
             } else {
                 // save form!
-                if (this.card_id.startsWith('schema-editor')) {
-                    // this was newly created
-                    this.name = form.form.querySelector(`#${this.card_id}-name`).value;
-                    let json_contents = this.to_json();
-                    // this.post(json_contents);
-
-                    form.reset();
-                    form.form.querySelectorAll('.viewer').forEach((viewer) => {
-                        viewer.nextSibling.remove();
-                        viewer.remove();
-                    });
-
-                    let template = {
-                        schema_name : this.name,
-                        template_list : [{
-                            name : `${this.name}-v1.0.0-draft`
-                        }]
-                    };
-                    new SchemaGroup(template, this.container);
-                    let new_schema = new Schema(`${this.name}-100`,
-                        `v100-pane-${this.name}`, this.url,
-                        "1.0.0", ['draft']);
-                    new_schema.from_json(Object.values(json_contents)[0]);
-                    new_schema.status = 'draft';
-                    new_schema.view();
-
-                    this.reset();
-                    this.card.toggle();
-                } else if (id == 'draft') {
-                    // this schema was modified
-                    this.name = form.form.querySelector(`#${this.card_id}-name`).value;
-                    let json_contents = this.to_json();
-                    // this.post(json_contents);
-                    let trigger = document.querySelector(`#nav-tab-${this.full_name} button`);
-                    bootstrap.Tab.getOrCreateInstance(trigger).show();
-                    let old_input_view = document
-                        .querySelector(`#view-pane-${this.full_name}`)
-                        .querySelector('.input-view');
-                    let new_input_view = ComplexField.create_viewer(this);
-                    old_input_view.parentElement.replaceChild(new_input_view, old_input_view);
-                } else if (id == 'new') {
-                    // create the new version
-                    let incremented_major = parseInt(this.version.split('.')[0]) + 1;
-                    let new_version = `${incremented_major}.0.0`;
-                    let no_dots = new_version.replaceAll('.', '');
-                    
-                    let badges = SchemaGroup.add_version(new_version, 'draft');
-                    let nav_bar = new NavBar(this.name);
-                    nav_bar.add_item('v' + no_dots, badges);
-                    
-                    let new_schema = new Schema(`${this.name}-${no_dots}`,
-                        'v' + incremented_major + this.container.slice(2), // adapt to other increments
-                        this.url, new_version);
-                    new_schema.from_json(Object.values(this.to_json())[0]);
-                    new_schema.status = 'draft';
-                    new_schema.view();
-                    let json_contents = new_schema.to_json();
-                    // this.post(json_contents);
-                
-                    console.log('new version created');
-                } else if (id == 'copy') {
-                    let name = form.form.querySelector(`#${this.card_id}-name`).value;
-                    
-                    let template = {
-                        schema_name : name,
-                        template_list : [{
-                            name : `${name}-v1.0.0-draft`
-                        }]
-                    };
-                    // container_id is the GLOBAL variable
-                    new SchemaGroup(template, container_id);
-                    let new_schema = new Schema(`${name}-100`,
-                        `v100-pane-${name}`, this.url,
-                        "1.0.0", ['draft']);
-                    let json_contents = Object.values(this.to_json())[0];
-                    json_contents.title = name;
-                    json_contents.version = '1.0.0';
-                    json_contents.status = 'draft';
-                    new_schema.from_json(json_contents);
-                    // new_schema.status = 
-                    new_schema.view();
-                    // new_schema.post(json_contents);
-
-                    console.log('child created');
-                    
-                }
+                this.save_draft(form, id, 'save');
                 form.form.classList.remove('was-validated');
-                
-            }            
+            }
         });
         form.add_action_button("Publish", 'publish', 'warning');
         form.add_submit_action('publish', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
             console.log('Ready to publish');
+            e.preventDefault();
+            if (!form.form.checkValidity()) {
+                e.stopPropagation();
+                form.form.classList.add('was-validated');
+            } else {
+                // save form!
+                this.save_draft(form, id, 'publish')
+                form.form.classList.remove('was-validated');
+            }
         })
         return form;
     }
@@ -339,7 +352,7 @@ class Schema extends ComplexField {
 
         let viewer = ComplexField.create_viewer(this);
         nav_bar.add_tab_content('view', viewer);
-        
+
         if (this.status == 'draft') {
             nav_bar.add_item('edit', 'Edit');
 
@@ -350,15 +363,15 @@ class Schema extends ComplexField {
 
             nav_bar.add_action_button('Discard', 'danger', () => console.log('Discard'));
         } else if (this.status == 'published') {
-            if (this.statuses.indexOf('draft') == -1 ) {
+            if (this.statuses.indexOf('draft') == -1) {
                 this.display_options('new');
                 nav_bar.add_item('new', 'New version');
                 let new_form = this.create_editor('new');
                 new_form.form.querySelector('input.form-control').value = this.name;
                 new_form.form.querySelector('input.form-control').setAttribute('readonly', '');
-                nav_bar.add_tab_content('new', new_form.form);    
+                nav_bar.add_tab_content('new', new_form.form);
             }
-            
+
             this.display_options('copy');
             nav_bar.add_item('child', 'New from copy');
             let child_form = this.create_editor('copy');
@@ -366,7 +379,7 @@ class Schema extends ComplexField {
 
             nav_bar.add_action_button('Archive', 'danger', () => console.log('Archive'));
         }
-        
+
         this.nav_bar = nav_bar.nav_bar;
         this.tab_content = nav_bar.tab_content;
 
@@ -376,7 +389,7 @@ class Schema extends ComplexField {
         // console.log('This is version', this.version, 'of', this.name, 'which has status:', this.status);
 
         this.create_navbar();
-        this.card = document.createElement('div')        
+        this.card = document.createElement('div')
         this.card.id = this.card_id;
         this.card.appendChild(this.nav_bar);
         this.card.appendChild(this.tab_content);
@@ -409,7 +422,7 @@ class Schema extends ComplexField {
         let fname = `${this.name}-v${this.version}`;
         to_post.append('template_name', this.status == archived ? fname : `${fname}-${this.status}`);
         to_post.append('template_json', JSON.stringify(json_contents));
-        
+
         const xhr = new XMLHttpRequest();
         xhr.open('POST', this.url, true);
         xhr.send(to_post);
@@ -420,9 +433,9 @@ class Schema extends ComplexField {
 class SchemaGroup {
     static badge_url = 'https://img.shields.io/badge/';
     static status_colors = {
-        'published' : 'success',
-        'draft' : 'orange',
-        'archived' : 'inactive'
+        'published': 'success',
+        'draft': 'orange',
+        'archived': 'inactive'
     }
 
     constructor(template, container_id) {
@@ -431,10 +444,10 @@ class SchemaGroup {
             let temp_info = temp.name.split('-v')[1].split('-');
             let status = temp_info[1].startsWith('draft') ? 'draft' : temp_info[1].startsWith('published') ? 'published' : 'archived';
             let data = {
-                version : temp_info[0],
-                status : status
+                version: temp_info[0],
+                status: status
             }
-            return(data);
+            return (data);
         });
 
         let nav_bar = new NavBar(this.name, ['nav-tabs']);
