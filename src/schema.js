@@ -192,7 +192,8 @@ class ObjectEditor extends ComplexField {
 }
 
 class Schema extends ComplexField {
-    constructor(card_id, container_id, url, version = "1.0.0", statuses = ['draft']) {
+    constructor(card_id, container_id, url, version = "1.0.0",
+        statuses = {'draft' : ['1.0.0'], 'published' : [], 'archived' : []}) {
         super('formChoice', card_id);
         this.card_id = card_id + '-schema';
         this.name = card_id.replace(`-${version}`, '');
@@ -236,7 +237,7 @@ class Schema extends ComplexField {
                 "1.0.0", [status]);
             new_schema.from_json(json_contents);
             new_schema.view();
-            // new_schema.post(new_schema.to_json);
+            // new_schema.post();
 
             if (is_new) {
                 form.reset();
@@ -261,9 +262,18 @@ class Schema extends ComplexField {
             status_badge.setAttribute('src', `${SchemaGroup.badge_url}-${status}-${SchemaGroup.status_colors[status]}`)
 
             // update internal tabs
-            if (action == 'published') {
-                // change the full thing: no edit, archive instead of discard, copy and new version...
-                // check if a published version exists and archive it
+            if (action == 'publish') {
+                if (this.statuses.published.length > 0) {
+                    let published_version = this.statuses.published[0];
+                    this.statuses.archived.push(published_version);
+                    let nav_bar = new NavBar(this.name);
+                    nav_bar.remove_item(`v${published_version.replaceAll('.', '')}`);
+                    // actually archive it
+                } 
+                this.statuses.published = [this.version];
+                this.statuses.draft = [];
+                document.getElementById(this.card_id).remove();
+                this.view();                
             } else {
                 let old_input_view = document
                     .querySelector(`#view-pane-${this.full_name}`)
@@ -273,7 +283,7 @@ class Schema extends ComplexField {
             }
 
             
-            // this.post(this.to_json());
+            // this.post();
             let trigger = document.querySelector(`#nav-tab-${this.full_name} button`);
             bootstrap.Tab.getOrCreateInstance(trigger).show();
 
@@ -294,7 +304,7 @@ class Schema extends ComplexField {
             json_contents.version = new_version;
             json_contents.status = status;
             new_schema.view();
-            new_schema.post(new_schema(to_json()));
+            // new_schema.post();
 
         }
     }
@@ -363,7 +373,7 @@ class Schema extends ComplexField {
 
             nav_bar.add_action_button('Discard', 'danger', () => console.log('Discard'));
         } else if (this.status == 'published') {
-            if (this.statuses.indexOf('draft') == -1) {
+            if (this.statuses.draft.length == 0) {
                 this.display_options('new');
                 nav_bar.add_item('new', 'New version');
                 let new_form = this.create_editor('new');
@@ -401,7 +411,7 @@ class Schema extends ComplexField {
             if (this.status == 'draft') {
                 this.view_field(this.fields[field_id], 'draft');
             } else {
-                if (this.statuses.indexOf('draft') == -1) {
+                if (this.statuses.draft.length == 0) {
                     this.view_field(this.fields[field_id], 'new');
                 }
                 this.view_field(this.fields[field_id], 'copy');
@@ -414,14 +424,13 @@ class Schema extends ComplexField {
         this.status = data.status;
         this.version = data.version;
         this.parent = data.parent;
-        console.log(this.status)
     }
 
-    post(json_contents) {
+    post() {
         const to_post = new FormData();
         let fname = `${this.name}-v${this.version}`;
         to_post.append('template_name', this.status == archived ? fname : `${fname}-${this.status}`);
-        to_post.append('template_json', JSON.stringify(json_contents));
+        to_post.append('template_json', JSON.stringify(this.to_json()));
 
         const xhr = new XMLHttpRequest();
         xhr.open('POST', this.url, true);
@@ -464,6 +473,17 @@ class SchemaGroup {
         acc_item.append(nav_bar.nav_bar);
         acc_item.append(nav_bar.tab_content);
         document.getElementById(container_id).appendChild(acc_item.div);
+    }
+
+    get summary() {
+        let statuses = Object.keys(SchemaGroup.status_colors);
+        let summary = {};
+        statuses.forEach((st) => {
+            summary[st] = this.versions
+                .filter((v) => v.status == st)
+                .map((v) => v.version);
+            });
+        return(summary);
     }
 
     static add_version(version, status) {

@@ -32,7 +32,7 @@ class TemplatesRequest extends MangoRequest {
                     .sort((t1, t2) => (t1.name) > (t2.name) ? 1 : -1)
             })); // match unique names and versions
             for (let template of grouped_templates) {
-                let statuses = new SchemaGroup(template, container_id).statuses;
+                let statuses = new SchemaGroup(template, container_id).summary;
                 for (let version of template.template_list) {
                     let version_number = version.name.split('-v')[1].split('-')[0].replaceAll('.', '');
                     let reader = new TemplateReader(version, version_number, url, statuses);

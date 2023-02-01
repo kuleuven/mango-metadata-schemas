@@ -645,6 +645,11 @@ class NavBar {
         this.add_tab(item_id, active = active);
     }
 
+    remove_item(item_id) {
+        document.getElementById(`${item_id}-tab-${this.id}`).remove();
+        document.getElementById(`${item_id}-pane-${this.id}`).remove();
+    }
+
     add_button(item_id, button_text, active) {
         let li = Field.quick('li', 'nav-item');
         let button = document.createElement('button');
@@ -691,4 +696,53 @@ class NavBar {
         this.nav_bar.appendChild(btn);
     }
 
+}
+
+class Toast {
+    constructor(id, text, action) {
+        this.div = Field.quick('div', 'toast position-absolute pt-2 px-2 top-0 start-50 translate-middle-x');
+        this.div.role = 'alert';
+        this.div.id = id;
+        this.div.setAttribute('aria-live', 'assertive');
+        this.div.setAttribute('aria-atomic', 'true');
+        this.div.setAttribute('data-bs-autohide', 'false');
+
+        let header = Field.quick('div', 'toast-header text-bg-danger');
+        let question = Field.quick('strong', 'me-auto', 'Are you sure?');
+        // let mango = Field.quick('small', 'text-muted', 'ManGO');
+        let buttonx = Field.quick('button', 'btn-close');
+        buttonx.type = 'button';
+        buttonx.setAttribute('data-bs-dismiss', 'toast');
+        buttonx.setAttribute('aria-label', 'Close');
+        header.appendChild(question);
+        // header.appendChild(mango);
+        header.appendChild(buttonx);
+
+        let body = Field.quick('div', 'toast-body p-1', text);
+        let border = Field.quick('div', 'row mt-2 pt-2 border-top justify-content-between');
+        let yes = Field.quick('button', 'btn btn-primary btn-sm', "I'm sure");
+        let no = Field.quick('button', 'btn btn-secondary btn-sm', 'Cancel');
+        no.setAttribute('data-bs-dismiss', 'toast');
+        body.appendChild(border);
+        border.appendChild(yes);
+        border.appendChild(no);
+
+        this.div.appendChild(header);
+        this.div.appendChild(body);
+
+        yes.addEventListener('click', () => {
+            const toast = new bootstrap.Toast(document.getElementById(this.div.id));
+            action();
+            toast.dispose();
+        });
+        // let dom_body = document.querySelector('body')
+        // dom_body.insertBefore(this.div, dom_body.querySelector('main'));
+        document.querySelector('body').appendChild(this.div);
+
+    }
+
+    show() {
+        const toast = new bootstrap.Toast(document.getElementById(this.div.id));
+        toast.show();
+    }
 }
