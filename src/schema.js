@@ -193,7 +193,7 @@ class ObjectEditor extends ComplexField {
 
 class Schema extends ComplexField {
     constructor(card_id, container_id, url, version = "1.0.0",
-        statuses = {'draft' : ['1.0.0'], 'published' : [], 'archived' : []}) {
+        statuses = { 'draft': ['1.0.0'], 'published': [], 'archived': [] }) {
         super('formChoice', card_id);
         this.card_id = card_id + '-schema';
         this.name = card_id.replace(`-${version}`, '');
@@ -269,11 +269,11 @@ class Schema extends ComplexField {
                     let nav_bar = new NavBar(this.name);
                     nav_bar.remove_item(`v${published_version.replaceAll('.', '')}`);
                     // actually archive it
-                } 
+                }
                 this.statuses.published = [this.version];
                 this.statuses.draft = [];
                 document.getElementById(this.card_id).remove();
-                this.view();                
+                this.view();
             } else {
                 let old_input_view = document
                     .querySelector(`#view-pane-${this.full_name}`)
@@ -282,7 +282,7 @@ class Schema extends ComplexField {
                 old_input_view.parentElement.replaceChild(new_input_view, old_input_view);
             }
 
-            
+
             // this.post();
             let trigger = document.querySelector(`#nav-tab-${this.full_name} button`);
             bootstrap.Tab.getOrCreateInstance(trigger).show();
@@ -332,15 +332,23 @@ class Schema extends ComplexField {
         });
         form.add_action_button("Publish", 'publish', 'warning');
         form.add_submit_action('publish', (e) => {
-            console.log('Ready to publish');
             e.preventDefault();
             if (!form.form.checkValidity()) {
                 e.stopPropagation();
                 form.form.classList.add('was-validated');
             } else {
-                // save form!
-                this.save_draft(form, id, 'publish')
-                form.form.classList.remove('was-validated');
+                console.log('Ready to publish');
+            
+                let second_sentence = this.statuses.published.length > 0 ?
+                    ` Version ${this.statuses.published[0]} will be archived.` :
+                    ''
+                const toast = new Toast(this.full_name + '-pub',
+                    "Published schemas cannot be edited." + second_sentence);
+                toast.show(() => {
+                    // save form!
+                    this.save_draft(form, id, 'publish');
+                    form.form.classList.remove('was-validated');
+                });
             }
         })
         return form;
@@ -482,8 +490,8 @@ class SchemaGroup {
             summary[st] = this.versions
                 .filter((v) => v.status == st)
                 .map((v) => v.version);
-            });
-        return(summary);
+        });
+        return (summary);
     }
 
     static add_version(version, status) {

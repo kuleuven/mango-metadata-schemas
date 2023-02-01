@@ -699,7 +699,7 @@ class NavBar {
 }
 
 class Toast {
-    constructor(id, text, action) {
+    constructor(id, text) {
         this.div = Field.quick('div', 'toast position-absolute pt-2 px-2 top-0 start-50 translate-middle-x');
         this.div.role = 'alert';
         this.div.id = id;
@@ -721,6 +721,7 @@ class Toast {
         let body = Field.quick('div', 'toast-body p-1', text);
         let border = Field.quick('div', 'row mt-2 pt-2 border-top justify-content-between');
         let yes = Field.quick('button', 'btn btn-primary btn-sm', "I'm sure");
+        yes.name = 'yes';
         let no = Field.quick('button', 'btn btn-secondary btn-sm', 'Cancel');
         no.setAttribute('data-bs-dismiss', 'toast');
         body.appendChild(border);
@@ -730,19 +731,17 @@ class Toast {
         this.div.appendChild(header);
         this.div.appendChild(body);
 
-        yes.addEventListener('click', () => {
-            const toast = new bootstrap.Toast(document.getElementById(this.div.id));
-            action();
-            toast.dispose();
-        });
-        // let dom_body = document.querySelector('body')
-        // dom_body.insertBefore(this.div, dom_body.querySelector('main'));
         document.querySelector('body').appendChild(this.div);
 
     }
 
-    show() {
+    show(action) {
         const toast = new bootstrap.Toast(document.getElementById(this.div.id));
+        this.div.querySelector('[name="yes"]').addEventListener('click', () => {
+            action();
+            toast.dispose();
+        });
+        
         toast.show();
     }
 }
