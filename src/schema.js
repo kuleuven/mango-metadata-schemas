@@ -20,7 +20,7 @@ class ComplexField {
         this.field_ids = [];
         this.fields = {};
         this.new_field_idx = 0;
-        this.name = 'schema-editor-schema'
+        this.name = this.constructor.name == 'Schema' && this.status == 'draft' ? 'schema-editor-schema' : this.name;
     }
 
 
@@ -244,10 +244,9 @@ class Schema extends ComplexField {
                 form.form.querySelectorAll('.viewer').forEach((viewer) => {
                     viewer.nextSibling.remove();
                     viewer.remove();
-
-                    this.reset();
-                    this.card.toggle();
                 });
+                this.reset();
+                this.card.toggle();
             }
         } else if (id == 'draft') {
             // this schema was modified
@@ -297,15 +296,28 @@ class Schema extends ComplexField {
             let nav_bar = new NavBar(this.name);
             nav_bar.add_item('v' + no_dots, badges);
 
+            if (action == 'published') {
+                this.statuses.archived.push(this.version);
+                this.statuses.draft = [new_version];
+                new NavBar(this.name).remove_item(`v${published_version.replaceAll('.', '')}`);
+                let trigger = document.querySelector(`#nav-tab-${this.name} button`);
+                bootstrap.Tab.getOrCreateInstance(trigger).show();
+            } else {
+                this.statuses.draft = [new_version];
+                new NavBar(this.full_name).remove_item('new');
+                let trigger = document.querySelector(`#nav-tab-${this.full_name} button`);
+                bootstrap.Tab.getOrCreateInstance(trigger).show();
+            }
             let new_schema = new Schema(`${this.name}-${no_dots}`,
                 'v' + incremented_major + this.container.slice(2), // adapt to other increments
-                this.url, new_version);
+                this.url, new_version, this.statuses);
             let json_contents = Object.values(this.to_json())[0];
             json_contents.version = new_version;
             json_contents.status = status;
+            new_schema.from_json(json_contents);
             new_schema.view();
             // new_schema.post();
-
+            
         }
     }
 
@@ -338,7 +350,7 @@ class Schema extends ComplexField {
                 form.form.classList.add('was-validated');
             } else {
                 console.log('Ready to publish');
-            
+
                 let second_sentence = this.statuses.published.length > 0 ?
                     ` Version ${this.statuses.published[0]} will be archived.` :
                     ''
@@ -356,6 +368,7 @@ class Schema extends ComplexField {
 
     create_creator() {
         this.status = 'draft';
+        this.statuses = {'published' : [], 'archived' : [], 'draft' : ['1.0.0']};
         this.display_options(this.status);
         let form = this.create_editor(this.status);
         this.card = new AccordionItem(this.full_name + '-schema', 'New schema', this.container, true);
@@ -379,7 +392,24 @@ class Schema extends ComplexField {
             form.form.querySelector('input.form-control').value = this.name;
             nav_bar.add_tab_content('edit', form.form);
 
-            nav_bar.add_action_button('Discard', 'danger', () => console.log('Discard'));
+            nav_bar.add_action_button('Discard', 'danger', () => {
+                const toast = new Toast(this.full_name + '-discard',
+                    "A deleted draft cannot be recovered.");
+                toast.show(() => {
+                    if (this.statuses.published.length + this.statuses.archived.length == 0) {
+                        // if there are no published or archived versions, delete the accordion item
+                        document.querySelector(`.accordion-collapse#${this.name}-schemas`)
+                            .parentElement
+                            .remove();
+                    } else {
+                        // just delete the draft tab
+                        new NavBar(this.name)
+                            .remove_item(`v${this.version.replaceAll('.', '')}`);
+                        let trigger = document.querySelector(`#nav-tab-${this.name} button`);
+                        bootstrap.Tab.getOrCreateInstance(trigger).show();
+                    }
+                });
+            });
         } else if (this.status == 'published') {
             if (this.statuses.draft.length == 0) {
                 this.display_options('new');
@@ -395,7 +425,24 @@ class Schema extends ComplexField {
             let child_form = this.create_editor('copy');
             nav_bar.add_tab_content('child', child_form.form);
 
-            nav_bar.add_action_button('Archive', 'danger', () => console.log('Archive'));
+            nav_bar.add_action_button('Archive', 'danger', () => {
+                const toast = new Toast(this.full_name + '-discard',
+                    "Archived schemas cannot be implemented.");
+                toast.show(() => {
+                    if (this.statuses.draft.length + this.statuses.archived.length == 0) {
+                        // if there are no published or archived versions, delete the accordion item
+                        document.querySelector(`.accordion-collapse#${this.name}-schemas`)
+                            .parentElement
+                            .remove();
+                    } else {
+                        // just delete the draft tab
+                        new NavBar(this.name)
+                            .remove_item(`v${this.version.replaceAll('.', '')}`);
+                        let trigger = document.querySelector(`#nav-tab-${this.name} button`);
+                        bootstrap.Tab.getOrCreateInstance(trigger).show();
+                    }
+                });
+            });
         }
 
         this.nav_bar = nav_bar.nav_bar;
@@ -432,6 +479,10 @@ class Schema extends ComplexField {
         this.status = data.status;
         this.version = data.version;
         this.parent = data.parent;
+
+        if (this.status != 'draft') {
+            this.fixed = Object.values(this.to_json())[0];
+        }
     }
 
     post() {

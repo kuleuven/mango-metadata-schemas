@@ -646,7 +646,7 @@ class NavBar {
     }
 
     remove_item(item_id) {
-        document.getElementById(`${item_id}-tab-${this.id}`).remove();
+        document.getElementById(`${item_id}-tab-${this.id}`).parentElement.remove();
         document.getElementById(`${item_id}-pane-${this.id}`).remove();
     }
 
@@ -700,7 +700,7 @@ class NavBar {
 
 class Toast {
     constructor(id, text) {
-        this.div = Field.quick('div', 'toast position-absolute pt-2 px-2 top-0 start-50 translate-middle-x');
+        this.div = Field.quick('div', 'toast');
         this.div.role = 'alert';
         this.div.id = id;
         this.div.setAttribute('aria-live', 'assertive');
@@ -718,7 +718,7 @@ class Toast {
         // header.appendChild(mango);
         header.appendChild(buttonx);
 
-        let body = Field.quick('div', 'toast-body p-1', text);
+        let body = Field.quick('div', 'toast-body', text);
         let border = Field.quick('div', 'row mt-2 pt-2 border-top justify-content-between');
         let yes = Field.quick('button', 'btn btn-primary btn-sm', "I'm sure");
         yes.name = 'yes';
@@ -731,7 +731,7 @@ class Toast {
         this.div.appendChild(header);
         this.div.appendChild(body);
 
-        document.querySelector('body').appendChild(this.div);
+        document.querySelector('.toast-container').appendChild(this.div);
 
     }
 
