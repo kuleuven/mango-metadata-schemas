@@ -234,7 +234,7 @@ class Schema extends ComplexField {
             new SchemaGroup(template, container_id);
             let new_schema = new Schema(`${name}-100`,
                 `v100-pane-${name}`, this.url,
-                "1.0.0", [status]);
+                "1.0.0");
             new_schema.from_json(json_contents);
             new_schema.view();
             // new_schema.post();
@@ -327,6 +327,7 @@ class Schema extends ComplexField {
             placeholder: "schema-name", validation_message: "This field is compulsory, please only use lower case letters and '-'.",
             pattern: "[a-z0-9-]+"
         });
+        console.log(this.statuses)
 
         let button = this.create_button();
         form.form.insertBefore(button, form.divider);
@@ -350,6 +351,7 @@ class Schema extends ComplexField {
                 form.form.classList.add('was-validated');
             } else {
                 console.log('Ready to publish');
+                console.log(this.statuses)
 
                 let second_sentence = this.statuses.published.length > 0 ?
                     ` Version ${this.statuses.published[0]} will be archived.` :
@@ -368,7 +370,6 @@ class Schema extends ComplexField {
 
     create_creator() {
         this.status = 'draft';
-        this.statuses = {'published' : [], 'archived' : [], 'draft' : ['1.0.0']};
         this.display_options(this.status);
         let form = this.create_editor(this.status);
         this.card = new AccordionItem(this.full_name + '-schema', 'New schema', this.container, true);
