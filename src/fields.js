@@ -67,18 +67,15 @@ class InputField {
             });
     }
 
+    add_default_field() {
+        return;
+    }
+
     end_form() {
         let this_class = this.constructor.name;
         
-        if (this_class != "ObjectInput") {
-            this.form_field.add_input(
-                'Default value', `${this.id}-default`,
-                {
-                    description: "Default value for this field.",
-                    value: this.default
-                }
-            )
-        }
+        this.add_default_field();
+
         // Add require switch and submit button to form
         this.form_field.form.appendChild(document.createElement('br'));
         let repeatable = !(this_class == 'SelectInput' | this_class == 'CheckboxInput');
@@ -263,6 +260,15 @@ class TypedInput extends InputField {
         let inner_input = Field.quick("input", "form-control");
         inner_input.placeholder = "example placeholder";
         return inner_input;
+    }
+    add_default_field() {
+        this.form_field.add_input(
+            'Default value', `${this.id}-default`,
+            {
+                description: "Default value for this field.",
+                value: this.default
+            }
+        )
     }
 
     viewer_input() {
@@ -549,6 +555,9 @@ class SelectInput extends MultipleInput {
     }
     dropdown_alt = 'radio';
 
+    add_default_field() {
+        this.form_field.add_select("Default value", `${this.id}-default`, this.values.values);
+    }
 }
 
 class CheckboxInput extends MultipleInput {
