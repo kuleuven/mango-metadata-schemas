@@ -101,7 +101,7 @@ class InputField {
             });    
         }
         
-        this.form_field.add_action_button("Add to schema", 'add');
+        this.form_field.add_action_button(this.mode == 'add' ? "Add to schema" : "Update", 'add');
 
     }
 
