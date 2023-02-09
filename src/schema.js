@@ -531,43 +531,42 @@ class SchemaGroup {
         'archived': 'inactive'
     }
 
-    constructor(template, container_id) {
-        this.name = template.schema_name;
-        this.versions = template.template_list.map((temp) => {
-            let temp_info = temp.name.split('-v')[1].split('-');
-            let status = temp_info[1].startsWith('draft') ? 'draft' : temp_info[1].startsWith('published') ? 'published' : 'archived';
-            let data = {
-                version: temp_info[0],
-                status: status
-            }
-            return (data);
-        });
-
+    constructor(template_name, versions, container_id, urls) {
+        // adapt with new variables
+        this.name = template_name;
+        this.versions = versions;
+        // obtain versions from published_ and draft_name with regex
         let nav_bar = new NavBar(this.name, ['nav-tabs']);
         this.statuses = this.versions.map((v) => v.status);
+        this.summary = {};
+        Object.keys(SchemaGroup.status_colors).forEach((st) => {
+            summary[st] = this.versions
+                .filter((v) => v.status == st)
+                .map((v) => v.version);
+        });
 
         for (let version of this.versions) {
             let badges = SchemaGroup.add_version(version.version, version.status);
             let active = this.statuses.indexOf('published') > -1 ? version.status == 'published' : version.status == 'draft';
             // this does not account for a case with only archived versions and a draft
-            nav_bar.add_item(`v${version.version.replaceAll('.', '')}`, badges, active);
+            version_number = version.version.replaceAll('\.', '');
+            nav_bar.add_item(`v${version_number}`, badges, active);
+            let schema = new Schema(version.name, container_id, urls.new, version.version, this.summary);
+            schema.loaded = false;
+            let reader = new TemplateReader(urls.get_template, schema); // url to get this template
+            nav_bar.nav_bar.getElementById(`v${version_number}-pane-${template_name}`)
+                .addEventListener('show.bs.collapse', () => {
+                    if (!schema.loaded) {
+                        reader.retrieve();
+                        schema.loaded = true;
+                    }
+                });
         };
 
         let acc_item = new AccordionItem(this.name + '-schemas', this.name, container_id);
         acc_item.append(nav_bar.nav_bar);
         acc_item.append(nav_bar.tab_content);
         document.getElementById(container_id).appendChild(acc_item.div);
-    }
-
-    get summary() {
-        let statuses = Object.keys(SchemaGroup.status_colors);
-        let summary = {};
-        statuses.forEach((st) => {
-            summary[st] = this.versions
-                .filter((v) => v.status == st)
-                .map((v) => v.version);
-        });
-        return (summary);
     }
 
     static add_version(version, status) {
