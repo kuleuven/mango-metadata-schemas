@@ -19,6 +19,9 @@ class Field {
         }
         values = values ? values : Field.example_values;
         // inner_input.setAttribute("multiple", "");
+        let empty_option = document.createElement("option");
+        inner_input.appendChild(empty_option);
+
         for (let i of values) {
             let new_option = document.createElement("option");
             new_option.value = i;
@@ -30,6 +33,11 @@ class Field {
             if (field.required) {
                 inner_input.setAttribute('required', '');
             }
+            let value = Field.include_value(field);
+            if (value != undefined) {
+                inner_input.querySelector(`option[value="${value}"]`)
+                    .setAttribute('selected', '');
+            }
         }
         return inner_input;
     }
@@ -38,6 +46,7 @@ class Field {
         let { multiple, values } = field.values;
         values = values ? values : Field.example_values;
         let inner_input = document.createElement("div");
+        let value = Field.include_value(field);
         for (let i of values) {
             let new_option = Field.quick("div", "form-check input-view");
 
@@ -47,6 +56,9 @@ class Field {
             new_input.id = `check-${i}`;
             if (active) {
                 new_input.name = field.name;
+                if (value && value.indexOf(i) > -1) {
+                    new_input.setAttribute('checked', '');
+                }
             }
 
             let new_label = Field.quick('label', "form-check-label", i);
@@ -65,6 +77,16 @@ class Field {
         label.setAttribute("for", input_id);
 
         return label;
+    }
+
+    static include_value(field) {
+        if (this.value != undefined) {
+            return field.value;
+        } else if (this.required && field.default != undefined) {
+            return field.default;
+        } else {
+            return;
+        }
     }
 
 }

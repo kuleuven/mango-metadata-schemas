@@ -165,7 +165,9 @@ class InputField {
         let data = new FormData(this.form_field.form);
         let old_id = this.id;
         let new_id = data.get(`${this.id}-id`);
-        this.default = data.get(`${this.id}-default`);
+        if (this.required) {
+            this.default = data.get(`${this.id}-default`);
+        }
         if (old_id == new_id) {
             this.title = data.get(`${this.id}-label`);
             this.recover_fields(data);
@@ -241,9 +243,15 @@ class InputField {
     from_json(data) {
         this.title = data.title;
         this.type = data.type;
-        if (data.required) this.required = data.required;
-        if (data.repeatable) this.repeatable = data.repeatable;
-
+        if (data.required) {
+            this.required = data.required;
+            if (data.default) {
+                this.default = data.default;
+            }
+        }
+        if (data.repeatable) {
+            this.repeatable = data.repeatable;
+        }
     }
 }
 
@@ -268,7 +276,7 @@ class TypedInput extends InputField {
         this.form_field.add_input(
             'Default value', `${this.id}-default`,
             {
-                description: "Default value for this field.",
+                description: "Default value for this field: only valid if the field is required.",
                 value: this.default, required: false
             }
         )
@@ -283,7 +291,7 @@ class TypedInput extends InputField {
         if (this.type != 'textarea') {
             input = Field.quick("input", "form-control input-view");
             input.type = this.type == 'float' | this.type == 'integer' ? 'number' : this.type;
-            if (this.default !== undefined) {
+            if (this.required && this.default !== undefined) {
                 input.value = this.default;
             }
         } else {
@@ -297,6 +305,10 @@ class TypedInput extends InputField {
             input.name = this.name;
             if (this.required) {
                 input.setAttribute('required', '');
+            }
+            let value = Field.include_value(this);
+            if (value != undefined) {
+                input.value = value;
             }
             if (this.values.minimum != undefined) {
                 input.min = this.values.minimum;
@@ -330,7 +342,7 @@ class TypedInput extends InputField {
 
     reset() {
         let form = this.form_field.form;
-        if (form.querySelectorAll('.form-container').length > 3) {
+        if (document.getElementById(`div-${this.id}-min`) != undefined) {
             form.removeChild(document.getElementById(`div-${this.id}-min`));
             form.removeChild(document.getElementById(`div-${this.id}-max`));
         }
@@ -576,7 +588,7 @@ class SelectInput extends MultipleInput {
     dropdown_alt = 'radio';
 
     add_default_field() {
-        this.form_field.add_select("Default value", `${this.id}-default`, this.values.values);
+        this.form_field.add_select("Default value (if field is required)", `${this.id}-default`, this.values.values);
     }
 }
 

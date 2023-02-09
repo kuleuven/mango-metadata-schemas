@@ -263,7 +263,7 @@ class Schema extends ComplexField {
                 "1.0.0");
             new_schema.from_json(json_contents);
             new_schema.view();
-            // new_schema.post();
+            new_schema.post();
 
             if (is_new) {
                 form.reset();
@@ -308,7 +308,7 @@ class Schema extends ComplexField {
             }
 
 
-            // this.post();
+            this.post();
             let trigger = document.querySelector(`#nav-tab-${this.full_name} button`);
             bootstrap.Tab.getOrCreateInstance(trigger).show();
 
@@ -342,7 +342,7 @@ class Schema extends ComplexField {
             json_contents.status = status;
             new_schema.from_json(json_contents);
             new_schema.view();
-            // new_schema.post();
+            new_schema.post();
             
         }
     }
@@ -513,7 +513,7 @@ class Schema extends ComplexField {
     post() {
         const to_post = new FormData();
         let fname = `${this.name}-v${this.version}`;
-        to_post.append('template_name', this.status == archived ? fname : `${fname}-${this.status}`);
+        to_post.append('template_name', this.status == 'archived' ? fname : `${fname}-${this.status}`);
         to_post.append('template_json', JSON.stringify(this.to_json()));
 
         const xhr = new XMLHttpRequest();
@@ -598,9 +598,17 @@ class SchemaForm {
         for (let entry of Object.entries(schema_data.properties)) {
             let new_field = InputField.choose_class(schema_data.title, entry);
             this.fields[entry[0]] = new_field;
+            console.log(entry[0]);
+            console.log(new_field.default);
         }
         SchemaForm.flatten_object(this, this.prefix);
         let form_div = ComplexField.create_viewer(this, true);
+
+        let title = document.createElement('h3');
+        title.innerHTML = `<small class="text-muted">Metadata schema:</small> ${this.name}`;
+        document.getElementById(this.container).appendChild(title);
+
+        let submitting_row = Field.quick('div', 'row border-top pt-2')
 
         let submitter = Field.quick('button', 'btn btn-primary', 'Save metadata');
         submitter.type = 'submit';
@@ -614,11 +622,13 @@ class SchemaForm {
                 console.log('submitting');
                 let data = new FormData(form_div);
                 for (const pair of data.entries()) {
+                    // if (pair[1].length == 0) { data.delete(pair[0]); }
                     console.log(`${pair[0]}, ${pair[1]}`);
                 }
             }
         });
-        form_div.appendChild(submitter);
+        submitting_row.appendChild(submitter);
+        form_div.appendChild(submitting_row);
 
         document.getElementById(this.container).appendChild(form_div);
     }
