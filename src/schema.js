@@ -167,7 +167,31 @@ class ComplexField {
                 );
             }
             if (subfield.repeatable) {
-                label.appendChild(Field.quick('i', 'bi bi-stack px-2'));
+                let icon = Field.quick('i', 'bi bi-stack px-2');
+                if (active) {
+                    let button = Field.quick('button', 'btn btn-outline-dark p-0 mx-2');
+                    button.type = 'button';
+                    button.addEventListener('click', () => {
+                        console.log(small_div)
+                        let clone = small_div.cloneNode(true);
+                        let clone_button = clone.querySelector('button i');
+                        clone_button.classList.remove('bi-stack');
+                        clone_button.classList.add('bi-trash');
+                        clone_button.parentElement.addEventListener('click', () => {
+                            clone.remove();
+                        });
+                        
+                        if (small_div.nextSibling == undefined) {
+                            small_div.parentElement.appendChild(clone);
+                        } else {
+                            small_div.parentElement.insertBefore(clone, small_div.nextSibling);
+                        }
+                    })
+                    button.appendChild(icon);
+                    label.appendChild(button);
+                } else {
+                    label.appendChild(icon);
+                }                
             }
             let input = subfield.viewer_input(active = active);
             small_div.appendChild(label);

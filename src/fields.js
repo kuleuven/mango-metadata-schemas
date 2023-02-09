@@ -302,7 +302,6 @@ class TypedInput extends InputField {
                 input.min = this.values.minimum;
                 input.max = this.values.maximum;
             }
-            console.log(this.values.minimum)
             div.appendChild(input);
             div.appendChild(subtitle);
         
