@@ -147,8 +147,10 @@ class ComplexField {
         return div;
     }
 
-    static create_viewer(schema) {
-        let div = Field.quick('div', 'input-view');
+    static create_viewer(schema, active = false) {
+        let div = schema.constructor.name == 'SchemaForm' ? 
+            Field.quick('form', 'mt-3 needs-validation') :
+            Field.quick('div', 'input-view');
         schema.field_ids.forEach((field_id) => {
             let subfield = schema.fields[field_id];
             let small_div = Field.quick('div', 'mini-viewer');
@@ -167,7 +169,7 @@ class ComplexField {
             if (subfield.repeatable) {
                 label.appendChild(Field.quick('i', 'bi bi-stack px-2'));
             }
-            let input = subfield.viewer_input();
+            let input = subfield.viewer_input(active = active);
             small_div.appendChild(label);
             small_div.appendChild(input);
             div.appendChild(small_div);
@@ -555,5 +557,56 @@ class SchemaGroup {
         status_badge.setAttribute('name', status);
         status_badge.setAttribute('src', `${SchemaGroup.badge_url}-${status}-${SchemaGroup.status_colors[status]}`);
         return [version_badge, status_badge]
+    }
+}
+
+class SchemaForm {
+    constructor(schema_name, container_id, url, prefix) {
+        this.name = schema_name;
+        this.container = container_id; // div in which to render
+        this.url = url; // for posting
+        this.prefix = prefix; // for flattening
+        this.fields = {}
+    }
+    
+    from_json(schema_data, annotated_data = {}) {
+        this.field_ids = Object.keys(schema_data.properties);
+        for (let entry of Object.entries(schema_data.properties)) {
+            let new_field = InputField.choose_class(schema_data.title, entry);
+            this.fields[entry[0]] = new_field;
+        }
+        SchemaForm.flatten_object(this, this.prefix);
+        let form_div = ComplexField.create_viewer(this, true);
+
+        let submitter = Field.quick('button', 'btn btn-primary', 'Save metadata');
+        submitter.type = 'submit';
+        submitter.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (!form_div.checkValidity()) {
+                e.stopPropagation();
+                form_div.classList.add('was-validated');
+            } else {
+                // save form!
+                console.log('submitting');
+                let data = new FormData(form_div);
+                for (const pair of data.entries()) {
+                    console.log(`${pair[0]}, ${pair[1]}`);
+                }
+            }
+        });
+        form_div.appendChild(submitter);
+
+        document.getElementById(this.container).appendChild(form_div);
+    }
+
+    static flatten_object(object_editor, flattened_id) {
+        object_editor.field_ids.forEach((field_id) => {
+            let subfield_flattened = `${flattened_id}.${field_id}`;
+            if (object_editor.fields[field_id].constructor.name == 'ObjectInput') {
+                SchemaForm.flatten_object(object_editor.fields[field_id].editor, subfield_flattened);
+            } else {
+                object_editor.fields[field_id].name = subfield_flattened;
+            }
+        });
     }
 }

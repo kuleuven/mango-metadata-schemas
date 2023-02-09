@@ -63,3 +63,19 @@ class TemplateReader extends MangoRequest {
         })
     }
 }
+
+class AnnotationRequest extends MangoRequest {
+    constructor(schema_url, annotated_data, prefix) {
+        super(schema_url);
+        console.log(schema_url)
+        this.parse_response(annotated_data, prefix);
+    }
+
+    parse_response(annotated_data, prefix) {
+        this.addEventListener('load', () => {
+            let json = this.json;
+            let schema = new SchemaForm(Object.keys(json)[0], container_id, 'posting_url', prefix);
+            schema.from_json(Object.values(json)[0], annotated_data);
+        })
+    }
+}

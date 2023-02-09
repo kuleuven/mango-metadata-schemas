@@ -79,8 +79,9 @@ class InputField {
         // Add require switch and submit button to form
         this.form_field.form.appendChild(document.createElement('br'));
         let repeatable = !(this_class == 'SelectInput' | this_class == 'CheckboxInput');
-        let switchnames = ['required'];
-        let switches = {required : this.required};
+        let requirable = !(this_class == 'CheckboxInput' | this_class == 'ObjectInput');
+        let switchnames = requirable ? ['required'] : [];
+        let switches = requirable ? {required : this.required} : {};
         if (repeatable) {
             switchnames.push('repeatable');
             switches.repeatable = this.repeatable;
@@ -90,11 +91,13 @@ class InputField {
         }
         this.form_field.add_switches(this.id, switchnames, switches);
         
-        let req_input = this.form_field.form.querySelector(`#${this.id}-required`);
-        req_input.addEventListener('change', () => {
-            this.required = !this.required;
-            this.required ? req_input.setAttribute('checked', '') : req_input.removeAttribute('checked');
-        });
+        if (requirable) {
+            let req_input = this.form_field.form.querySelector(`#${this.id}-required`);
+            req_input.addEventListener('change', () => {
+                this.required = !this.required;
+                this.required ? req_input.setAttribute('checked', '') : req_input.removeAttribute('checked');
+            });    
+        }
         if (repeatable) {
             let rep_input = this.form_field.form.querySelector(`#${this.id}-repeatable`);
             rep_input.addEventListener('change', () => {
@@ -266,14 +269,16 @@ class TypedInput extends InputField {
             'Default value', `${this.id}-default`,
             {
                 description: "Default value for this field.",
-                value: this.default
+                value: this.default, required: false
             }
         )
     }
 
-    viewer_input() {
+    viewer_input(active = false) {
         let div = document.createElement('div');
-        let subtitle = Field.quick('p', 'card-subtitle', this.viewer_subtitle);
+        let subtitle = active ?
+            Field.quick('div', 'form-text', this.viewer_subtitle) :
+            Field.quick('p', 'card-subtitle', this.viewer_subtitle);
         let input;
         if (this.type != 'textarea') {
             input = Field.quick("input", "form-control input-view");
@@ -284,9 +289,24 @@ class TypedInput extends InputField {
         } else {
             input = Field.quick("textarea", "form-control input-view");
         }
-        input.setAttribute('readonly', '');
-        div.appendChild(subtitle);
-        div.appendChild(input);
+        if (!active) {
+            input.setAttribute('readonly', '');
+            div.appendChild(subtitle);
+            div.appendChild(input);
+        } else {
+            input.name = this.name;
+            if (this.required) {
+                input.setAttribute('required', '');
+            }
+            if (this.values.minimum != undefined) {
+                input.min = this.values.minimum;
+                input.max = this.values.maximum;
+            }
+            console.log(this.values.minimum)
+            div.appendChild(input);
+            div.appendChild(subtitle);
+        
+        }
         return div;
     }
 
@@ -442,8 +462,8 @@ class ObjectInput extends InputField {
         this.editor.display_options("objectTemplates");
     }
 
-    viewer_input() {
-        return ComplexField.create_viewer(this.editor);
+    viewer_input(active = false) {
+        return ComplexField.create_viewer(this.editor, active);
     }
 
     create_form() {
@@ -487,15 +507,15 @@ class MultipleInput extends InputField {
     constructor(schema_name) {
         super(schema_name);
         this.type = "select";
-        this.values.values = [];
+        this.values.values = ['one', 'two', 'three'];
     }
 
     repeatable = false;
     
     ex_input() {
         let columns = Field.quick('div', 'row');
-        let dropdown = Field.dropdown(this.values.multiple);
-        let radio = Field.checkbox_radio(this.values.multiple);
+        let dropdown = Field.dropdown(this);
+        let radio = Field.checkbox_radio(this);
         let col1 = Field.quick('div', 'col-6');
         col1.appendChild(dropdown);
         let col2 = Field.quick('div', 'col-6');
@@ -505,10 +525,11 @@ class MultipleInput extends InputField {
         return columns;
     }
 
-    viewer_input() {
+    viewer_input(active = false) {
+        // I just send the Fields data (values, actual value, and name if active)
         let div = this.values.ui == 'dropdown' ?
-            Field.dropdown(this.values.multiple, this.values.values) :
-            Field.checkbox_radio(this.values.multiple, this.values.values);
+            Field.dropdown(this, active) :
+            Field.checkbox_radio(this, active);
         return div;
     }
 

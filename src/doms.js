@@ -11,7 +11,8 @@ class Field {
 
     static example_values = ['A', 'B', 'C'];
 
-    static dropdown(multiple = false, values = false) {
+    static dropdown(field, active = false) {
+        let { multiple, values } = field.values;
         let inner_input = Field.quick("select", "form-select");
         if (multiple) {
             inner_input.setAttribute('multiple', '');
@@ -24,10 +25,17 @@ class Field {
             new_option.innerHTML = i;
             inner_input.appendChild(new_option);
         }
+        if (active) {
+            inner_input.name = field.name;
+            if (field.required) {
+                inner_input.setAttribute('required', '');
+            }
+        }
         return inner_input;
     }
 
-    static checkbox_radio(multiple = true, values = false) {
+    static checkbox_radio(field, active = false) {
+        let { multiple, values } = field.values;
         values = values ? values : Field.example_values;
         let inner_input = document.createElement("div");
         for (let i of values) {
@@ -37,6 +45,9 @@ class Field {
             new_input.type = multiple ? "checkbox" : "radio";
             new_input.value = i;
             new_input.id = `check-${i}`;
+            if (active) {
+                new_input.name = field.name;
+            }
 
             let new_label = Field.quick('label', "form-check-label", i);
             new_label.setAttribute("for", `check-${i}`);
@@ -310,7 +321,7 @@ class BasicForm {
     add_input(label_text, input_id, {
         description = false, placeholder = "Some text",
         value = false, validation_message = "This field is compulsory",
-        pattern = ".*"
+        pattern = ".*", required = true
         } = {}) {
         // Create and append a required text input
         let input_tag = Field.quick("input", "form-control");
@@ -319,7 +330,9 @@ class BasicForm {
         input_tag.type = "text";
         input_tag.pattern = pattern;
         input_tag.placeholder = placeholder;
-        input_tag.setAttribute("required", "")
+        if (required) {
+            input_tag.setAttribute("required", "");
+        }
         if (value) {
             input_tag.value = value;
         }
@@ -485,7 +498,8 @@ class BasicForm {
     }
 
     add_submit_action(id, action) {
-        this.form.querySelector("[type='submit']#" + id).addEventListener('click', action);
+        this.form.querySelector("[type='submit']#" + id)
+            .addEventListener('click', action);
     }
 
     reset() {
