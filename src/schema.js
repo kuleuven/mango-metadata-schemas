@@ -112,10 +112,10 @@ class ComplexField {
         this.fields[form_object.id] = form_object;
         let viewer = document.getElementById(this.card_id).querySelector('#' + form_object.id);
         viewer.querySelector('h5').innerHTML = form_object.required ? form_object.title + '*' : form_object.title;
-        let rep_icon = Field.quick('i', 'bi bi-stack px-2');
+        let rep_icon = Field.quick('i', 'bi bi-front px-2');
         if (form_object.repeatable) {
             viewer.querySelector('h5').appendChild(rep_icon);
-        } else if (viewer.querySelector('.bi-stack') != null) {
+        } else if (viewer.querySelector('.bi-front') != null) {
             viewer.querySelector('h5').removeChild(rep_icon);
         }
         let form_field = viewer.querySelector('.card-body');
@@ -167,7 +167,7 @@ class ComplexField {
                 );
             }
             if (subfield.repeatable) {
-                let icon = Field.quick('i', 'bi bi-stack px-2');
+                let icon = Field.quick('i', 'bi bi-front px-2');
                 if (active) {
                     let button = Field.quick('button', 'btn btn-outline-dark p-0 mx-2');
                     button.type = 'button';
@@ -175,12 +175,12 @@ class ComplexField {
                         console.log(small_div)
                         let clone = small_div.cloneNode(true);
                         let clone_button = clone.querySelector('button i');
-                        clone_button.classList.remove('bi-stack');
+                        clone_button.classList.remove('bi-front');
                         clone_button.classList.add('bi-trash');
                         clone_button.parentElement.addEventListener('click', () => {
                             clone.remove();
                         });
-                        
+
                         if (small_div.nextSibling == undefined) {
                             small_div.parentElement.appendChild(clone);
                         } else {

@@ -121,7 +121,7 @@ class MovingViewer extends MovingField {
         let header_title = document.createElement('h5');
         header_title.innerHTML = this.title;
         if (this.repeatable) {
-            header_title.appendChild(Field.quick('i', 'bi bi-stack px-2'));
+            header_title.appendChild(Field.quick('i', 'bi bi-front px-2'));
         }
         
         let header_buttons = Field.quick('div', 'btn-list');
