@@ -29,7 +29,7 @@ class TemplatesRequest extends MangoRequest {
                 let versions = [
                     this_template.published_count > 0 ? this_template.published_name.match(re).groups : {},
                     this_template.draft_count > 0 ? this_template.draft_name.match(re).groups : {}
-                ]; // I should add the url here too
+                ];
                 new SchemaGroup(template, versions, container_id, urls) // this will create the schemas, which will load on demand
             }
         })

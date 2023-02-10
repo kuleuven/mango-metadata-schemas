@@ -532,7 +532,6 @@ class SchemaGroup {
     }
 
     constructor(template_name, versions, container_id, urls) {
-        // adapt with new variables
         this.name = template_name;
         this.versions = versions;
         // obtain versions from published_ and draft_name with regex
@@ -549,10 +548,12 @@ class SchemaGroup {
             let badges = SchemaGroup.add_version(version.version, version.status);
             let active = this.statuses.indexOf('published') > -1 ? version.status == 'published' : version.status == 'draft';
             // this does not account for a case with only archived versions and a draft
-            version_number = version.version.replaceAll('\.', '');
+            let version_number = version.version.replaceAll('\.', '');
             nav_bar.add_item(`v${version_number}`, badges, active);
+            
             let schema = new Schema(version.name, container_id, urls.new, version.version, this.summary);
             schema.loaded = false;
+            
             let reader = new TemplateReader(urls.get_template, schema); // url to get this template
             nav_bar.nav_bar.getElementById(`v${version_number}-pane-${template_name}`)
                 .addEventListener('show.bs.collapse', () => {
