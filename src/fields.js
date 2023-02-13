@@ -287,10 +287,12 @@ class TypedInput extends InputField {
         let subtitle = active ?
             Field.quick('div', 'form-text', this.viewer_subtitle) :
             Field.quick('p', 'card-subtitle', this.viewer_subtitle);
+        subtitle.id = 'help-' + this.id;
         let input;
         if (this.type != 'textarea') {
             input = Field.quick("input", "form-control input-view");
             input.type = this.type == 'float' | this.type == 'integer' ? 'number' : this.type;
+            input.setAttribute('aria-describedby', subtitle.id);
             if (this.required && this.default !== undefined) {
                 input.value = this.default;
             }
