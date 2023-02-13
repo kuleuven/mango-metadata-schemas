@@ -55,14 +55,14 @@ class ComplexField {
         this.field_ids = Object.keys(data.properties);
         for (let entry of Object.entries(data.properties)) {
             let new_field = InputField.choose_class(this.card_id, entry);
-            new_field.create_modal(this);
+            new_field.create_modal(this, data.status ? data.status : 'object');
             this.fields[entry[0]] = new_field;
         }
     }
 
-    display_options(id) {
+    display_options(schema_status) {
         let formTemp = Field.quick("div", "formContainer");
-        formTemp.id = id + '-templates';
+        formTemp.id = schema_status + '-templates';
 
         let form_choice_modal = new Modal(this.choice_id, "What form element would you like to add?", "choiceTitle");
         form_choice_modal.create_modal([formTemp], 'lg');
@@ -71,15 +71,15 @@ class ComplexField {
             let formTemp = this_modal.querySelector('div.formContainer');
             if (formTemp.childNodes.length == 0) {
                 Object.values(this.initials).forEach((initial) => {
-                    formTemp.appendChild(initial.render(this, id));
+                    formTemp.appendChild(initial.render(this, schema_status));
                 });
             }
         });
     }
 
-    view_field(form_object, form_id) {
+    view_field(form_object, schema_status) {
         let clicked_button = document
-            .getElementById(`form-${this.card_id}-${form_id}`)
+            .getElementById(`form-${this.card_id}-${schema_status}`)
             .querySelectorAll('.adder')[this.new_field_idx];
         let below = clicked_button.nextSibling;
         let moving_viewer = form_object.view(this);
@@ -103,11 +103,11 @@ class ComplexField {
         }
     }
 
-    add_field(form_object, id) {
+    add_field(form_object, schema_status) {
         // Register a created form field, add it to the fields dictionary and view it
         this.field_ids.splice(this.new_field_idx, 0, form_object.id);
         this.fields[form_object.id] = form_object;
-        this.view_field(form_object, id);
+        this.view_field(form_object, schema_status);
     }
 
     update_field(form_object) {
@@ -126,11 +126,15 @@ class ComplexField {
         form_field.replaceChild(new_input, form_field.firstChild);
     }
 
-    replace_field(old_id, form_object, id) {
+    replace_field(old_id, form_object, schema_status) {
+        const form = document.getElementById(`form-${this.card_id}-${schema_status}`);
+        const old_adder = form.querySelectorAll('.adder')[this.field_ids.indexOf(old_id)];
+        old_adder.nextSibling.remove();
+        old_adder.remove();
         delete this.fields[old_id];
         this.new_field_idx = this.field_ids.indexOf(old_id);
         this.field_ids.splice(this.new_field_idx, 1);
-        this.add_field(form_object, id);
+        this.add_field(form_object, schema_status);
     }
 
     create_button() {

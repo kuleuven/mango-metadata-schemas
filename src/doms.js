@@ -132,10 +132,32 @@ class MovingViewer extends MovingField {
         this.div.id = form.id;
         this.body = form.viewer_input();
         let modal = bootstrap.Modal.getOrCreateInstance(document.getElementById(`mod-${form.id}-${form.schema_name}`));
+        this.copy = this.add_btn('copy', 'front', () => this.duplicate(form, schema));
+        if (form.is_duplicate) {
+            this.copy.setAttribute('disabled', '');
+        }
         this.edit = this.add_btn('edit', 'pencil', () => modal.toggle());
         
         this.assemble();
         this.schema = schema;        
+    }
+
+    duplicate(form, schema) {
+        const clone = new form.constructor(schema.initial_name);
+        clone.id = form.id + Math.round(Math.random() * 100);
+        clone.title = form.title;
+        clone.is_duplicate = true;
+        clone.required = form.required;
+        clone.repeatable = form.repeatable;
+        clone.values = form.values;
+        if (form.constructor.name == 'ObjectInput') {
+            clone.editor = form.editor;
+        }
+        clone.mode = 'mod';
+        clone.create_form();
+        clone.create_modal(schema, 'draft');
+        schema.new_field_idx = schema.field_ids.indexOf(form.id) + 1;
+        schema.add_field(clone, 'draft');
     }
 
     assemble() {
@@ -147,7 +169,7 @@ class MovingViewer extends MovingField {
         }
         
         let header_buttons = Field.quick('div', 'btn-list');
-        for (let button of [this.up, this.down, this.edit, this.rem]) {
+        for (let button of [this.up, this.down, this.copy, this.edit, this.rem]) {
             header_buttons.appendChild(button);
         }
         header.appendChild(header_title);

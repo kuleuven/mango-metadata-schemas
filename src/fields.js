@@ -7,6 +7,7 @@ class InputField {
         this.mode = 'add'; // whether the form has to be created or edited ("mod")
         this.repeatable = false;
         this.schema_name = schema_name;
+        this.is_duplicate = false;
     }
 
     get json() {
@@ -31,14 +32,14 @@ class InputField {
         return example;
     }
 
-    render(schema, id) {
+    render(schema, schema_status) {
         this.id = `${this.form_type}-${schema.id}`;
         this.create_form();
 
         let new_form = Field.quick("div", "border HTMLElement rounded");
 
         let new_button = Field.quick("button", "btn btn-primary HTMLElementButton", this.button_title);
-        this.create_modal(schema, id)
+        this.create_modal(schema, schema_status)
 
         new_button.setAttribute("data-bs-toggle", "modal");
         new_button.setAttribute("data-bs-target", `#add-${this.id}-${this.schema_name}`);
@@ -116,8 +117,9 @@ class InputField {
 
     }
 
-    create_modal(schema, id) {
+    create_modal(schema, schema_status) {
         let modal_id = `${this.mode}-${this.id}-${this.schema_name}`;
+        console.log(modal_id)
         let edit_modal = new Modal(modal_id, `Add ${this.button_title}`, `title-${this.form_type}`);
         let form = this.form_field.form;
         edit_modal.create_modal([form], 'lg');
@@ -130,7 +132,7 @@ class InputField {
                 e.stopPropagation();
                 form.classList.add('was-validated');
             } else {
-                let clone = this.register_fields(schema, id);
+                let clone = this.register_fields(schema, schema_status);
                 form.classList.remove('was-validated');
                 this.modal.toggle();
                 if (schema.constructor.name == 'ObjectEditor') {
@@ -157,7 +159,7 @@ class InputField {
         })
     }
 
-    register_fields(schema, id) {
+    register_fields(schema, schema_status) {
         // Read data from the modal form
         // With this form we create a new instance of the class with the output of the form
         // and give it to the schema as a created field
@@ -184,6 +186,9 @@ class InputField {
 
             clone.repeatable = this.repeatable;
             this.repeatable = false;
+            
+            clone.default = this.default;
+            this.default = undefined;
 
             clone.id = this.id // temporarily, to recover data
 
@@ -197,17 +202,15 @@ class InputField {
             clone.recover_fields(data);
             clone.id = clone.field_id;
             this.reset(); // specific
-
-            if (this.mode == 'mod') {
-                schema.replace_field(old_id, clone, id);
-            } else {
-                clone.mode = 'mod';
+            
+            clone.mode = 'mod';
+            clone.create_form();
+            clone.create_modal(schema, schema_status);
                 
-                clone.create_form();
-
-                clone.create_modal(schema, id);
-                schema.add_field(clone, id);
-
+            if (this.mode == 'mod') {
+                schema.replace_field(old_id, clone, schema_status);
+            } else {
+                schema.add_field(clone, schema_status);
             }
             return clone;
         }
