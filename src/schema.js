@@ -53,11 +53,13 @@ class ComplexField {
         this.name = data.title
         this.title = data.title;
         this.field_ids = Object.keys(data.properties);
-        for (let entry of Object.entries(data.properties)) {
-            let new_field = InputField.choose_class(this.card_id, entry);
-            new_field.create_modal(this, data.status ? data.status : 'object');
-            this.fields[entry[0]] = new_field;
-        }
+        if (data.properties.length > 0) {
+            for (let entry of Object.entries(data.properties)) {
+                let new_field = InputField.choose_class(this.card_id, entry);
+                new_field.create_modal(this, data.status ? data.status : 'object');
+                this.fields[entry[0]] = new_field;
+            }
+        }        
     }
 
     display_options(schema_status) {
@@ -105,6 +107,9 @@ class ComplexField {
 
     add_field(form_object, schema_status) {
         // Register a created form field, add it to the fields dictionary and view it
+        if (this.constructor.name == 'Schema') {
+            this.card.card_body.querySelector('form button#publish').removeAttribute('disabled');
+        }
         this.field_ids.splice(this.new_field_idx, 0, form_object.id);
         this.fields[form_object.id] = form_object;
         this.view_field(form_object, schema_status);
@@ -248,13 +253,18 @@ class Schema extends ComplexField {
             // create a child/copy from a published version
             let name = form.form.querySelector(`#${this.card_id}-name`).value;
             let label = form.form.querySelector(`#${this.card_id}-label`).value;
-            let json_contents = this.to_json();
+            let json_contents = {};
+            json_contents[name] = Object.values(this.to_json());
             json_contents[name].title = label;
             json_contents[name].version = '1.0.0';
             json_contents[name].status = status;
             if (is_copy) {
                 json_contents[name].parent = this.card_id;
             }
+            if (json_contents[name].properties == undefined) {
+                json_contents[name].properties = {};
+            }
+            console.log(json_contents)
 
             let template = {
                 schema_name: name,
@@ -387,6 +397,10 @@ class Schema extends ComplexField {
             }
         });
         form.add_action_button("Publish", 'publish', 'warning');
+        console.log(this.field_ids);
+        if (this.field_ids.length == 0) {
+            form.form.querySelector('button#publish').setAttribute('disabled', '');
+        }
         form.add_submit_action('publish', (e) => {
             e.preventDefault();
             if (!form.form.checkValidity()) {
@@ -506,6 +520,11 @@ class Schema extends ComplexField {
         this.card.appendChild(this.nav_bar);
         this.card.appendChild(this.tab_content);
         document.getElementById(this.container).appendChild(this.card);
+        if (this.field_ids.length == 0) {
+            let msg = Field.quick('div', 'viewer',
+            'This schema does not have any fields yet. Go to "edit" mode to add one.');
+            this.tab_content.querySelector('.input-view').appendChild(msg);
+        }
         this.field_ids.forEach((field_id, idx) => {
             this.new_field_idx = idx;
             if (this.status == 'draft') {
