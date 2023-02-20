@@ -145,7 +145,11 @@ class MovingViewer extends MovingField {
 
     duplicate(form, schema, schema_status) {
         const clone = new form.constructor(schema.initial_name);
-        clone.id = form.id + Math.round(Math.random() * 100);
+        const pattern = `^${form.id}(\d+)$`;
+        const existing_copies = schema.field_ids
+            .filter(fid => fid.match(pattern))
+            .map(fid => parseInt(fid.match(pattern)[1]));
+        clone.id = existing_copies.length == 0 ? form.id + '0' : form.id + String(Math.max(...existing_copies) + 1);
         clone.title = form.title;
         clone.is_duplicate = true;
         clone.required = form.required;
@@ -159,6 +163,11 @@ class MovingViewer extends MovingField {
         clone.create_modal(schema, schema_status);
         schema.new_field_idx = schema.field_ids.indexOf(form.id) + 1;
         schema.add_field(clone, schema_status);
+        
+        if (schema.constructor.name == 'Schema') {
+            schema.card.card_body.querySelector('form button#publish').setAttribute('disabled', '');
+            schema.card.card_body.querySelector('form button#draft').setAttribute('disabled', '');
+        }
     }
 
     assemble() {

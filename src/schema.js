@@ -108,7 +108,9 @@ class ComplexField {
     add_field(form_object, schema_status) {
         // Register a created form field, add it to the fields dictionary and view it
         if (this.constructor.name == 'Schema') {
+            console.log('enable publishing')
             this.card.card_body.querySelector('form button#publish').removeAttribute('disabled');
+            this.card.card_body.querySelector('form button#draft').removeAttribute('disabled');
         }
         this.field_ids.splice(this.new_field_idx, 0, form_object.id);
         this.fields[form_object.id] = form_object;
