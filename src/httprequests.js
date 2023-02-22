@@ -23,14 +23,20 @@ class TemplatesRequest extends MangoRequest {
     parse_response(container_id, urls) {
         this.addEventListener('load', () => {
             let grouped_templates = this.json;
-            for (let template of Object.keys(grouped_templates)) {
+            for (let template of grouped_templates) {
+                let schema_name = template.name;
                 let re = /(?<name>.*)-v(?<version>\d\.\d\.\d)-(?<status>|published|draft).json/
-                let this_template = grouped_templates[template];
-                let versions = [
-                    this_template.published_count > 0 ? this_template.published_name.match(re).groups : {},
-                    this_template.draft_count > 0 ? this_template.draft_name.match(re).groups : {}
-                ];
-                new SchemaGroup(template, versions, container_id, urls) // this will create the schemas, which will load on demand
+                let this_template = template.schema_info;
+                let versions = []
+                if (this_template.published_count > 0) {
+                    versions.push(this_template.published_name.match(re).groups)
+                }
+                if (this_template.draft_count > 0) {
+                    versions.push(this_template.draft_name.match(re).groups)
+                }
+                let title = this_template.title;
+                new SchemaGroup(schema_name, title, versions, container_id,
+                    {'get' : template.url, ...urls}) // this will create the schemas, which will load on demand
             }
         })
     }
@@ -47,8 +53,6 @@ class TemplateReader extends MangoRequest {
     parse_response(schema) {
         this.addEventListener('load', () => {
             let json = this.json;
-            let schema = new Schema(this.schema_name, this.container_id, this.url_new,
-                Object.values(json)[0].version, statuses);
             schema.from_json(json);
             schema.view();
         })
