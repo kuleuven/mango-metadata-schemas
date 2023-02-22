@@ -7,6 +7,7 @@ class InputField {
         this.mode = 'add'; // whether the form has to be created or edited ("mod")
         this.repeatable = false;
         this.schema_name = schema_name;
+        this.is_duplicate = false;
     }
 
     get json() {
@@ -31,14 +32,14 @@ class InputField {
         return example;
     }
 
-    render(schema, id) {
+    render(schema, schema_status) {
         this.id = `${this.form_type}-${schema.id}`;
         this.create_form();
 
         let new_form = Field.quick("div", "border HTMLElement rounded");
 
         let new_button = Field.quick("button", "btn btn-primary HTMLElementButton", this.button_title);
-        this.create_modal(schema, id)
+        this.create_modal(schema, schema_status)
 
         new_button.setAttribute("data-bs-toggle", "modal");
         new_button.setAttribute("data-bs-target", `#add-${this.id}-${this.schema_name}`);
@@ -116,7 +117,7 @@ class InputField {
 
     }
 
-    create_modal(schema, id) {
+    create_modal(schema, schema_status) {
         let modal_id = `${this.mode}-${this.id}-${this.schema_name}`;
         let edit_modal = new Modal(modal_id, `Add ${this.button_title}`, `title-${this.form_type}`);
         let form = this.form_field.form;
@@ -130,7 +131,8 @@ class InputField {
                 e.stopPropagation();
                 form.classList.add('was-validated');
             } else {
-                let clone = this.register_fields(schema, id);
+                // if the id is repeated it will replace the other field
+                let clone = this.register_fields(schema, schema_status);
                 form.classList.remove('was-validated');
                 this.modal.toggle();
                 if (schema.constructor.name == 'ObjectEditor') {
@@ -154,10 +156,10 @@ class InputField {
             if (this.mode == 'add') {
                 form.classList.remove('was-validated');
             }
-        })
+        });
     }
 
-    register_fields(schema, id) {
+    register_fields(schema, schema_status) {
         // Read data from the modal form
         // With this form we create a new instance of the class with the output of the form
         // and give it to the schema as a created field
@@ -184,6 +186,9 @@ class InputField {
 
             clone.repeatable = this.repeatable;
             this.repeatable = false;
+            
+            clone.default = this.default;
+            this.default = undefined;
 
             clone.id = this.id // temporarily, to recover data
 
@@ -197,26 +202,31 @@ class InputField {
             clone.recover_fields(data);
             clone.id = clone.field_id;
             this.reset(); // specific
+            
+            clone.mode = 'mod';
+            clone.create_form();
 
-            if (this.mode == 'mod') {
-                schema.replace_field(old_id, clone, id);
-            } else {
-                clone.mode = 'mod';
+            clone.create_modal(schema, schema_status);
+            if (this.constructor.name == 'ObjectInput') {
+                clone.editor.field_ids.forEach((field_id, idx) => {
+                    clone.editor.new_field_idx = idx;
+                    clone.editor.view_field(clone.editor.fields[field_id]);
+                });
+            }
                 
-                clone.create_form();
-
-                clone.create_modal(schema, id);
-                schema.add_field(clone, id);
-
+            if (this.mode == 'mod') {
+                schema.replace_field(old_id, clone, schema_status);
+            } else {
+                schema.add_field(clone, schema_status);
             }
             return clone;
         }
 
     }
 
-    view(schema) {
+    view(schema, schema_status) {
         // Method to view the created form
-        return new MovingViewer(this, schema);
+        return new MovingViewer(this, schema, schema_status);
     }
 
     reset() {
@@ -287,10 +297,12 @@ class TypedInput extends InputField {
         let subtitle = active ?
             Field.quick('div', 'form-text', this.viewer_subtitle) :
             Field.quick('p', 'card-subtitle', this.viewer_subtitle);
+        subtitle.id = 'help-' + this.id;
         let input;
         if (this.type != 'textarea') {
             input = Field.quick("input", "form-control input-view");
             input.type = this.type == 'float' | this.type == 'integer' ? 'number' : this.type;
+            input.setAttribute('aria-describedby', subtitle.id);
             if (this.required && this.default !== undefined) {
                 input.value = this.default;
             }
@@ -468,9 +480,14 @@ class ObjectInput extends InputField {
     }
 
     create_editor() {
-        this.editor = new ObjectEditor(this.form_field.form.id, this);
+        if (this.editor == undefined) {
+            this.editor = new ObjectEditor(this.form_field.form.id, this);
+        } else {
+            this.editor.form_id = this.form_field.form.id;
+            console.log(this.editor.form_id)
+        }
         // this.editor.modal = this.modal;
-        this.editor.display_options("objectTemplates");
+        this.editor.display_options();
     }
 
     viewer_input(active = false) {
@@ -480,8 +497,10 @@ class ObjectInput extends InputField {
     create_form() {
         this.setup_form();
         this.create_editor();
-        this.form_field.form.appendChild(this.editor.button);
         this.end_form();
+        const switches = this.form_field.form.querySelector('#switches-div');
+        this.form_field.form.insertBefore(this.editor.button, switches);
+        
     }
 
     recover_fields(data) {
