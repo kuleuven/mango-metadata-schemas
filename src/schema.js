@@ -53,7 +53,7 @@ class ComplexField {
         this.name = data.title
         this.title = data.title;
         this.field_ids = Object.keys(data.properties);
-        if (data.properties.length > 0) {
+        if (this.field_ids.length > 0) {
             for (let entry of Object.entries(data.properties)) {
                 let new_field = InputField.choose_class(this.card_id, entry);
                 new_field.create_modal(this, data.status ? data.status : 'object');
@@ -62,9 +62,9 @@ class ComplexField {
         }        
     }
 
-    display_options(schema_status) {
+    display_options(schema_status = undefined) {
         let formTemp = Field.quick("div", "formContainer");
-        formTemp.id = schema_status + '-templates';
+        formTemp.id = schema_status == undefined ? 'object' : schema_status + '-templates';
 
         let form_choice_modal = new Modal(this.choice_id, "What form element would you like to add?", "choiceTitle");
         form_choice_modal.create_modal([formTemp], 'lg');
@@ -80,8 +80,8 @@ class ComplexField {
     }
 
     view_field(form_object, schema_status) {
-        let clicked_button = document
-            .getElementById(`form-${this.card_id}-${schema_status}`)
+        let form_id = schema_status == undefined ? this.form_id : `form-${this.card_id}-${schema_status}`;
+        let clicked_button = document.getElementById(form_id)
             .querySelectorAll('.adder')[this.new_field_idx];
         let below = clicked_button.nextSibling;
         let moving_viewer = form_object.view(this, schema_status);
@@ -105,15 +105,26 @@ class ComplexField {
         }
     }
 
+    toggle_saving(schema_status) {
+        let form_id = schema_status == undefined ? this.form_id : `form-${this.card_id}-${schema_status}`;
+        const has_duplicates = Object.values(this.fields).some((field) => field.is_duplicate);
+        
+        const buttons = this.constructor.name == 'Schema'
+            ? ['publish', 'draft'].map((btn) => document.getElementById(form_id).querySelector('button#' + btn))
+            : [document.getElementById(form_id).querySelector('button#add')];
+        if (has_duplicates) {
+            buttons.forEach((btn) => btn.setAttribute('disabled', ''));
+        } else {
+            buttons.forEach((btn) => btn.removeAttribute('disabled'));
+        }
+    }
+
     add_field(form_object, schema_status) {
         // Register a created form field, add it to the fields dictionary and view it
-        if (this.constructor.name == 'Schema') {
-            console.log('enable publishing')
-            this.card.card_body.querySelector('form button#publish').removeAttribute('disabled');
-            this.card.card_body.querySelector('form button#draft').removeAttribute('disabled');
-        }
         this.field_ids.splice(this.new_field_idx, 0, form_object.id);
         this.fields[form_object.id] = form_object;
+        this.toggle_saving(schema_status);
+        
         this.view_field(form_object, schema_status);
     }
 
@@ -165,6 +176,7 @@ class ComplexField {
         let div = schema.constructor.name == 'SchemaForm' ? 
             Field.quick('form', 'mt-3 needs-validation') :
             Field.quick('div', 'input-view');
+        console.log(schema.field_ids)
         schema.field_ids.forEach((field_id) => {
             let subfield = schema.fields[field_id];
             let small_div = Field.quick('div', 'mini-viewer');
@@ -190,9 +202,7 @@ class ComplexField {
                         let clone_button = clone.querySelector('button i');
                         clone_button.classList.remove('bi-front');
                         clone_button.classList.add('bi-trash');
-                        clone_button.parentElement.addEventListener('click', () => {
-                            clone.remove();
-                        });
+                        clone_button.parentElement.addEventListener('click', () => clone.remove());
 
                         if (small_div.nextSibling == undefined) {
                             small_div.parentElement.appendChild(clone);
@@ -256,7 +266,7 @@ class Schema extends ComplexField {
             let name = form.form.querySelector(`#${this.card_id}-name`).value;
             let label = form.form.querySelector(`#${this.card_id}-label`).value;
             let json_contents = {};
-            json_contents[name] = Object.values(this.to_json());
+            json_contents[name] = Object.values(this.to_json())[0];
             json_contents[name].title = label;
             json_contents[name].version = '1.0.0';
             json_contents[name].status = status;
@@ -266,7 +276,6 @@ class Schema extends ComplexField {
             if (json_contents[name].properties == undefined) {
                 json_contents[name].properties = {};
             }
-            console.log(json_contents)
 
             let template = {
                 schema_name: name,
@@ -280,6 +289,7 @@ class Schema extends ComplexField {
                 `v100-pane-${name}`, this.url,
                 "1.0.0");
             new_schema.from_json(json_contents);
+            console.log(new_schema)
             new_schema.view();
             new_schema.post();
 
@@ -399,7 +409,6 @@ class Schema extends ComplexField {
             }
         });
         form.add_action_button("Publish", 'publish', 'warning');
-        console.log(this.field_ids);
         if (this.field_ids.length == 0) {
             form.form.querySelector('button#publish').setAttribute('disabled', '');
         }
