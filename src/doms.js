@@ -407,16 +407,11 @@ class BasicForm {
 
         input_div.appendChild(validator);
 
-        this.form.insertBefore(input_div, this.divider);
-
-
-        // if (this.form.childNodes.length == 0 || this.form.lastChild.classList.contains('form-container')) {
-        //     // the second part checks that the last element is not the submit button (or div with, in this case)
-        //     this.form.appendChild(input_div);
-        // } else {
-        //     let br = this.form.querySelector('br');
-        //     this.form.insertBefore(input_div, br);
-        // }
+        if (this.switches) {
+            this.form.insertBefore(input_div, this.switches);
+        } else {
+            this.form.insertBefore(input_div, this.divider);
+        }
     }
 
     add_select(label_text, select_id, options, selected = false) {
@@ -510,8 +505,8 @@ class BasicForm {
         // Add a radio switch to select a field as required
         // I'm adding the radio switch for "repeatable" and "dropdown" here as well
         // For multiple choice fields, add 'dropdown' to switchnames and the Object.
-        let div = Field.quick("div", "col-3 mt-2");
-        div.id = 'switches-div';
+        this.switches = Field.quick("div", "col-3 mt-2");
+        this.switches.id = 'switches-div';
         let subdiv = Field.quick("div", "form-check form-switch form-check-inline");
         
         let switches = {
@@ -538,8 +533,8 @@ class BasicForm {
             subdiv.appendChild(input);
         }
         
-        div.appendChild(subdiv);
-        this.form.insertBefore(div, this.divider);
+        this.switches.appendChild(subdiv);
+        this.form.insertBefore(this.switches, this.divider);
         // this.form.appendChild(div);
     }
 

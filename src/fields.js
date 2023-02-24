@@ -283,13 +283,15 @@ class TypedInput extends InputField {
         return inner_input;
     }
     add_default_field() {
-        this.form_field.add_input(
-            'Default value', `${this.id}-default`,
-            {
-                description: "Default value for this field: only valid if the field is required.",
-                value: this.default, required: false
-            }
-        )
+        if (this.form_field.form.querySelector(`#div-${this.id}-default`) == null) {
+            this.form_field.add_input(
+                'Default value', `${this.id}-default`,
+                {
+                    description: "Default value for this field: only valid if the field is required.",
+                    value: this.default, required: false
+                }
+            );
+        }
     }
 
     viewer_input(active = false) {
@@ -370,7 +372,16 @@ class TypedInput extends InputField {
         let min_id = `${this.id}-min`;
         let max_id = `${this.id}-max`;
 
+        let default_div = this.form_field.form.querySelector(`#div-${this.id}-default`);
         let default_input = this.form_field.form.querySelector(`#${this.id}-default`);
+
+        if (format == 'textarea') {
+            if (default_div != null) {
+                this.form_field.form.removeChild(default_div);
+            }
+        } else {
+            this.add_default_field();
+        }
         
         if (format == "integer" | format == 'float') {
             if (default_input !== null) {
@@ -422,8 +433,9 @@ class TypedInput extends InputField {
                 delete this.values.minimum;
                 delete this.values.maximum;
             }
+            
             if (format == 'textarea') {
-                console.log('TODO: get textarea for defaults? But does that make sense?');
+                
             } else if (default_input !== null) {
                 default_input.type = format;
             }
