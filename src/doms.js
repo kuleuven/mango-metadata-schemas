@@ -156,6 +156,8 @@ class MovingViewer extends MovingField {
         clone.required = form.required;
         clone.repeatable = form.repeatable;
         clone.values = form.values;
+        clone.type = form.type;
+        clone.default = form.default;
         if (form.constructor.name == 'ObjectInput') {
             clone.editor = form.editor;
         }

@@ -117,7 +117,7 @@ class ComplexField {
         let rep_icon = Field.quick('i', 'bi bi-front px-2');
         if (form_object.repeatable) {
             viewer.querySelector('h5').appendChild(rep_icon);
-        } else if (viewer.querySelector('.bi-front') != null) {
+        } else if (viewer.querySelector('h5 .bi-front') != null) {
             viewer.querySelector('h5').removeChild(rep_icon);
         }
         let form_field = viewer.querySelector('.card-body');
