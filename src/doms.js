@@ -131,7 +131,8 @@ class MovingViewer extends MovingField {
         this.div = Field.quick("div", "card border-primary viewer");
         this.div.id = form.id;
         this.body = form.viewer_input();
-        let modal = bootstrap.Modal.getOrCreateInstance(document.getElementById(`mod-${form.id}-${form.schema_name}`));
+        let modal_id = `mod-${form.id}-${form.schema_name}-${schema_status}`;
+        let modal = bootstrap.Modal.getOrCreateInstance(document.getElementById(modal_id));
         this.copy = this.add_btn('copy', 'front', () => this.duplicate(form, schema, schema_status));
         this.edit = this.add_btn('edit', 'pencil', () => modal.toggle());
         if (form.is_duplicate) {
