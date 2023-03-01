@@ -38,7 +38,7 @@ class ComplexField {
         this.field_ids = Object.keys(data.properties);
         if (this.field_ids.length > 0) {
             for (let entry of Object.entries(data.properties)) {
-                let new_field = InputField.choose_class(this.card_id, entry);
+                let new_field = InputField.choose_class(this.initial_name, entry);
                 new_field.create_form();
                 if (!data.status) {
                     new_field.create_modal(this, 'object');
@@ -53,10 +53,23 @@ class ComplexField {
         }
     }
 
-    display_options(schema_status = 'object') {
+    set_data_status() {
+        if (this.status == undefined || this.status.startsWith('object')) {
+            return `object-${this.parent_status}`;
+        } else if (this.status == 'draft') {
+            return 'draft';
+        } else if (this.origin == undefined) {
+            return 'new';
+        } else {
+            return 'copy';
+        }
+    }
+
+    display_options() {
+        this.data_status = this.set_data_status();
         let formTemp = Field.quick("div", "formContainer");
-        formTemp.id = schema_status + '-templates';
-        let modal_id = `${this.choice_id}-${schema_status}`;
+        formTemp.id = sthis.data_status + '-templates';
+        let modal_id = `${this.choice_id}-${this.data_status}`;
         let form_choice_modal = new Modal(modal_id, "What form element would you like to add?", "choiceTitle");
         form_choice_modal.create_modal([formTemp], 'lg');
         let this_modal = document.getElementById(modal_id);
@@ -64,19 +77,18 @@ class ComplexField {
             let formTemp = this_modal.querySelector('div.formContainer');
             if (formTemp.childNodes.length == 0) {
                 Object.values(this.initials).forEach((initial) => {
-                    formTemp.appendChild(initial.render(this, schema_status));
+                    formTemp.appendChild(initial.render(this));
                 });
             }
         });
     }
 
-    view_field(form_object, schema_status) {
-        let form_id = schema_status == 'object' ? this.form_id : `form-${this.card_id}-${schema_status}`;
-        let clicked_button = document.getElementById(form_id)
-            .querySelectorAll('.adder')[this.new_field_idx];
+    view_field(form_object) {
+        let form = document.getElementById(`form-${this.card_id}-${this.data_status}`);
+        let clicked_button = form.querySelectorAll('.adder')[this.new_field_idx];
         let below = clicked_button.nextSibling;
-        let moving_viewer = form_object.view(this, schema_status);
-        let new_button = this.create_button(schema_status);
+        let moving_viewer = form_object.view(this);
+        let new_button = this.create_button();
 
         below.parentElement.insertBefore(moving_viewer.div, below);
         below.parentElement.insertBefore(new_button, below);
@@ -96,13 +108,13 @@ class ComplexField {
         }
     }
 
-    toggle_saving(schema_status) {
-        let form_id = schema_status == 'object' ? this.form_id : `form-${this.card_id}-${schema_status}`;
+    toggle_saving() {
+        let form = document.getElementById(`form-${this.card_id}-${this.data_status}`);
         const has_duplicates = Object.values(this.fields).some((field) => field.is_duplicate);
 
         const buttons = this.constructor.name == 'Schema'
-            ? ['publish', 'draft'].map((btn) => document.getElementById(form_id).querySelector('button#' + btn))
-            : [document.getElementById(form_id).querySelector('button#add')];
+            ? ['publish', 'draft'].map((btn) => form.querySelector('button#' + btn))
+            : [form.querySelector('button#add')];
         if (has_duplicates) {
             buttons.forEach((btn) => btn.setAttribute('disabled', ''));
         } else {
@@ -110,20 +122,20 @@ class ComplexField {
         }
     }
 
-    add_field(form_object, schema_status) {
+    add_field(form_object) {
         // Register a created form field, add it to the fields dictionary and view it
         this.field_ids.splice(this.new_field_idx, 0, form_object.id);
         this.fields[form_object.id] = form_object;
-        this.toggle_saving(schema_status);
+        this.toggle_saving();
 
-        this.view_field(form_object, schema_status);
+        this.view_field(form_object);
     }
 
-    update_field(form_object, schema_status) {
+    update_field(form_object) {
         // TODO have checks so we don't just replace everything
         this.fields[form_object.id] = form_object;
-        let form_id = schema_status == 'object' ? this.form_id : `form-${this.card_id}-${schema_status}`;
-        let viewer = document.getElementById(form_id).querySelector('#' + form_object.id);
+        let form = document.getElementById(`form-${this.card_id}-${this.data_status}`);
+        let viewer = form.querySelector('#' + form_object.id);
         viewer.querySelector('h5').innerHTML = form_object.required ? form_object.title + '*' : form_object.title;
         let rep_icon = Field.quick('i', 'bi bi-front px-2');
         if (form_object.repeatable) {
@@ -136,22 +148,21 @@ class ComplexField {
         form_field.replaceChild(new_input, form_field.firstChild);
     }
 
-    replace_field(old_id, form_object, schema_status) {
-        let form_id = schema_status == 'object' ? this.form_id : `form-${this.card_id}-${schema_status}`;
-        const form = document.getElementById(form_id);
+    replace_field(old_id, form_object) {
+        let form = document.getElementById(`form-${this.card_id}-${this.data_status}`);
         const old_adder = form.querySelectorAll('.adder')[this.field_ids.indexOf(old_id)];
         old_adder.nextSibling.remove();
         old_adder.remove();
         delete this.fields[old_id];
         this.new_field_idx = this.field_ids.indexOf(old_id);
         this.field_ids.splice(this.new_field_idx, 1);
-        this.add_field(form_object, schema_status);
+        this.add_field(form_object);
     }
 
-    create_button(schema_status) {
+    create_button() {
         // Create a button to create more form elements
         let div = Field.quick('div', 'd-grid gap-2 adder mt-2');
-        let modal_id = `${this.choice_id}-${schema_status}`
+        let modal_id = `${this.choice_id}-${this.data_status}`
         let button = Field.quick("button", "btn btn-primary btn-sm", "Add element");
         button.type = "button";
         button.setAttribute("data-bs-toggle", "modal");
@@ -221,21 +232,22 @@ class ComplexField {
 
 class ObjectEditor extends ComplexField {
     constructor(form_id, parent) {
-        super('objectChoice' + parent.id, parent.id + '-obj');
+        super('choice', parent.id);
         this.form_id = form_id;
-        this.card_id = `${parent.mode}-${parent.id}-${parent.schema_name}`;
-        this.id_field = `${parent.id}-id`
+        this.id_field = `${parent.id}-id`;
+        this.parent_status = parent.status;
+        this.status = `object-${this.parent_status}`;
     }
 
     get button() {
-        return this.create_button();
+        return this.create_button('object');
     }
 
 }
 
 class Schema extends ComplexField {
     constructor(card_id, container_id, urls, version = "1.0.0") {
-        super('formChoice', card_id);
+        super('choice', card_id);
         this.card_id = card_id;
         this.name = card_id.match(/^(.*)-\d\d\d$/)[1];
         this.version = version;
@@ -298,17 +310,9 @@ class Schema extends ComplexField {
         if (!is_new) {
             name_input.setAttribute('readonly', '');
             form.form.querySelector(`#${this.card_id}-label`).setAttribute('readonly', '');
-        } else if (!form.form.querySelector(`#${this.card_id}-name`).value) {
-            form.form.querySelector('button#draft').setAttribute('disabled', '');
+        } else if (!this.field_ids.length > 0) {
             form.form.querySelector('button#publish').setAttribute('disabled', '');
-            name_input.addEventListener('change', () => {
-                if (name_input.value) {
-                    form.form.querySelector('button#draft').removeAttribute('disabled');
-                    if (this.field_ids.length > 0) {
-                        form.form.querySelector('button#publish').removeAttribute('disabled', '');
-                    }            
-                }
-            });
+    
         }
 
         if (this.field_ids.length == 0) {
@@ -341,11 +345,12 @@ class Schema extends ComplexField {
     from_parent(parent) {
         this.field_ids = [...parent.field_ids];
         this.parent = `${parent.name}-${parent.version}`;
+        this.initial_name = `${parent.name}-new`;
         this.status = 'draft';
         this.origin = { ids: [...parent.field_ids], json : {...parent.properties} };
         if (this.field_ids.length > 0) {
             for (let entry of Object.entries(parent.properties)) {
-                let new_field = InputField.choose_class(this.card_id, entry);
+                let new_field = InputField.choose_class(this.initial_name, entry);
                 new_field.create_form();
                 new_field.create_modal(this, 'copy');
                 this.fields[entry[0]] = new_field;
@@ -355,7 +360,7 @@ class Schema extends ComplexField {
 
     setup_copy() {
         this.fields_to_json()
-        this.child = new Schema(this.card_id, this.container, this.urls)
+        this.child = new Schema(this.card_id, this.container, this.urls);
         this.child.from_parent(this);
     }
 
@@ -444,8 +449,6 @@ class Schema extends ComplexField {
     }
 
     view() {
-        // console.log('This is version', this.version, 'of', this.name, 'which has status:', this.status);
-
         this.create_navbar();
         this.card = document.createElement('div')
         this.card.id = this.card_id;
@@ -509,7 +512,7 @@ class Schema extends ComplexField {
                 this.field_ids = [...this.origin.ids];
                 if (this.field_ids.length > 0) {
                     this.field_ids.forEach((field_id, idx) => {
-                        let new_field = InputField.choose_class(this.card_id, [field_id, this.origin.json[field_id]]);
+                        let new_field = InputField.choose_class(this.initial_name, [field_id, this.origin.json[field_id]]);
                         this.fields[field_id] = new_field;
                         new_field.create_form();
                         new_field.create_modal(this, 'copy');

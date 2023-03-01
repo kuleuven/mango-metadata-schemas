@@ -32,17 +32,18 @@ class InputField {
         return example;
     }
 
-    render(schema, schema_status) {
-        this.id = `${this.form_type}-${schema.id}-${schema_status}`;
+    render(schema) {
+        this.id = `${this.form_type}-${schema.id}`;
         this.create_form();
 
         let new_form = Field.quick("div", "border HTMLElement rounded");
 
         let new_button = Field.quick("button", "btn btn-primary HTMLElementButton", this.button_title);
-        this.create_modal(schema, schema_status)
+        this.create_modal(schema)
 
         new_button.setAttribute("data-bs-toggle", "modal");
-        new_button.setAttribute("data-bs-target", `#add-${this.id}-${this.schema_name}-${schema_status}`);
+        let modal_id = `add-${this.id}-${this.schema_name}-${schema.data_status}`;
+        new_button.setAttribute("data-bs-target", '#' + modal_id);
 
         new_form.appendChild(new_button);
         new_form.appendChild(this.create_example());
@@ -117,8 +118,8 @@ class InputField {
 
     }
 
-    create_modal(schema, schema_status) {
-        let modal_id = `${this.mode}-${this.id}-${this.schema_name}-${schema_status}`;
+    create_modal(schema) {
+        let modal_id = `${this.mode}-${this.id}-${this.schema_name}-${schema.data_status}`;
         let edit_modal = new Modal(modal_id, `Add ${this.button_title}`, `title-${this.form_type}`);
         let form = this.form_field.form;
         edit_modal.create_modal([form], 'lg');
@@ -132,17 +133,17 @@ class InputField {
                 form.classList.add('was-validated');
             } else {
                 // if the id is repeated it will replace the other field
-                let clone = this.register_fields(schema, schema_status);
+                let clone = this.register_fields(schema);
                 form.classList.remove('was-validated');
                 this.modal.toggle();
                 if (schema.constructor.name == 'ObjectEditor') {
-                    let parent_modal_dom = document.getElementById(schema.card_id);
+                    let parent_modal_dom = document.getElementById(`${schema.card_id}`);
                     let parent_modal = bootstrap.Modal.getOrCreateInstance(parent_modal_dom);
                     parent_modal.toggle();
                 }
                 modal_dom.querySelector('.modal-body').appendChild(form);
 
-                let clone_modal_id = `${clone.mode}-${clone.id}-${clone.schema_name}-${schema_status}`;
+                let clone_modal_id = `${clone.mode}-${clone.id}-${clone.schema_name}-${schema.data_status}`;
                 if (clone_modal_id != modal_id) {
                     let clone_modal_dom = document.getElementById(clone_modal_id);
                     let clone_form = clone.form_field.form;
@@ -159,7 +160,7 @@ class InputField {
         });
     }
 
-    register_fields(schema, schema_status) {
+    register_fields(schema) {
         // Read data from the modal form
         // With this form we create a new instance of the class with the output of the form
         // and give it to the schema as a created field
@@ -173,7 +174,7 @@ class InputField {
         if (old_id == new_id) {
             this.title = data.get(`${this.id}-label`);
             this.recover_fields(data);
-            schema.update_field(this, schema_status);
+            schema.update_field(this);
             return this;
         } else {
             let clone = new this.constructor(schema.initial_name);
@@ -206,27 +207,21 @@ class InputField {
             clone.mode = 'mod';
             clone.create_form();
 
-            clone.create_modal(schema, schema_status);
-            if (this.constructor.name == 'ObjectInput') {
-                clone.editor.field_ids.forEach((field_id, idx) => {
-                    clone.editor.new_field_idx = idx;
-                    clone.editor.view_field(clone.editor.fields[field_id]);
-                });
-            }
+            clone.create_modal(schema);
                 
             if (this.mode == 'mod') {
-                schema.replace_field(old_id, clone, schema_status);
+                schema.replace_field(old_id, clone);
             } else {
-                schema.add_field(clone, schema_status);
+                schema.add_field(clone);
             }
             return clone;
         }
 
     }
 
-    view(schema, schema_status) {
+    view(schema) {
         // Method to view the created form
-        return new MovingViewer(this, schema, schema_status);
+        return new MovingViewer(this, schema);
     }
 
     reset() {
@@ -497,8 +492,18 @@ class ObjectInput extends InputField {
         } else {
             this.editor.form_id = this.form_field.form.id;
         }
-        // this.editor.modal = this.modal;
         this.editor.display_options();
+    }
+
+    create_modal(schema) {
+        super.create_modal(schema);
+        this.editor.card_id = `${this.mode}-${this.id}-${this.schema_name}-${schema.data_status}`;
+        if (this.editor.field_ids.length > 0) {
+            this.editor.field_ids.forEach((field_id, idx) => {
+                this.editor.new_field_idx = idx;
+                this.editor.view_field(this.editor.fields[field_id], 'object');
+            });
+        }
     }
 
     viewer_input(active = false) {
@@ -524,9 +529,9 @@ class ObjectInput extends InputField {
     }
 
     to_json() {
-        this.editor.name = this.form_field.form
-            .querySelector(`[name="${this.editor.id_field}"]`)
-            .value;
+        // this.editor.name = this.form_field.form
+        //     .querySelector(`[name="${this.editor.id_field}"]`)
+        //     .value;
         this.editor.fields_to_json();
         let json = {
             title : this.title,
