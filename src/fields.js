@@ -1,5 +1,5 @@
 class InputField {
-    constructor(schema_name) {
+    constructor(schema_name, data_status = 'draft') {
         this.description = ""; // description to show in the options viewer
         this.dummy_title = "Title"; // dummy title in options viewer (probably could go)
         this.required = false; // whether the field is required
@@ -8,6 +8,7 @@ class InputField {
         this.repeatable = false;
         this.schema_name = schema_name;
         this.is_duplicate = false;
+        this.schema_status = data_status;
     }
 
     get json() {
@@ -16,9 +17,11 @@ class InputField {
 
     to_json() {
         let json = { title: this.title, type: this.type, ...this.values };
-        if (this.required) json.required = this.required;
+        if (this.required) {
+            json.required = this.required;
+            if (this.default) json.default = this.default;
+        }
         if (this.repeatable) json.repeatable = this.repeatable;
-        if (this.default) json.default = this.default;
         return json;
     }
 
@@ -75,7 +78,7 @@ class InputField {
 
     end_form() {
         let this_class = this.constructor.name;
-        
+
         this.add_default_field();
 
         // Add require switch and submit button to form
@@ -83,7 +86,7 @@ class InputField {
         let repeatable = !(this_class == 'SelectInput' | this_class == 'CheckboxInput');
         let requirable = !(this_class == 'CheckboxInput' | this_class == 'ObjectInput');
         let switchnames = requirable ? ['required'] : [];
-        let switches = requirable ? {required : this.required} : {};
+        let switches = requirable ? { required: this.required } : {};
         if (repeatable) {
             switchnames.push('repeatable');
             switches.repeatable = this.repeatable;
@@ -92,34 +95,34 @@ class InputField {
             switches.dropdown = this.values.ui == 'dropdown';
         }
         this.form_field.add_switches(this.id, switchnames, switches);
-        
+
         if (requirable) {
             let req_input = this.form_field.form.querySelector(`#${this.id}-required`);
             req_input.addEventListener('change', () => {
                 this.required = !this.required;
                 this.required ? req_input.setAttribute('checked', '') : req_input.removeAttribute('checked');
-            });    
+            });
         }
         if (repeatable) {
             let rep_input = this.form_field.form.querySelector(`#${this.id}-repeatable`);
             rep_input.addEventListener('change', () => {
                 this.repeatable = !this.repeatable;
                 this.repeatable ? rep_input.setAttribute('checked', '') : rep_input.removeAttribute('checked');
-            });    
+            });
         } else {
             let dd_input = this.form_field.form.querySelector(`#${this.id}-dropdown`);
             dd_input.addEventListener('change', () => {
                 this.values.ui = this.values.ui == 'dropdown' ? this.dropdown_alt : 'dropdown';
                 this.values.ui == 'dropdown' ? dd_input.setAttribute('checked', '') : dd_input.removeAttribute('checked');
-            });    
+            });
         }
-        
+
         this.form_field.add_action_button(this.mode == 'add' ? "Add to schema" : "Update", 'add');
 
     }
 
     create_modal(schema) {
-        let modal_id = `${this.mode}-${this.id}-${this.schema_name}-${schema.data_status}`;
+        let modal_id = `${this.mode}-${this.id}-${this.schema_name}-${this.schema_status}`;
         let edit_modal = new Modal(modal_id, `Add ${this.button_title}`, `title-${this.form_type}`);
         let form = this.form_field.form;
         edit_modal.create_modal([form], 'lg');
@@ -143,7 +146,7 @@ class InputField {
                 }
                 modal_dom.querySelector('.modal-body').appendChild(form);
 
-                let clone_modal_id = `${clone.mode}-${clone.id}-${clone.schema_name}-${schema.data_status}`;
+                let clone_modal_id = `${clone.mode}-${clone.id}-${clone.schema_name}-${clone.schema_status}`;
                 if (clone_modal_id != modal_id) {
                     let clone_modal_dom = document.getElementById(clone_modal_id);
                     let clone_form = clone.form_field.form;
@@ -177,7 +180,7 @@ class InputField {
             schema.update_field(this);
             return this;
         } else {
-            let clone = new this.constructor(schema.initial_name);
+            let clone = new this.constructor(schema.initial_name, this.schema_status);
             clone.field_id = new_id;
             clone.form_field = this.form_field;
             clone.title = data.get(`${this.id}-label`);
@@ -187,7 +190,7 @@ class InputField {
 
             clone.repeatable = this.repeatable;
             this.repeatable = false;
-            
+
             clone.default = this.default;
             this.default = undefined;
 
@@ -203,12 +206,12 @@ class InputField {
             clone.recover_fields(data);
             clone.id = clone.field_id;
             this.reset(); // specific
-            
+
             clone.mode = 'mod';
             clone.create_form();
 
             clone.create_modal(schema);
-                
+
             if (this.mode == 'mod') {
                 schema.replace_field(old_id, clone);
             } else {
@@ -229,14 +232,14 @@ class InputField {
         this.default = undefined;
     }
 
-    static choose_class(schema_name, [id, data] = []) {
+    static choose_class(schema_name, data_status, [id, data] = []) {
         let new_field;
         if (data.type == 'object') {
-            new_field = new ObjectInput(schema_name);
+            new_field = new ObjectInput(schema_name, data_status);
         } else if (data.type == 'select') {
-            new_field = data.multiple ? new CheckboxInput(schema_name) : new SelectInput(schema_name);
+            new_field = data.multiple ? new CheckboxInput(schema_name, data_status) : new SelectInput(schema_name, data_status);
         } else {
-            new_field = new TypedInput(schema_name);
+            new_field = new TypedInput(schema_name, data_status);
         }
         new_field.field_id = id;
         new_field.id = id;
@@ -261,8 +264,8 @@ class InputField {
 }
 
 class TypedInput extends InputField {
-    constructor(schema_name) {
-        super(schema_name);
+    constructor(schema_name, data_status = 'draft') {
+        super(schema_name, data_status);
         this.type = "text";
         this.values = {};
     }
@@ -270,7 +273,7 @@ class TypedInput extends InputField {
     form_type = "text";
     form_type = "text";
     button_title = "Text input";
-    description = "Text options: regular text, number (integer or float), date, time, e-mail or URL.<br>"    
+    description = "Text options: regular text, number (integer or float), date, time, e-mail or URL.<br>"
 
     ex_input() {
         let inner_input = Field.quick("input", "form-control");
@@ -325,7 +328,7 @@ class TypedInput extends InputField {
             }
             div.appendChild(input);
             div.appendChild(subtitle);
-        
+
         }
         return div;
     }
@@ -341,12 +344,16 @@ class TypedInput extends InputField {
     from_json(data) {
         super.from_json(data);
         let par_text = this.type;
-        if (this.type == 'integer' | this.type == 'float' ) {
-            this.values = { 'minimum' : data.minimum, 'maximum' : data.maximum};
-            par_text = `${this.type} between ${data.minimum} and ${data.maximum}`
+        if (this.type == 'integer' | this.type == 'float') {
+            this.values = { 'minimum': data.minimum, 'maximum': data.maximum };
+            let range_text = this.values.minimum != undefined && this.values.maximum != undefined
+                ? `between ${this.values.minimum} and ${this.values.maximum}`
+                : this.values.minimum != undefined
+                    ? `larger than ${this.values.minimum}`
+                    : `smaller than ${this.values.maximum}`;
+            par_text = `${this.type} ${range_text}`;
         }
         this.viewer_subtitle = `Input type: ${par_text}`;
-        this.create_form();
     }
 
     reset() {
@@ -360,10 +367,11 @@ class TypedInput extends InputField {
         // form.classList.remove('was-validated');
     }
 
-    manage_min_max(format) {
+    manage_format(format) {
         // Add or remove the fields to set minimum and maximum value when input is numeric
-        let has_values = Object.keys(this.values).indexOf('minimum') > -1;
-
+        // Also add or remove default field depending on whether it's a textarea
+        let has_range = Object.keys(this.values).indexOf('minimum') > -1;
+        
         let min_id = `${this.id}-min`;
         let max_id = `${this.id}-max`;
 
@@ -374,33 +382,37 @@ class TypedInput extends InputField {
             if (default_div != null) {
                 this.form_field.form.removeChild(default_div);
             }
+            this.default = undefined;
         } else {
             this.add_default_field();
         }
-        
+
         if (format == "integer" | format == 'float') {
             if (default_input !== null) {
                 default_input.type = 'number';
             }
-            
-            this.form_field.add_input("Minimum", min_id,
-                {
-                    placeholder: '0',
-                    value: has_values ? this.values.minimum : false,
-                    validation_message: "This field is compulsory and the value must be lower than the maximum."
-                });
-            this.form_field.form.querySelector('#' + min_id).type = 'number';
 
-            this.form_field.add_input("Maximum", max_id,
-                {
-                    placeholder: '100',
-                    value: has_values ? this.values.maximum : false,
-                    validation_message: "This field is compulsory and the value must be lower than the minimum."
-                });
-            this.form_field.form.querySelector('#' + max_id).type = 'number';
-            let min_button = this.form_field.form.querySelector('#'  + min_id);
-            let max_button = this.form_field.form.querySelector('#'  + max_id);
-            
+            if (this.form_field.form.querySelector('#' + min_id) == undefined) {
+                this.form_field.add_input("Minimum", min_id,
+                    {
+                        placeholder: '0',
+                        value: has_range ? this.values.minimum : false,
+                        validation_message: "This field is compulsory and the value must be lower than the maximum."
+                    });
+
+                this.form_field.add_input("Maximum", max_id,
+                    {
+                        placeholder: '100',
+                        value: has_range ? this.values.maximum : false,
+                        validation_message: "This field is compulsory and the value must be lower than the minimum."
+                    });
+
+            }
+            let min_button = this.form_field.form.querySelector('#' + min_id);
+            min_button.type = 'number';
+            let max_button = this.form_field.form.querySelector('#' + max_id);
+            max_button.type = 'number';
+
             if (format == 'float') {
                 min_button.setAttribute('step', 'any');
                 max_button.setAttribute('step', 'any');
@@ -424,19 +436,19 @@ class TypedInput extends InputField {
                 this.form_field.form.removeChild(document.getElementById(`div-${min_id}`));
                 this.form_field.form.removeChild(document.getElementById(`div-${max_id}`));
             }
-            if (has_values) {
+            if (has_range) {
                 delete this.values.minimum;
                 delete this.values.maximum;
             }
-            
+
             if (format == 'textarea') {
-                
+
             } else if (default_input !== null) {
                 default_input.type = format;
             }
         }
         if (default_input !== null) {
-            let num_validator = default_input.input == 'number' ? 
+            let num_validator = default_input.input == 'number' ?
                 ` with values between ${default_input.min} and ${default_input.max}` :
                 '';
             let validator = `This field must be of type ${format}${num_validator}.`
@@ -450,10 +462,10 @@ class TypedInput extends InputField {
         this.setup_form();
         let text_options = ["text", "textarea", "date", "email", "time", "url", "integer", "float"];
         this.form_field.add_select("Text type", `${this.id}-format`, text_options, this.type);
-        this.manage_min_max(this.type);
+        this.manage_format(this.type);
         this.form_field.form.querySelector(".form-select").addEventListener('change', () => {
             let selected = this.form_field.form.elements[`${this.id}-format`].value;
-            this.manage_min_max(selected)
+            this.manage_format(selected)
         });
         this.end_form();
     }
@@ -465,7 +477,12 @@ class TypedInput extends InputField {
             this.values.minimum = data.get(`${this.id}-min`);
             this.values.maximum = data.get(`${this.id}-max`);
             // this.type = "number";
-            par_text = `${this.type} between ${this.values.minimum} and ${this.values.maximum}`
+            let range_text = this.values.minimum != undefined && this.values.maximum != undefined
+                ? `between ${this.values.minimum} and ${this.values.maximum}`
+                : this.values.minimum != undefined
+                    ? `larger than ${this.values.minimum}`
+                    : `smaller than ${this.values.maximum}`;
+            par_text = `${this.type} ${range_text}`;
         }
         this.viewer_subtitle = `Input type: ${par_text}`;
     }
@@ -473,8 +490,8 @@ class TypedInput extends InputField {
 }
 
 class ObjectInput extends InputField {
-    constructor(schema_name) {
-        super(schema_name);
+    constructor(schema_name, data_status = 'draft') {
+        super(schema_name, data_status);
         this.form_type = "object";
         this.button_title = "Object";
         this.dummy_title = "";
@@ -488,7 +505,7 @@ class ObjectInput extends InputField {
 
     create_editor() {
         if (this.editor == undefined) {
-            this.editor = new ObjectEditor(this.form_field.form.id, this);
+            this.editor = new ObjectEditor(this);
         } else {
             this.editor.form_id = this.form_field.form.id;
         }
@@ -497,11 +514,11 @@ class ObjectInput extends InputField {
 
     create_modal(schema) {
         super.create_modal(schema);
-        this.editor.card_id = `${this.mode}-${this.id}-${this.schema_name}-${schema.data_status}`;
+        this.editor.card_id = `${this.mode}-${this.id}-${this.schema_name}-${this.schema_status}`;
         if (this.editor.field_ids.length > 0) {
             this.editor.field_ids.forEach((field_id, idx) => {
                 this.editor.new_field_idx = idx;
-                this.editor.view_field(this.editor.fields[field_id], 'object');
+                this.editor.view_field(this.editor.fields[field_id]);
             });
         }
     }
@@ -513,10 +530,13 @@ class ObjectInput extends InputField {
     create_form() {
         this.setup_form();
         this.create_editor();
+        if (this.json_source != undefined) {
+            this.editor.from_json(this.json_source);
+        }
         this.end_form();
         const switches = this.form_field.form.querySelector('#switches-div');
         this.form_field.form.insertBefore(this.editor.button, switches);
-        
+
     }
 
     recover_fields(data) {
@@ -534,9 +554,9 @@ class ObjectInput extends InputField {
         //     .value;
         this.editor.fields_to_json();
         let json = {
-            title : this.title,
-            properties : this.editor.properties,
-            type : 'object'
+            title: this.title,
+            properties: this.editor.properties,
+            type: 'object'
         }
 
         if (this.required) json.required = this.required;
@@ -546,23 +566,19 @@ class ObjectInput extends InputField {
 
     from_json(data) {
         super.from_json(data);
-        this.create_form();
-        this.editor.from_json(data);
-        this.form_field.form
-            .querySelector(`[name="${this.editor.id_field}"]`)
-            .value = this.editor.name;
+        this.json_source = data;
     }
 }
 
 class MultipleInput extends InputField {
-    constructor(schema_name) {
-        super(schema_name);
+    constructor(schema_name, data_status = 'draft') {
+        super(schema_name, data_status);
         this.type = "select";
         this.values.values = ['one', 'two', 'three'];
     }
 
     repeatable = false;
-    
+
     ex_input() {
         let columns = Field.quick('div', 'row');
         let dropdown = Field.dropdown(this);
@@ -611,15 +627,15 @@ class MultipleInput extends InputField {
 
     from_json(data) {
         super.from_json(data);
-        this.values = { 'values' : data.values, 'multiple' : data.multiple, 'ui' : data.ui };
+        this.values = { 'values': data.values, 'multiple': data.multiple, 'ui': data.ui };
         this.create_form();
     }
 }
 
 // The classes above can probably be removed
 class SelectInput extends MultipleInput {
-    constructor(schema_name) {
-        super(schema_name);
+    constructor(schema_name, data_status = 'draft') {
+        super(schema_name, data_status);
         this.form_type = "selection";
         this.button_title = "Select input";
         this.values.multiple = false;
@@ -633,8 +649,8 @@ class SelectInput extends MultipleInput {
 }
 
 class CheckboxInput extends MultipleInput {
-    constructor(schema_name) {
-        super(schema_name);
+    constructor(schema_name, data_status = 'draft') {
+        super(schema_name, data_status);
         this.form_type = "checkbox";
         this.button_title = "Checkboxes";
         this.values.multiple = true;
