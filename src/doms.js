@@ -346,11 +346,11 @@ class MovingChoice extends MovingField {
     static remove_div(div) {
         // static method to remove a div element
         // (because this is also called programmatically to reset the form)
-        if (div.nextSibling.id == "add-mover") {
+        if (div.nextSibling.classList.contains('mover')) {
             // if this is the last option
             div.previousSibling.querySelector(".down").setAttribute("disabled", "");
         }
-        if (div.previousSibling.className == "form-control") {
+        if (div.previousSibling.classList.contains('form-container')) {
             // if this was the first option
             div.nextSibling.querySelector(".up").setAttribute("disabled", "");
         }
