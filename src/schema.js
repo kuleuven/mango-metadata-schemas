@@ -254,6 +254,7 @@ class DummyObject extends ComplexField {
         this.fields.date = bday;
 
         let hair = new SelectInput('example');
+        hair.name = 'hair'
         hair.values.values = ['brown', 'red', 'blond', 'dark', 'pink'];
         hair.value = 'red';
         hair.title = "Hair color";
@@ -265,7 +266,7 @@ class ObjectEditor extends ComplexField {
     constructor(parent) {
         super('choice', parent.id, `object-${parent.schema_status}`);
         this.parent_status = parent.schema_status;
-        this.form_id = parent.form_field.form.id;
+        if (parent.form_field) this.form_id = parent.form_field.form.id;
         this.id_field = `${parent.id}-id`;
     }
 
@@ -779,26 +780,37 @@ class SchemaGroup {
 }
 
 class SchemaForm {
-    constructor(schema_name, container_id, url, prefix) {
-        this.name = schema_name;
+    constructor(json, container_id, url, prefix) {
+        this.name = json.schema_name;
+        this.title = json.title;
+
         this.container = container_id; // div in which to render
         this.url = url; // for posting
         this.prefix = prefix; // for flattening
-        this.fields = {}
+        
+        this.realm = json.realm;
+        this.version = json.version;
+        this.parent = json.parent;
+
+        this.fields = {};
+        this.field_ids = Object.keys(json.properties);
+        this.from_json(json.properties);
     }
 
-    from_json(schema_json, annotated_data = {}) {
-        let schema_data = schema_json[this.name];
-        this.field_ids = Object.keys(schema_data.properties);
-        for (let entry of Object.entries(schema_data.properties)) {
+    from_json(schema_json) {
+        for (let entry of Object.entries(schema_json)) {
             let new_field = InputField.choose_class(this.name, '', entry);
+            if (new_field.constructor.name == 'ObjectInput') {
+                new_field.editor = new ObjectEditor(new_field);
+                new_field.editor.from_json(new_field.json_source);
+            }
             this.fields[entry[0]] = new_field;
         }
         SchemaForm.flatten_object(this, this.prefix);
         let form_div = ComplexField.create_viewer(this, true);
 
         let title = document.createElement('h3');
-        title.innerHTML = `<small class="text-muted">Metadata schema:</small> ${schema_data.title}`;
+        title.innerHTML = `<small class="text-muted">Metadata schema:</small> ${this.title} ${this.version}`;
         document.getElementById(this.container).appendChild(title);
 
         let submitting_row = Field.quick('div', 'row border-top pt-2')
@@ -824,6 +836,10 @@ class SchemaForm {
         form_div.appendChild(submitting_row);
 
         document.getElementById(this.container).appendChild(form_div);
+    }
+
+    add_annotation(annotated_data) {
+        return;
     }
 
     static flatten_object(object_editor, flattened_id) {

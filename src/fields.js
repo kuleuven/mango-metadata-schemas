@@ -116,7 +116,6 @@ class InputField {
                 this.values.ui == 'dropdown' ? dd_input.setAttribute('checked', '') : dd_input.removeAttribute('checked');
             });
         }
-        console.log(this.schema_status)
         this.form_field.add_action_button(this.mode == 'add'
             ? `Add to ${this.schema_status.startsWith('object') ? 'object' : 'schema'}`
             : "Update",
@@ -323,7 +322,6 @@ class TypedInput extends InputField {
                 input.setAttribute('required', '');
             }
             let value = Field.include_value(this);
-            console.log(value)
             if (value != undefined) {
                 input.value = value;
             }
@@ -514,6 +512,7 @@ class ObjectInput extends InputField {
     static ex_input() {
         let mini_object = new DummyObject();
         let inner_input = ComplexField.create_viewer(mini_object, true);
+        inner_input.querySelectorAll('input').forEach((input) => input.setAttribute('readonly', ''));
         inner_input.setAttribute('style', 'display:block;');
         return inner_input;
     }
@@ -651,11 +650,12 @@ class SelectInput extends MultipleInput {
     static ex_input() {
         let columns = Field.quick('div', 'row h-50');
         let example_input = new SelectInput('example');
+        example_input.name = 'select-example';
         let dropdown = Field.dropdown(example_input);
         dropdown.querySelector('option[value="one"]').setAttribute('selected', '');
         dropdown.setAttribute('readonly', '');
         let radio = Field.checkbox_radio(example_input);
-        radio.querySelector('input[value="one"]').setAttribute('selected', '');
+        radio.querySelector('input[value="one"]').setAttribute('checked', '');
         radio.querySelectorAll('input').forEach((input) => input.setAttribute('readonly', ''));
         let col1 = Field.quick('div', 'col-6 p-2 mb-2');
         col1.appendChild(dropdown);
@@ -680,6 +680,7 @@ class CheckboxInput extends MultipleInput {
     static ex_input() {
         let columns = Field.quick('div', 'row');
         let example_input = new CheckboxInput('example');
+        example_input.name = 'checkbox-example';
         let dropdown = Field.dropdown(example_input);
         dropdown.querySelectorAll('option')
             .forEach((option) => {

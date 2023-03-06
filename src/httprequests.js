@@ -69,8 +69,9 @@ class AnnotationRequest extends MangoRequest {
     parse_response(annotated_data, prefix) {
         this.addEventListener('load', () => {
             let json = this.json;
-            let schema = new SchemaForm(Object.keys(json)[0], container_id, 'posting_url', prefix);
-            schema.from_json(json, annotated_data);
+            console.log(json)
+            let schema = new SchemaForm(json, container_id, 'posting_url', prefix);
+            // schema.add_annotation(annotated_data);
         })
     }
 }

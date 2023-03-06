@@ -54,8 +54,8 @@ class Field {
             new_input.type = multiple ? "checkbox" : "radio";
             new_input.value = i;
             new_input.id = `check-${i}`;
+            new_input.name = field.name;
             if (active) {
-                new_input.name = field.name;
                 if (value && value.indexOf(i) > -1) {
                     new_input.setAttribute('checked', '');
                 }
