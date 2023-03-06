@@ -234,6 +234,33 @@ class ComplexField {
 
 }
 
+class DummyObject extends ComplexField {
+    constructor() {
+        super('example', 'example', 'example');
+        delete this.initials;
+        this.field_ids = ['text', 'date', 'hair'];
+        
+        let name = new TypedInput('example');
+        name.id = 'text';
+        name.title = "Full name";
+        name.value = "Jane Doe";
+        this.fields.text = name;
+        
+
+        let bday = new TypedInput('example');
+        bday.type = 'date';
+        bday.title = "Birth date";
+        bday.value = "1970-05-03";
+        this.fields.date = bday;
+
+        let hair = new SelectInput('example');
+        hair.values.values = ['brown', 'red', 'blond', 'dark', 'pink'];
+        hair.value = 'red';
+        hair.title = "Hair color";
+        this.fields.hair = hair;
+    }
+}
+
 class ObjectEditor extends ComplexField {
     constructor(parent) {
         super('choice', parent.id, `object-${parent.schema_status}`);

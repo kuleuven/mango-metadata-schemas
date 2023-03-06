@@ -50,3 +50,10 @@ div.blocked {
 .viewer {
     margin-top: 0.5rem;
 }
+
+.choice-button {
+    display: inline-block;
+    position: relative;
+    vertical-align: middle;
+}
+

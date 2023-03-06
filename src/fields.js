@@ -1,7 +1,7 @@
 class InputField {
     constructor(schema_name, data_status = 'draft') {
         this.description = ""; // description to show in the options viewer
-        this.dummy_title = "Title"; // dummy title in options viewer (probably could go)
+        this.dummy_title = "Informative label"; // dummy title in options viewer (probably could go)
         this.required = false; // whether the field is required
         this.values = {}; // values to return in the json
         this.mode = 'add'; // whether the form has to be created or edited ("mod")
@@ -31,7 +31,7 @@ class InputField {
         let inner_label = Field.quick("label", "form-label h6", this.dummy_title);
 
         example.appendChild(inner_label);
-        example.appendChild(this.ex_input());
+        example.appendChild(this.constructor.ex_input());
         return example;
     }
 
@@ -39,9 +39,9 @@ class InputField {
         this.id = `${this.form_type}-${schema.id}`;
         this.create_form();
 
-        let new_form = Field.quick("div", "border HTMLElement rounded");
+        let new_form = Field.quick("div", "shadow border rounded p-4 mb-3");
 
-        let new_button = Field.quick("button", "btn btn-primary HTMLElementButton", this.button_title);
+        let new_button = Field.quick("button", "btn btn-primary choice-button", this.button_title);
         this.create_modal(schema)
 
         new_button.setAttribute("data-bs-toggle", "modal");
@@ -275,9 +275,10 @@ class TypedInput extends InputField {
     button_title = "Text input";
     description = "Text options: regular text, number (integer or float), date, time, e-mail or URL.<br>"
 
-    ex_input() {
+    static ex_input() {
         let inner_input = Field.quick("input", "form-control");
-        inner_input.placeholder = "example placeholder";
+        inner_input.value = "Some text";
+        inner_input.setAttribute('readonly', '');
         return inner_input;
     }
     add_default_field() {
@@ -319,6 +320,7 @@ class TypedInput extends InputField {
                 input.setAttribute('required', '');
             }
             let value = Field.include_value(this);
+            console.log(value)
             if (value != undefined) {
                 input.value = value;
             }
@@ -493,13 +495,14 @@ class ObjectInput extends InputField {
     constructor(schema_name, data_status = 'draft') {
         super(schema_name, data_status);
         this.form_type = "object";
-        this.button_title = "Object";
-        this.dummy_title = "";
+        this.button_title = "Composite field";
         this.description = "This can contain any combination of the previous form elements.<br>"
     }
 
-    ex_input() {
-        let inner_input = document.createElement("p");
+    static ex_input() {
+        let mini_object = new DummyObject();
+        let inner_input = ComplexField.create_viewer(mini_object, true);
+        inner_input.setAttribute('style', 'display:block;');
         return inner_input;
     }
 
@@ -579,19 +582,6 @@ class MultipleInput extends InputField {
 
     repeatable = false;
 
-    ex_input() {
-        let columns = Field.quick('div', 'row');
-        let dropdown = Field.dropdown(this);
-        let radio = Field.checkbox_radio(this);
-        let col1 = Field.quick('div', 'col-6');
-        col1.appendChild(dropdown);
-        let col2 = Field.quick('div', 'col-6');
-        col2.appendChild(radio);
-        columns.appendChild(col1);
-        columns.appendChild(col2);
-        return columns;
-    }
-
     viewer_input(active = false) {
         // I just send the Fields data (values, actual value, and name if active)
         let div = this.values.ui == 'dropdown' ?
@@ -637,7 +627,7 @@ class SelectInput extends MultipleInput {
     constructor(schema_name, data_status = 'draft') {
         super(schema_name, data_status);
         this.form_type = "selection";
-        this.button_title = "Select input";
+        this.button_title = "Singe-value multiple choice";
         this.values.multiple = false;
         this.values.ui = 'radio';
     }
@@ -646,16 +636,55 @@ class SelectInput extends MultipleInput {
     add_default_field() {
         this.form_field.add_select("Default value (if field is required)", `${this.id}-default`, this.values.values);
     }
+    static ex_input() {
+        let columns = Field.quick('div', 'row h-50');
+        let example_input = new SelectInput('example');
+        let dropdown = Field.dropdown(example_input);
+        dropdown.querySelector('option[value="one"]').setAttribute('selected', '');
+        dropdown.setAttribute('readonly', '');
+        let radio = Field.checkbox_radio(example_input);
+        radio.querySelector('input[value="one"]').setAttribute('selected', '');
+        radio.querySelectorAll('input').forEach((input) => input.setAttribute('readonly', ''));
+        let col1 = Field.quick('div', 'col-6 p-2 mb-2');
+        col1.appendChild(dropdown);
+        let col2 = Field.quick('div', 'col-6 p-2 mb-2');
+        col2.appendChild(radio);
+        columns.appendChild(col1);
+        columns.appendChild(col2);
+        return columns;
+    }
 }
 
 class CheckboxInput extends MultipleInput {
     constructor(schema_name, data_status = 'draft') {
         super(schema_name, data_status);
         this.form_type = "checkbox";
-        this.button_title = "Checkboxes";
+        this.button_title = "Multiple-value multiple choice";
         this.values.multiple = true;
         this.values.ui = 'checkbox';
     }
     dropdown_alt = 'checkbox';
-
+    
+    static ex_input() {
+        let columns = Field.quick('div', 'row');
+        let example_input = new CheckboxInput('example');
+        let dropdown = Field.dropdown(example_input);
+        dropdown.querySelectorAll('option')
+            .forEach((option) => {
+                if (option.value == "one" || option.value == "two") option.setAttribute('selected', '');
+            });
+        dropdown.setAttribute('readonly', '');
+        let checkboxes = Field.checkbox_radio(example_input);
+        checkboxes.querySelectorAll('input').forEach((input) => {
+            if (input.value != "three") input.setAttribute('checked', '');
+            input.setAttribute('readonly', '');
+        })
+        let col1 = Field.quick('div', 'col-6 p-2');
+        col1.appendChild(dropdown);
+        let col2 = Field.quick('div', 'col-6 p-2');
+        col2.appendChild(checkboxes);
+        columns.appendChild(col1);
+        columns.appendChild(col2);
+        return columns;
+    }
 }

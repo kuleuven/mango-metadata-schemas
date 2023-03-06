@@ -19,8 +19,8 @@ class Field {
         }
         values = values ? values : Field.example_values;
         // inner_input.setAttribute("multiple", "");
-        let empty_option = document.createElement("option");
-        inner_input.appendChild(empty_option);
+        // let empty_option = document.createElement("option");
+        // inner_input.appendChild(empty_option);
 
         for (let i of values) {
             let new_option = document.createElement("option");
@@ -80,9 +80,9 @@ class Field {
     }
 
     static include_value(field) {
-        if (this.value != undefined) {
+        if (field.value != undefined) {
             return field.value;
-        } else if (this.required && field.default != undefined) {
+        } else if (field.required && field.default != undefined) {
             return field.default;
         } else {
             return;
