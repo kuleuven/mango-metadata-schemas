@@ -323,7 +323,7 @@ class Schema extends ComplexField {
         form.add_input("Schema label", this.card_id + '-label', {
             placeholder: "Some informative label",
             validation_message: "This field is compulsory.",
-            description: is_new ? "This cannot be changed after the draft is saved." : false
+            description: is_new ? "This cannot be changed once a version has been published." : false
         });
 
         let button = this.create_button();
@@ -345,11 +345,13 @@ class Schema extends ComplexField {
         let name_input = form.form.querySelector(`#${this.card_id}-name`);
 
         if (!is_new) {
-            name_input.setAttribute('readonly', '');
-            form.form.querySelector(`#${this.card_id}-label`).setAttribute('readonly', '');
+            name_input.setAttribute('readonly', '');   
         } else if (!this.field_ids.length > 0) {
             form.form.querySelector('button#publish').setAttribute('disabled', '');
+        }
 
+        if (this.card_id.startsWith('schema-editor') || schemas[this.name].published.length + schemas[this.name].archived.length > 0) {
+            form.form.querySelector(`#${this.card_id}-label`).setAttribute('readonly', '');
         }
 
         if (this.field_ids.length == 0) {
