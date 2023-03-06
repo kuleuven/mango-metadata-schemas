@@ -571,12 +571,20 @@ class Schema extends ComplexField {
             this.title = form.form.querySelector(`#${this.card_id}-label`).value;
             this.status = status;
 
+            // update accordion title
+            if (schemas[this.name].published.length + schemas[this.name].archived.length == 0) {
+                document.getElementById(`${this.name}-schemas-header`)
+                    .querySelector(`button.h4`)
+                    .innerHTML = this.title;
+            }
+            
             // update badge
             let status_badge = document
                 .querySelectorAll(`#v${this.version.replaceAll('.', '')}-tab-${this.name} img`)[1];
             status_badge.setAttribute('alt', 'status published');
             status_badge.setAttribute('name', 'published');
-            status_badge.setAttribute('src', `${SchemaGroup.badge_url}-${status}-${SchemaGroup.status_colors[status]}`)
+            status_badge.setAttribute('src', `${SchemaGroup.badge_url}-${status}-${SchemaGroup.status_colors[status]}`);
+
 
             // update internal tabs
             if (action == 'publish') {
