@@ -167,12 +167,17 @@ class MovingViewer extends MovingField {
         clone.type = form.type;
         clone.default = form.default;
         clone.viewer_subtitle = form.viewer_subtitle;
-        if (form.constructor.name == 'ObjectInput') {
-            clone.editor = form.editor;
-        }
         clone.mode = 'mod';
         clone.create_form();
         clone.create_modal(this.schema);
+        if (form.constructor.name == 'ObjectInput') {
+            clone.editor.field_ids = [...form.editor.field_ids];
+            clone.editor.fields = {...form.editor.fields};
+            clone.editor.field_ids.forEach((field_id, idx) => {
+                clone.editor.new_field_idx = idx;
+                clone.editor.view_field(clone.editor.fields[field_id]);
+            });
+        }
 
         this.schema.new_field_idx = this.schema.field_ids.indexOf(form.id) + 1;
         this.schema.add_field(clone);

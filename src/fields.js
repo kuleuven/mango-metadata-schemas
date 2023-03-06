@@ -116,8 +116,11 @@ class InputField {
                 this.values.ui == 'dropdown' ? dd_input.setAttribute('checked', '') : dd_input.removeAttribute('checked');
             });
         }
-
-        this.form_field.add_action_button(this.mode == 'add' ? "Add to schema" : "Update", 'add');
+        console.log(this.schema_status)
+        this.form_field.add_action_button(this.mode == 'add'
+            ? `Add to ${this.schema_status.startsWith('object') ? 'object' : 'schema'}`
+            : "Update",
+            'add');
 
     }
 

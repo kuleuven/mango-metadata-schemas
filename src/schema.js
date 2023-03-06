@@ -273,6 +273,13 @@ class ObjectEditor extends ComplexField {
         return this.create_button();
     }
 
+    clone(new_parent) {
+        let clone = new ObjectEditor(new_parent);
+        clone.field_ids = [...this.field_ids];
+        clone.fields = {...this.fields};
+        return clone;
+    }
+
 }
 
 class Schema extends ComplexField {
@@ -424,7 +431,7 @@ class Schema extends ComplexField {
                         published_version.draft_from_publish();
                         published_version.field_ids.forEach((field_id, idx) => {
                             published_version.new_field_idx = idx;
-                            published_version.view_field(this.fields[field_id]);
+                            published_version.view_field(published_Version.fields[field_id]);
                         });
                     }
                     if (schemas[this.name].published.length + schemas[this.name].archived.length == 0) {
