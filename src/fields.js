@@ -351,11 +351,7 @@ class TypedInput extends InputField {
         let par_text = this.type;
         if (this.type == 'integer' | this.type == 'float') {
             this.values = { 'minimum': data.minimum, 'maximum': data.maximum };
-            let range_text = this.values.minimum != undefined && this.values.maximum != undefined
-                ? `between ${this.values.minimum} and ${this.values.maximum}`
-                : this.values.minimum != undefined
-                    ? `larger than ${this.values.minimum}`
-                    : `smaller than ${this.values.maximum}`;
+            let range_text = this.print_range();
             par_text = `${this.type} ${range_text}`;
         }
         this.viewer_subtitle = `Input type: ${par_text}`;
@@ -402,14 +398,16 @@ class TypedInput extends InputField {
                     {
                         placeholder: '0',
                         value: has_range ? this.values.minimum : false,
-                        validation_message: "This field is compulsory and the value must be lower than the maximum."
+                        validation_message: "This field is compulsory and the value must be lower than the maximum.",
+                        required: false
                     });
 
                 this.form_field.add_input("Maximum", max_id,
                     {
                         placeholder: '100',
                         value: has_range ? this.values.maximum : false,
-                        validation_message: "This field is compulsory and the value must be lower than the minimum."
+                        validation_message: "This field is compulsory and the value must be lower than the minimum.",
+                        required: false
                     });
 
             }
@@ -453,9 +451,7 @@ class TypedInput extends InputField {
             }
         }
         if (default_input !== null) {
-            let num_validator = default_input.input == 'number' ?
-                ` with values between ${default_input.min} and ${default_input.max}` :
-                '';
+            let num_validator = default_input.input == 'number' ? this.print_range() : '';
             let validator = `This field must be of type ${format}${num_validator}.`
             default_input.parentElement
                 .querySelector('.invalid-feedback')
@@ -482,14 +478,27 @@ class TypedInput extends InputField {
             this.values.minimum = data.get(`${this.id}-min`);
             this.values.maximum = data.get(`${this.id}-max`);
             // this.type = "number";
-            let range_text = this.values.minimum != undefined && this.values.maximum != undefined
-                ? `between ${this.values.minimum} and ${this.values.maximum}`
-                : this.values.minimum != undefined
-                    ? `larger than ${this.values.minimum}`
-                    : `smaller than ${this.values.maximum}`;
+            let range_text = this.print_range();
             par_text = `${this.type} ${range_text}`;
         }
         this.viewer_subtitle = `Input type: ${par_text}`;
+    }
+
+    print_range() {
+        if (this.values.minimum && this.values.maximum) {
+            // if we have both values
+            return `between ${this.values.minimum} and ${this.values.maximum}`;
+        } else if (this.values.minimum) {
+            // if we have the minimum
+            return `larger than ${this.values.minimum}`;
+        } else if (this.values.maximum) {
+            // if we have the maximum
+            return `smaller than ${this.values.maximum}`;
+        } else {
+            // if we don't have any
+            return '';
+        }
+        
     }
 
 }
