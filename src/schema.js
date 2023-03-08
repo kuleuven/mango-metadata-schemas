@@ -835,6 +835,8 @@ class SchemaForm {
 
         document.getElementById(this.container).appendChild(form_div);
         this.form = form_div;
+        this.names = [...this.form.querySelectorAll('input, select')].map((x) => x.name);
+        
     }
 
     post() {
@@ -860,65 +862,59 @@ class SchemaForm {
     add_annotation(annotated_data) {
         // this still needs to be tested
         // as list of key-value pairs?
-        let names = [...this.form.querySelectorAll('input')].map((x) => x.name);
         let keys = Object.keys(annotated_data).filter((x) => x.startsWith(this.prefix));
         let non_objects = [...new Set(keys)].filter((fid) => fid.split('.').length == 3);
-        for (let fid of non_objects) {
-            if (keys.indexOf(fid) == -1) {
-                continue;
-            }
-            let existing_values = annotated_data[fid];
-            let is_checkbox = names.filter((x) => x == fid).length > 1;
-            
-            if (is_checkbox) {
-                this.form.querySelectorAll(`[name="${fid}"]`)
-                    .forEach((chk) => {
-                        if (existing_values.indexOf(chk.value) > -1) chk.setAttribute('checked', '');
-                    });
-            } else if (existing_values.length == 1) {
-                this.form.querySelector(`[name="${fid}"]`).value = existing_values[0];
-            } else {
-                let field_id = fid.match(`${this.prefix}.(?<field>.+)`).groups.field;
-                for (let i = 0; i < existing_values.length; i++) {
-                    let viewer = this.form.querySelectorAll(`div.mini-viewer[name="${field_id}"]`)[i];
-                    let sibling = viewer.nextSibling;
-                    let value = existing_values[i];
-                    if (i == 0) {
-                        viewer.querySelector('input').value = value;
-                    } else {
-                        let new_viewer = viewer.cloneNode(true);
-                        new_viewer.querySelector('input').value = value;
-                        sibling == undefined ? this.form.appendChild(new_viewer) : this.form.insertBefore(new_viewer, sibling);
-                    }
-                }
-            }
-
-        }
+        non_objects.forEach((fid) => this.register_non_object(fid, annotated_data));
         let in_objects = keys.filter((fid) => fid.split('.').length > 3);
         let objs = [...new Set(in_objects.map((x) => x.match(`${this.prefix}.(?<field>[^\.]+).*`).groups.field))];
-        objs.forEach((obj) => {
-            console.log(obj);
-            let fields = in_objects.filter((fid) => fid.startsWith(`${this.prefix}.${obj}.`));
-            console.log(fields);
-            // THIS CODE DOES NOT DEAL WITH DUPLICATED OBJECTS (TEMPORARILY DISABLED)
+        objs.forEach((fid) => this.register_object(fid, annotated_data, in_objects));
+        return;
+    }
 
-            // let max_duplicated = Math.max(...fields.map((x) => annotated_data[x].length));
-            // console.log(max_duplicated);
-            // for (let i = 0; i < max_duplicated; i++) {
-            let i = 0;
-            let viewer = this.form.querySelectorAll(`h5#viewer-${obj}`)[i].parentElement;
-            console.log(viewer)
-            let sibling = viewer.nextSibling;
-            let new_viewer = i == 0 ? viewer : viewer.cloneNode(true);
-            for (let fid of fields) {
-                new_viewer.querySelector(`[name="${fid}"]`).value = annotated_data[fid][i];
+    register_object(obj, annotated_data, object_fields, prefix = null) {
+        prefix = prefix || this.prefix;
+        console.log(obj);
+        let fields = object_fields.filter((fid) => fid.startsWith(`${prefix}.${obj}.`));
+        console.log(fields);
+        // THIS CODE DOES NOT DEAL WITH DUPLICATED OBJECTS (TEMPORARILY DISABLED)
+        let viewer = this.form.querySelector(`h5#viewer-${obj}`).parentElement;
+        
+        let not_nested = fields.filter((fid) => fid.split('.').length == (prefix.split('.').length + 2));
+        not_nested.forEach((fid) => this.register_non_object(fid, annotated_data, viewer));
+
+        let nested = fields.filter((fid) => fid.split('.').length > (prefix.split('.').length + 2));
+        let sub_objs = [...new Set(nested.map((x) => x.match(`${prefix}.${obj}.(?<field>[^\.]+).*`).groups.field))];      
+        sub_objs.forEach((fid) => this.register_object(fid, annotated_data, nested, `${prefix}.${obj}`));
+    }
+
+    register_non_object(fid, annotated_data, form = null) {
+        form = form || this.form;
+        let existing_values = annotated_data[fid];
+        let is_checkbox = this.names.filter((x) => x == fid).length > 1;
+        
+        if (is_checkbox) {
+            form.querySelectorAll(`[name="${fid}"]`)
+                .forEach((chk) => {
+                    if (existing_values.indexOf(chk.value) > -1) chk.setAttribute('checked', '');
+                });
+        } else if (existing_values.length == 1) {
+            form.querySelector(`[name="${fid}"]`).value = existing_values[0];
+        } else {
+            // if the field has been duplicated
+            let field_id = fid.match(`${this.prefix}.(?<field>.+)`).groups.field;
+            for (let i = 0; i < existing_values.length; i++) {
+                let viewer = form.querySelectorAll(`div.mini-viewer[name="${field_id}"]`)[i];
+                let sibling = viewer.nextSibling;
+                let value = existing_values[i];
+                if (i == 0) {
+                    viewer.querySelector('input').value = value;
+                } else {
+                    let new_viewer = viewer.cloneNode(true);
+                    new_viewer.querySelector('input').value = value;
+                    sibling == undefined ? form.appendChild(new_viewer) : form.insertBefore(new_viewer, sibling);
+                }
             }
-            //if (i > 0) {
-                // sibling == undefined ? this.form.appendChild(new_viewer) : this.form.insertBefore(new_viewer, sibling);
-            //}
-            // }
-        });
-        return; // THIS DOES NOT DEAL WITH NESTED OBJECTS YET, EITHER
+        }
     }
 
     static flatten_object(object_editor, flattened_id) {
