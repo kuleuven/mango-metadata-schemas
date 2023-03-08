@@ -83,16 +83,17 @@ class InputField {
 
         // Add require switch and submit button to form
         this.form_field.form.appendChild(document.createElement('br'));
-        let repeatable = !(this_class == 'SelectInput' | this_class == 'CheckboxInput');
+        let dropdownable = this_class == 'SelectInput' | this_class == 'CheckboxInput';
+        let in_object = this.schema_status.startsWith('object');
         let requirable = !(this_class == 'CheckboxInput' | this_class == 'ObjectInput');
         let switchnames = requirable ? ['required'] : [];
         let switches = requirable ? { required: this.required } : {};
-        if (repeatable) {
-            switchnames.push('repeatable');
-            switches.repeatable = this.repeatable;
-        } else {
+        if (dropdownable) {
             switchnames.push('dropdown');
             switches.dropdown = this.values.ui == 'dropdown';
+        } else if (!in_object) {
+            switchnames.push('repeatable');
+            switches.repeatable = this.repeatable;
         }
         this.form_field.add_switches(this.id, switchnames, switches);
 
@@ -103,19 +104,20 @@ class InputField {
                 this.required ? req_input.setAttribute('checked', '') : req_input.removeAttribute('checked');
             });
         }
-        if (repeatable) {
-            let rep_input = this.form_field.form.querySelector(`#${this.id}-repeatable`);
-            rep_input.addEventListener('change', () => {
-                this.repeatable = !this.repeatable;
-                this.repeatable ? rep_input.setAttribute('checked', '') : rep_input.removeAttribute('checked');
-            });
-        } else {
+        if (dropdownable) {
             let dd_input = this.form_field.form.querySelector(`#${this.id}-dropdown`);
             dd_input.addEventListener('change', () => {
                 this.values.ui = this.values.ui == 'dropdown' ? this.dropdown_alt : 'dropdown';
                 this.values.ui == 'dropdown' ? dd_input.setAttribute('checked', '') : dd_input.removeAttribute('checked');
             });
+        } else if (!in_object) {
+            let rep_input = this.form_field.form.querySelector(`#${this.id}-repeatable`);
+            rep_input.addEventListener('change', () => {
+                this.repeatable = !this.repeatable;
+                this.repeatable ? rep_input.setAttribute('checked', '') : rep_input.removeAttribute('checked');
+            });
         }
+
         this.form_field.add_action_button(this.mode == 'add'
             ? `Add to ${this.schema_status.startsWith('object') ? 'object' : 'schema'}`
             : "Update",

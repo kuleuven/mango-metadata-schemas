@@ -19,9 +19,11 @@ class Field {
         }
         values = values ? values : Field.example_values;
         // inner_input.setAttribute("multiple", "");
-        // let empty_option = document.createElement("option");
-        // inner_input.appendChild(empty_option);
-
+        if (active) {
+            let empty_option = document.createElement("option");
+            inner_input.appendChild(empty_option);        
+        }
+        
         for (let i of values) {
             let new_option = document.createElement("option");
             new_option.value = i;
@@ -244,7 +246,7 @@ class MovingViewer extends MovingField {
             this.up.setAttribute("disabled", "");
             sibling.querySelector(".up").removeAttribute("disabled");
         }
-        if (!sibling.nextSibling.classList.contains("adder")) {
+        if (!sibling.nextSibling.nextSibling.classList.contains("viewer")) {
             // if we were in the last place
             this.down.removeAttribute("disabled");
             sibling.querySelector(".down").setAttribute("disabled", "")
