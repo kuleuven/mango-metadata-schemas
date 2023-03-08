@@ -844,7 +844,8 @@ class SchemaForm {
                 console.log(`${pair[0]}, ${pair[1]}`);
             }
         }
-        const url_params = new URL(window.location.href).searchParams;
+        const url = new URL(window.location.href)
+        const url_params = url.searchParams;
         for (let item of ['item_type', 'object_path', 'schema', 'realm']) {
             data.append(item, url_params.get(item));
         }
@@ -852,7 +853,8 @@ class SchemaForm {
         const xhr = new XMLHttpRequest();
         xhr.open('POST', post_url, true);
         xhr.send(data);
-        console.log('Metadata sent');
+        const path_url = `${url.origin}/${url_params.get('item_type')}/browse/${url_params.get('object_path')}`
+        window.open(path_url, '_self');
     }
 
     add_annotation(annotated_data) {
