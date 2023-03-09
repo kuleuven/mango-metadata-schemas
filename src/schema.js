@@ -819,7 +819,9 @@ class SchemaForm {
 
         let submitter = Field.quick('button', 'btn btn-primary', 'Save metadata');
         submitter.type = 'submit';
-        submitter.addEventListener('click', (e) => {
+        submitting_row.appendChild(submitter);
+        form_div.appendChild(submitting_row);
+        form_div.addEventListener('submit', (e) => {
             e.preventDefault();
             if (!form_div.checkValidity()) {
                 e.stopPropagation();
@@ -830,9 +832,7 @@ class SchemaForm {
                 this.post();
             }
         });
-        submitting_row.appendChild(submitter);
-        form_div.appendChild(submitting_row);
-
+        
         document.getElementById(this.container).appendChild(form_div);
         this.form = form_div;
         this.names = [...this.form.querySelectorAll('input, select')].map((x) => x.name);
@@ -855,7 +855,9 @@ class SchemaForm {
         const xhr = new XMLHttpRequest();
         xhr.open('POST', post_url, true);
         xhr.send(data);
-        const path_url = `${url.origin}/${url_params.get('item_type')}/browse/${url_params.get('object_path')}`
+        let path_type = url_params.get('item_type').replace('_', '-');
+        let action = path_type == 'collection' ? 'browse' : 'view';
+        const path_url = `${url.origin}/${path_type}/${action}/${url_params.get('object_path')}`
         window.open(path_url, '_self');
     }
 
