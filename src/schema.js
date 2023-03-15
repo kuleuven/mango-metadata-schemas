@@ -567,6 +567,12 @@ class Schema extends ComplexField {
                     });
                 }
             }
+            console.log(name)
+            let accordion = new bootstrap.Collapse(`#${name}-schemas`);
+            accordion.show();
+            let trigger = document.querySelector(`#nav-tab-${name} button`);
+            console.log(trigger)
+            bootstrap.Tab.getOrCreateInstance(trigger).show();
 
         } else if (this.data_status == 'draft') {
             // this schema was modified
