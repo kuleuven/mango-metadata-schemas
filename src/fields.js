@@ -144,7 +144,6 @@ class InputField {
                 let clone = this.register_fields(schema);
                 form.classList.remove('was-validated');
                 this.modal.toggle();
-                console.log(schema.constructor.name)
                 if (schema.constructor.name == 'ObjectEditor') {
                     let parent_modal_dom = document.getElementById(`${schema.card_id}`);
                     let parent_modal = bootstrap.Modal.getOrCreateInstance(parent_modal_dom);
@@ -278,7 +277,7 @@ class TypedInput extends InputField {
 
     form_type = "text";
     form_type = "text";
-    button_title = "Text input";
+    button_title = "Simple field";
     description = "Text options: regular text, number (integer or float), date, time, e-mail or URL.<br>"
 
     static ex_input() {

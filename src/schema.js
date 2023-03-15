@@ -814,50 +814,36 @@ class SchemaForm {
         title.innerHTML = `<small class="text-muted">Metadata schema:</small> ${this.title} ${this.version}`;
         document.getElementById(this.container).appendChild(title);
 
+        const url = new URL(window.location.href)
+        const url_params = url.searchParams;
+        for (let item of ['item_type', 'object_path', 'schema', 'realm']) {
+            let hidden_input = document.createElement('input')
+            hidden_input.type = 'hidden';
+            hidden_input.name = item;
+            hidden_input.value = url_params.get(item);
+            form_div.appendChild(hidden_input);
+        }
+
         let submitting_row = Field.quick('div', 'row border-top pt-2')
 
         let submitter = Field.quick('button', 'btn btn-primary', 'Save metadata');
         submitter.type = 'submit';
         submitting_row.appendChild(submitter);
         form_div.appendChild(submitting_row);
+        form_div.setAttribute('action', post_url);
+        form_div.setAttribute('method', 'POST');
         form_div.addEventListener('submit', (e) => {
-            e.preventDefault();
             if (!form_div.checkValidity()) {
+                e.preventDefault();
                 e.stopPropagation();
-                form_div.classList.add('was-validated');
-            } else {
-                // save form!
-                console.log('submitting');
-                this.post();
             }
+            form_div.classList.add('was-validated');
         });
         
         document.getElementById(this.container).appendChild(form_div);
         this.form = form_div;
         this.names = [...this.form.querySelectorAll('input, select')].map((x) => x.name);
         
-    }
-
-    post() {
-        const data = new FormData(this.form);
-        for (const pair of data.entries()) {
-            if (pair[1].length > 0) {
-                console.log(`${pair[0]}, ${pair[1]}`);
-            }
-        }
-        const url = new URL(window.location.href)
-        const url_params = url.searchParams;
-        for (let item of ['item_type', 'object_path', 'schema', 'realm']) {
-            data.append(item, url_params.get(item));
-        }
-
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', post_url, true);
-        xhr.send(data);
-        let path_type = url_params.get('item_type').replace('_', '-');
-        let action = path_type == 'collection' ? 'browse' : 'view';
-        const path_url = `${url.origin}/${path_type}/${action}/${url_params.get('object_path')}`
-        window.open(path_url, '_self');
     }
 
     add_annotation(annotated_data) {
@@ -869,6 +855,12 @@ class SchemaForm {
         let in_objects = keys.filter((fid) => fid.split('.').length > 3);
         let objs = [...new Set(in_objects.map((x) => x.match(`${this.prefix}.(?<field>[^\.]+).*`).groups.field))];
         objs.forEach((fid) => this.register_object(fid, annotated_data, in_objects));
+
+        let hidden_input = document.createElement('input')
+        hidden_input.type = 'hidden';
+        hidden_input.name = 'redirect_route';
+        hidden_input.value = annotated_data['redirect_route'];
+        this.form.appendChild(hidden_input);
         return;
     }
 
