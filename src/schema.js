@@ -350,13 +350,12 @@ class Schema extends ComplexField {
 
         if (!is_new) {
             name_input.setAttribute('readonly', '');
+            if (schemas[this.name].published.length + schemas[this.name].archived.length > 0) {
+                form.form.querySelector(`#${this.card_id}-label`).setAttribute('readonly', '');
+            }
         } else if (!this.field_ids.length > 0) {
             form.form.querySelector('button#publish').setAttribute('disabled', '');
-        }
-
-        if (this.card_id.startsWith('schema-editor') || schemas[this.name].published.length + schemas[this.name].archived.length > 0) {
-            form.form.querySelector(`#${this.card_id}-label`).setAttribute('readonly', '');
-        }
+        }        
 
         if (this.field_ids.length == 0) {
             form.form.querySelector('button#publish').setAttribute('disabled', '');
