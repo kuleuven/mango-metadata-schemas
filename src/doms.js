@@ -154,7 +154,7 @@ class MovingViewer extends MovingField {
     }
 
     duplicate(form) {
-        const clone = new form.constructor(this.schema.initial_name);
+        const clone = new form.constructor(this.schema.initial_name, form.schema_status);
         if (form.copies) {
             form.copies += 1;
         } else {
