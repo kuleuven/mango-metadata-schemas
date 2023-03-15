@@ -591,7 +591,7 @@ class MultipleInput extends InputField {
     constructor(schema_name, data_status = 'draft') {
         super(schema_name, data_status);
         this.type = "select";
-        this.values.values = ['one', 'two', 'three'];
+        this.values.values = [];
     }
 
     repeatable = false;
@@ -653,6 +653,7 @@ class SelectInput extends MultipleInput {
     static ex_input() {
         let columns = Field.quick('div', 'row h-50');
         let example_input = new SelectInput('example');
+        example_input.values.values = ['one', 'two', 'three'];
         example_input.name = 'select-example';
         let dropdown = Field.dropdown(example_input);
         dropdown.querySelector('option[value="one"]').setAttribute('selected', '');
@@ -683,6 +684,7 @@ class CheckboxInput extends MultipleInput {
     static ex_input() {
         let columns = Field.quick('div', 'row');
         let example_input = new CheckboxInput('example');
+        example_input.values.values = ['one', 'two', 'three'];
         example_input.name = 'checkbox-example';
         let dropdown = Field.dropdown(example_input);
         dropdown.querySelectorAll('option')
