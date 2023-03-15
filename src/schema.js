@@ -91,6 +91,7 @@ class ComplexField {
 
     view_field(form_object) {
         let form = this.form_div;
+        console.log(form)
         let clicked_button = form.querySelectorAll('.adder')[this.new_field_idx];
         let below = clicked_button.nextSibling;
         let moving_viewer = form_object.view(this);
@@ -631,10 +632,11 @@ class Schema extends ComplexField {
             let new_schema = new Schema(`${this.name}-${no_dots}`,
                 'v' + incremented_major + this.container.slice(2), // adapt to other increments
                 this.urls, new_version);
-            if (action == 'published') {
-                schemas[this.name].archived.push(schemas[this.name].published[0]);
+            if (action == 'publish') {
+                let published_version = schemas[this.name].published[0];
+                schemas[this.name].archived.push(published_version);
                 schemas[this.name].published = [new_schema];
-                new NavBar(this.name).remove_item(`v${published_version.replaceAll('.', '')}`);
+                new NavBar(this.name).remove_item(`v${published_version.version.replaceAll('.', '')}`);
                 let trigger = document.querySelector(`#nav-tab-${this.name} button`);
                 bootstrap.Tab.getOrCreateInstance(trigger).show();
             } else {
