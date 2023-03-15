@@ -372,9 +372,7 @@ class Schema extends ComplexField {
                 let second_sentence = schemas[this.name] && schemas[this.name].published.length > 0 ?
                     ` Version ${schemas[this.name].published[0].version} will be archived.` :
                     ''
-                const toast = new Toast(this.card_id + '-pub',
-                    "Published schemas cannot be edited." + second_sentence);
-                toast.show(() => {
+                Modal.send_confirmation("Published schemas cannot be edited." + second_sentence, () => {
                     // save form!
                     this.save_draft(form, 'publish');
                     form.form.classList.remove('was-validated');
@@ -426,9 +424,7 @@ class Schema extends ComplexField {
             this.nav_bar.add_tab_content('edit', form.form);
 
             this.nav_bar.add_action_button('Discard', 'danger', () => {
-                const toast = new Toast(this.card_id + '-discard',
-                    "A deleted draft cannot be recovered.");
-                toast.show(() => {
+                Modal.send_confirmation("A deleted draft cannot be recovered.", () => {
                     schemas[this.name].draft = [];
                     this.delete();
                     let published_version = schemas[this.name].published[0];
@@ -462,9 +458,7 @@ class Schema extends ComplexField {
             this.nav_bar.add_tab_content('child', child_form.form);
 
             this.nav_bar.add_action_button('Archive', 'danger', () => {
-                const toast = new Toast(this.card_id + '-discard',
-                    "Archived schemas cannot be implemented.");
-                toast.show(() => {
+                Modal.send_confirmation("Archived schemas cannot be implemented.", () => {
                     // schemas[this.name].archived.push = schemas[this.name].published[0];
                     schemas[this.name].published = [];
                     this.delete();
