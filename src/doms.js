@@ -136,10 +136,12 @@ class MovingViewer extends MovingField {
         let modal_id = `mod-${form.id}-${form.schema_name}-${form.schema_status}`;
         let modal = bootstrap.Modal.getOrCreateInstance(document.getElementById(modal_id));
         this.copy = this.add_btn('copy', 'front', () => this.duplicate(form));
+        if (form.schema_status.startsWith('object')) {
+            this.parent_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById(schema.card_id));
+        }
         this.edit = this.add_btn('edit', 'pencil', () => {
-            if (form.schema_status.startsWith('object')) {
-                let parent_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById(schema.card_id));
-                parent_modal.toggle();
+            if (this.parent_modal) {
+                this.parent_modal.toggle();
             }
             modal.toggle();
         });
@@ -256,23 +258,41 @@ class MovingViewer extends MovingField {
     }
 
     remove() {
-        Modal.send_confirmation('Deleted fields cannot be recovered.', () => {
+        if (this.parent_modal) {
+            this.parent_modal.toggle();
+        }
+        Modal.ask_confirmation('Deleted fields cannot be recovered.', () => {
             // Method to remove a viewing field (and thus also the field itself)
             let form_index = this.schema.field_ids.indexOf(this.idx);
+            
+            if (this.schema.field_ids.length > 1) {
+                if (this.idx == this.schema.field_ids.length - 1) {
+                    // if this is the last option
+                    this.div.previousSibling.previousSibling.querySelector(".down").setAttribute("disabled", "");
+                }
+                if (this.idx == 0) {
+                    // if this was the first option
+                    this.below.nextSibling.querySelector(".up").setAttribute("disabled", "");
+                }    
+            }
 
-            if (this.below.nextSibling.id == "col-12") {
-                // if this is the last option
-                this.div.previousSibling.previousSibling.querySelector(".down").setAttribute("disabled", "");
-            }
-            if (this.div.previousSibling.className == "form-control") {
-                // if this was the first option
-                this.below.nextSibling.querySelector(".up").setAttribute("disabled", "");
-            }
             this.div.parentNode.removeChild(this.below);
             this.div.parentNode.removeChild(this.div);
             this.schema.field_ids.splice(form_index, 1);
             delete this.schema.fields[this.idx];
             this.schema.toggle_saving();
+            if (this.parent_modal) {
+                if (!document.querySelector(`.modal#${this.schema.card_id}`).classList.contains('show')) {
+                    this.parent_modal.toggle();
+                }
+            }
+        }, () => {
+            console.log('dismissed')
+            if (this.parent_modal) {
+                if (!document.querySelector(`.modal#${this.schema.card_id}`).classList.contains('show')) {
+                    this.parent_modal.toggle();
+                }
+            }
         });
     }
 
@@ -585,6 +605,36 @@ class BasicForm {
 
 }
 
+class SchemaDraftForm extends BasicForm {
+    constructor(schema) {
+        super(`${schema.card_id}-${schema.data_status}`);
+        this.form.setAttribute('action', schema.urls.new);
+        this.form.setAttribute('method', 'POST');
+        const inputs = {
+            'realm' : realm,
+            'current_version' : schema.version,
+            'raw_schema' : '',
+            'with_status' : schema.status,
+            'parent' : schema.parent ? schema.parent : ''
+        }
+        for (let i of Object.entries(inputs)) {
+            this.add_hidden_field(i[0], i[1]);
+        }
+    }
+
+    add_hidden_field(name, value) {
+        const hidden_input = document.createElement('input');
+        hidden_input.type = 'hidden';
+        hidden_input.name = name;
+        hidden_input.value = value;
+        this.form.appendChild(hidden_input);
+    }
+
+    update_field(name, value) {
+        this.form.querySelector(`input[name="${name}"]`).value = value;
+    }
+}
+
 // create a modal - needs both the constructor and .create_modal()
 class Modal {
     constructor(modal_id, header_title, header_id) {
@@ -657,7 +707,7 @@ class Modal {
         document.querySelector("body").appendChild(modal);
     }
 
-    static send_confirmation(body, action) {
+    static ask_confirmation(body, action, dismiss) {
         let conf_modal = document.querySelector('div.modal#confirmation-dialog');
         let modal = bootstrap.Modal.getOrCreateInstance(conf_modal);
         conf_modal.querySelector('p#confirmation-text')
@@ -667,7 +717,57 @@ class Modal {
                 action();
                 modal.hide();
             });
+        conf_modal.querySelector('button[data-bs-dismiss="modal"]')
+            .addEventListener('click', () => {
+                if (dismiss != undefined) {
+                    dismiss();
+                } else {
+                    return;
+                }
+            });
         modal.show();
+    }
+    static submit_confirmation(body, url, form_data, extra_action) {
+        let conf_modal = document.querySelector('div.modal#confirmation-dialog');
+        let modal = bootstrap.Modal.getOrCreateInstance(conf_modal);
+        conf_modal.querySelector('p#confirmation-text')
+            .innerHTML = body;
+        let form = conf_modal.querySelector('form');
+        form.setAttribute('method', 'POST');
+        form.setAttribute('action', url);
+        const modal_body = form.querySelector('div.modal-body');
+        for (let item of Object.entries(form_data)) {
+            let hidden_input = document.createElement('input')
+            hidden_input.type = 'hidden';
+            hidden_input.name = item[0];
+            hidden_input.value = item[1];
+            modal_body.appendChild(hidden_input);
+        }
+        if (extra_action != undefined) {
+            form.addEventListener('submit', () => {
+                extra_action();
+            });
+        }
+        modal.show();
+    }
+
+    static fill_confirmation_form(form_data) {
+        const form = document.querySelector('div.modal#confirmation-dialog div.modal-body');
+        console.log(form_data)
+        Object.entries(form_data).forEach((item) => {
+            form.querySelector(`input[name="${item[0]}"]`).value = item[1];
+        });
+        console.log(form);
+        
+    }
+
+    static clean_confirmation() {
+        let conf_modal = document.querySelector('div.modal#confirmation-dialog');
+        conf_modal.querySelectorAll('input[type="hidden"]')
+            .forEach((x) => x.remove());
+        const form = conf_modal.querySelector('form');
+        form.removeAttribute('action');
+        form.removeAttribute('method');
     }
 
 }
