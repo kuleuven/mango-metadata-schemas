@@ -1,71 +1,342 @@
-# Metadata schema editor
+Metadata schema manager
+================
 
-This repository contains Javascript code and a CSS file to render a metadata schema editor. The editor was designed for the ManGO portal.
+This repository contains Javascript code and a CSS file to render the
+metadata schema manager for the ManGO portal, a web-based client for
+iRODS. In this context, a metadata schema is a template aimed towards
+the systematic application of metadata to iRODS data objects and
+collections. The scope of this code is twofold: to support the design
+and lifecycle management of metadata schemas and to generate a form
+through which an user can assign metadata based on said schema.
 
-The goal of this editor is to be able to design forms for metadata schema implementation.
-If you want a web-interface that offers forms to assign metadata to data objects, you may want to organize the desired metadata based on pre-defined schemas, which contain desired fields, their possible formats and sometimes even their possible values. This can be implemented by designing a form with text/numeric input fields, radio buttons, checkboxes, dropdowns and even meaningful combinations of the above. The metadata schema editor allows to design the form, choosing the kinds of fields that suit your needs, assigning them IDs and labels and setting different properties, such as the kind of input for the text input fields (free text, e-mails, integers, floats...) and the selection of values for radios, checkboxes and dropdowns. Fields can be marked as required and both input fields and objects (i.e. combinations of fields) can be marked as repeatable.
-The output is then stored as a json file with the format of the "basic.json" example.
+On the one hand, the metadata schema manager allows to design a form,
+choosing among different kinds of fields (simple input fields,
+multiple-choice and even nested schemas, *aka* composite fields). The
+templates for these forms, here called **schemas**, can go through
+different stages, from drafts to published to archived versions. The
+different fields, the lifecycle and the specifications of the JSON
+format in which schemas are stored are described in [the documentation
+file](docs/metadata-schemas.md). On the other hand, some of the code
+meant for the manager can also be used for the rendering of the form
+itself.
 
-For information on the output format, check the documents in the "doc" folder of this repository.
+[Section 1](#sec-basics) describe the basic requirements to use the code
+in this repository, both the minimum characteristics in the HTML file it
+should be anchored to and the information that should be sent to and
+from the backend for different tasks. [Section 2](#sec-files) offers an
+overview of the contents of each js file in the “src” directory; the
+different classes and methods are commented in the files themselves.
 
-## How to use
+# How to use
 
-The Javascript code in this repository needs to be hooked to a DOM element (typically a `<div>`) with the id "metadata_template_list_container". This is defined in "src/init.js".
-It also assumes that there is a custom tag "url-list" with a few custom fields that contain the urls to retrieve lists of existing metadata schemas and to save/update schemas.
+<!-- I'm not sure whether the specifics of the manager vs annotator should all be introduced here or in different files -->
 
-The code in "src/init.js" reads the contents of this tag and stores the values of the urls in a `urls` object, which should have at least a `list` and a `new` item containing, respectively, the url to retrieve the list of existing metadata schema and the url to save new schemas or update existing ones. These urls are then used by the `Schema()` and `TemplatesRequest()` calls in the same file.
+Most of the Javascript files contained in this repository define classes
+used for the schema management and application. However, two of these
+files define global variables and kicks off whatever needs to happen:
+[“manager.js”](src/manager.js) for the schema maanager and
+[“annotator.js”](src/annotator.js) for the metadata application form.
+Each of them hooks to one or two specific HTML elements, described in
+[Section 1.1](#sec-html). The variables defined in each of these scripts
+are documented in the scripts themselves.
 
-In other words, you could also provide the urls as an object by editing the code in "init.js" and providing your custom `urls` object to these calls.
+The HTML page that calls these scripts needs to call
+[“doms”](src/doms.js), [“fields”](src/fields.js),
+[“schema”](src/schema.js) and [“httprequests”](src/httprequests.js),
+followed by either “manager” or “annotator”:
 
-All the Javascript files should be included in your HTML:
-
-```html
+``` html
 <script src="doms.js"></script>
 <script src="fields.js"></script>
 <script src="schema.js"></script>
 <script src="httprequests.js"></script>
-<script src="init.js"></script>
+<script src="manager.js"></script>
 ```
 
 Or, for example, given a Jinja2 template:
 
-```jinja2
-{% for file in ['doms', 'fields', 'schema', 'httprequests', 'init'] %}
+``` djangotemplate
+{% for file in ['doms', 'fields', 'schema', 'httprequests', 'manager'] %}
     <script src="{{'dist/{}.js'.format(file)}}"></script>
 {% endfor %}
 ```
 
+## HTML Elements
+
+The file from which [“manager.js”](src/manager.js) is called should
+contain:
+
+- An element with id “metadata_template_list_container” (as defined at
+  the beginning of manager.js)
+- An element with the custom tag `url-list` and the attributes described
+  in [Table 1](#tbl-urls). The last two attributes are used to focus on
+  the tabs corresponding to the latest schema that was modified
+  (created, edited, published, deleted or archived).
+- A [Bootstrap 5.2
+  Modal](https://getbootstrap.com/docs/5.2/components/modal/) following
+  the model of [Listing 1](#lst-modal), which is used for confirmation
+  dialogs.
+
+<div id="tbl-urls">
+
+| Attribute        | Value description                                                  |
+|------------------|--------------------------------------------------------------------|
+| `new`            | url used to post schemas (on creation, editing or publication)     |
+| `list`           | url to request the list of existing schemas                        |
+| `delete`         | url to post the information of a draft schema that must be deleted |
+| `archive`        | url to post the information of a published schema that is archived |
+| `realm`          | the name of the current realm                                      |
+| `schema-name`    | name of the latest schema modified                                 |
+| `schema-version` | version of the latest schema modified                              |
+
+Table 1: Attributes to include in the `url-list` tag for the metadata
+schema manager.
+
+</div>
+
+<!-- When the code is published, we can just link to the lines in the jinja template. -->
+
+<div id="lst-modal" class="listing">
+
+Listing 1: Confirmation modal for metadata schema manager.
+
+``` html
+<div class="modal" id="confirmation-dialog" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title">Are you sure?</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"  aria-label="Close"></button>
+      </div>
+      <form id="confirmation-form">
+        <div class="modal-body">
+          <p id="confirmation-text">.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary" id="action">I'm sure</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+```
+
+</div>
+
+The file from which [“annotator.js”](src/annotator.js) is called should
+contain an element with id “metadata_form” and the custom attributes
+described in [Table 2](#tbl-annotator).
+
+<div id="tbl-annotator">
+
+| Attribute       | Value description                                                    |
+|-----------------|----------------------------------------------------------------------|
+| `schema-url`    | url used to retrieve the metadata schema                             |
+| `post-url`      | url to post the metadata on submission of the form                   |
+| `schema-values` | an encoded JSON with the existing metadata related to the schema     |
+| `prefix`        | prefix used for the metadata related to the schema (e.g. `mgs.book`) |
+
+Table 2: Attributes to include in the “metadata_form” tag for the
+metadata schema manager.
+
+</div>
+
+The JSON with the metadata provided to `schema-values` is then decoded
+with `atob()` and parsed. Given that JSON does not allow repeated keys,
+if one attribute name is associated with multiple values, the values
+should be provided as a list.
+
+## Communication with the backend
+
+In this section we describe the format expected for the information
+obtained from and sent to the backend for various operations, as shown
+in [Table 3](#tbl-backend).
+
+<div id="tbl-backend">
+
+| Program   | GET                                  | POST                |
+|-----------|--------------------------------------|---------------------|
+| Manager   | list of schemas <br> existing schema | (modified) schema   |
+| Annotator | existing schema                      | (modified) metadata |
+
+Table 3: HTTP Requests to the backend.
+
+</div>
+
+### GET list of schemas (Manager)
+
+The list of existing schemas is requested via the url coded in the
+`list` attribute of the `url-list` tag. The contents are parsed and
+manipulated by the `TemplatesRequest` class in
+[httprequests.js](src/httprequests.js).
+
+The request must return a (JSON) list with one item per existing schema,
+each represented as an object. Each object must have three elements:
+`name`, `url` and `schema_info`. The first two attributes contain the
+name of the schema and the url that can be used to retrieve a specific
+version of the schema. This url includes “status” as placeholder for the
+status that will be requested.
+<!-- Note: this will also have to include versions if we can ask for archived versions -->
+
+The `schema_info` attribute is an object with the following key-value
+pairs:
+
+- `archived`, `published` and `draft`, which can be “true” or “false”.
+  If `archived` is true, there is at least one archived version but no
+  published or draft versions. The values of `draft` and `published`
+  indicate whether there are draft or published versions, respectively.
+
+- `draft_count` and `published_count` are 0 if there are no
+  draft/published versions and 1 if there is one version with that
+  status. `total_count` keeps track of the total number of versions.
+
+- `draft_name` and `published_name` indicate the filename of the draft
+  and published version, respectively, if they exist.
+
+- `latest_version` provides the number of the latest version that was
+  created. `versions_sorted` is a sorted list of the versions that have
+  been created.
+
+- `realm`, `title` and `timestamp`
+
+### GET schema
+
+In the metadata schema manager, a specific schema can be requested via
+the url provided in the list of schemas, by replacing “status” with the
+status of the desired version. The contents are parsed and manipulated
+by the `TempalateReader` class in
+[httprequests.js](src/httprequests.js), which is called by the
+`load_versions()` method of the `SchemaGroup` class.
+
+The same url is provided as the `schema-url` attribute of the required
+element in the annotation section, with “status” changed to “published”.
+In this case, the contents are parsed and manipulated by the
+`AnnotationRequest` class in[httprequests.js](src/httprequests.js).
+
+The contents sent from the backend are the contents of the JSON file of
+the requested version, as described in [the
+documentation](docs/metadata-schemas.md).
+
+### POST schema
+
+When posting a modified schema, the following information must be sent:
+
+- `realm`: the realm in which the schema is designed and where it will
+  be stored.
+- `with_status`: the status of the version of the schema.
+- `schema_name`: the name of the schema.
+
+These three fields are necessary for any posting action: saving,
+deleting or archiving. Deleting is achieved by using the url stored in
+the `delete` attribute indicated above and is only possible for draft
+versions. Archiving requires the `archive` url and is only possible for
+published versions.
+
+Other actions, such as saving or publishing a draft, require more fields
+to be sent:
+
+- `current_version`: the version number of the version to be saved.
+- `parent` : if the schema is a clone of another schema, the name and
+  version number of the parent.
+- `raw_schema` : a stringified and encoded (`btoa()`) object with the
+  contents of the `properties` element of the schema, i.e. the fields.
+- `title`: the title of the schema, i.e. a user-friendly label.
+
+### POST metadata
+
+When posting metadata, the different AVUs (or, more specifically,
+metadata attribute-value pairs) must be sent as such with the
+appropriate namespacing, along with the following fields, which in the
+ManGO portal are provided via URL parameters:
+
+- `item_type` : “collection” or “data_object”
+- `object_path` : the path to the collection or data object that is
+  being annotated
+- `schema` : the name of the schema
+- `realm`
+
 # Structure of the Javascript files
 
-The only file that actually runs code is "src/init.js", which hooks to the DOM elements and creates everything you will see. It also creates a `Schema()` instance for the new schema you may want to design and a `TemplatesRequest()` class, which retrieves the list of existing schemas and then renders them.
+As mentioned above, the only files that actually run code are
+[“manager.js”](src/manager.js) for the metadata schema manager and
+[“annotator.js”](src/annotator.js) for the schema application, which
+hook to specific DOM elements and trigger the creation of others. The
+first file also creates a `Schema()` instance for a new schema you may
+want to design and a `TemplatesRequest()` instance, which retrieves the
+list of existing schemas and then renders them. The annotation script,
+instead, creates an `AnnotationRequest()` instance, which retrieves the
+existing schema and parses it along with the existing metadata to
+generate and (if relevant) prefill the form.
 
-The rest of the files define different classes then instantiated through the workflow.
+The rest of the files define different classes then instantiated through
+the workflow. More detailed documentation can be found in the files
+themselves.
 
-## doms.js
+## [doms.js](src/doms.js)
 
-The DOMs file contains a number of classes that programmatically generate and manipulate DOM elements.
+The DOMs file contains a number of classes that programmatically
+generate and manipulate DOM elements.
 
-- The `Field` class only contains static elements that can be reused.
+- The `Field` class only contains static elements that can be reused:
+  from a basic element with some tag and inner text to standard
+  dropdowns, checkboxes and input labels.
 
-- The `MovingField` class defines a box with an input field and buttons to move it up and down; it has the `MovingViewer` and `MovingChoice` subclasses which are used, respectively, for viewing created fields (and reordering them) and for defining the options in a multiple-choice field.
+- The `MovingField` class defines a box with an input field and buttons
+  to move it up and down, delete it and, if relevant, copy it or edit
+  it. It has the `MovingViewer` and `MovingChoice` subclasses which are
+  used, respectively, to edit and copy created fields and to defe the
+  options in a multiple-choice field.
 
-- The `BasicForm` class sets up the common aspects to the forms that design the different fields, such as inputs and labels, switches and buttons.
+- The `BasicForm` class sets up the common aspects to the forms that
+  design the different fields, such as inputs and labels, switches and
+  buttons. Its subclass `SchemaDraftForm`, used to generate a form for a
+  schema, adds the hidden fields necessary to post a schema.
 
-- The `Modal` and `AccordionItem` classes help create modals (to create forms) and accordion items (to create, view and edit schemas).
+- The `Modal`, `AccordionItem` and `NavBar` classes help create modals
+  (to create forms), accordion items (each harboring a schema) and tabs
+  (to view and edit specific versions of a schema).
 
-## fields.js
+## [fields.js](src/fields.js)
 
-The Fields file contains a parent class called `InputField` that sets up the common ground for all kinds of fields that can be designed. It includes important attributes and methods to select them, design them, view them, edit them and retrieve information from their forms.
+The Fields file contains a parent class called `InputField` that sets up
+the common ground for all kinds of fields that can be designed. It
+includes important attributes and methods to select them, design them,
+view them, edit them and retrieve information from their forms.
 
-Its three main children are `TypedInput`, `MultipleInput` and `ObjectInput`, which are used to create scalar inputs (text, numbers...), multiple-choice inputs (radio and checkbox, dropdowns...) and objects (combinations of other kinds of inputs). The `MultipleInput` subclass has two further children: `SelectInput` for when only one of the possible answers can be selected, and `CheckboxInput` for when many of the possible answers can be selected. Both can be eventually rendered as dropdowns, but their alternative shapes are different: radio buttons for the former and checkbox for the latter.
+Its three main children are `TypedInput`, `MultipleInput` and
+`ObjectInput`, which are used to create simple inputs (text, numbers and
+individual checkboxes), multiple-choice inputs (radio and checkbox as
+well as dropdowns) and composite fields (combinations of other kinds of
+inputs), respectively. The `MultipleInput` subclass has two further
+children: `SelectInput` for single-value multiple-choice, i.e. when only
+one of the possible answers can be selected, and `CheckboxInput` for
+multiple-value multiple-choice, i.e. when many of the possible answers
+can be selected. Both can be eventually rendered as dropdowns, but their
+alternative shapes are different: radio buttons for the former and
+checkbox for the latter.
 
-## schema.js
+## [schema.js](src/schema.js)
 
-The Schema file contains a parent class `ComplexField` with two children: `ObjectEditor` and `Schema`. Since Object fields are basically mini schemas, their creation, edition and rendering should be very similar. `ComplexField` gathers their commonalities, whereas the subclasses specify what is particular for objects and schemas respectively.
+The Schema file contains three main classes: `ComplexField`,
+`SchemaGroup` and `SchemaForm`. First, the `ComplexField` class is an
+abstraction of its three children: `DummyObject`, `ObjectEditor` and
+`Schema`. A `Schema` is used to represent and manipulate a version of a
+schema; `ObjectEditor` is its simpler sibling used to represent
+composite fields (or, rather, their collections of fields), and
+`DummyObject` is a fixed implementation of the `ObjectEditor` used to
+render an example of a composite field. Second, the `SchemaGroup` class
+is used to represent a collection of versions of the same schema,
+manipulating the corresponding tabs. Finally, the `SchemaForm` class is
+the key of the annotation section of the code, and is used to parse a
+schema, connect it to annotated data and generate the corresponding
+form.
 
-## httprequests.js
+## [httprequests.js](src/httprequests.js)
 
-The HttpRequests file contains a class that extends `XMLHttpRequest`, `MangoRequest`, with two children: `TemplatesRequest` and `TemplateReader`. These classes are used to retrieve information from the server: the list of existing templates and individual templates, respectively.
-
-For the moment, no such class is used for posting information to the server side.
-
+The HttpRequests file contains a class that extends `XMLHttpRequest`,
+`MangoRequest`, with three children: `TemplatesRequest`,
+`TemplateReader` and `AnnotationRequest`. These classes are used to
+retrieve information from the server: the list of existing schemas for
+`TemplatesRequest` and individual schemas for the other two, which are
+used in the Manager and Annotator sections repsectively.
