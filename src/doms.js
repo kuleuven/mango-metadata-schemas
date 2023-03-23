@@ -1,5 +1,15 @@
-// for now this is just utilities for fields
+/**
+ * Class for HTML DOM utilities. Only static methods.
+ */
 class Field {
+    /**
+     * Create an HTML element with a certain class and maybe text.
+     * @static
+     * @param {String} tag Tag Name for the HTML element.
+     * @param {String} class_name Class name for the HTML element.
+     * @param {String} [inner=null] Text to be added inside the HTML element.
+     * @returns {HTMLElement} An HTML element with the provided tag name, class and (optionally) internal text.
+     */
     static quick(tag, class_name, inner = null) {
         let el = document.createElement(tag);
         el.className = class_name;
@@ -9,16 +19,29 @@ class Field {
         return el;
     }
 
+    /**
+     * Example values for example dropdowns/checkboxes/radios
+     * @type {String[]}
+     */
     static example_values = ['A', 'B', 'C'];
 
+    /**
+     * Create a BS5 Select input.
+     * @static
+     * @param {MultipleInput} field Input field to build a dropdown upon.
+     * @param {Boolean} [active=false] Whether it will be used for annotation. 
+     * @returns {HTMLElement} A dropdown (select input).
+     */
     static dropdown(field, active = false) {
         let { multiple, values } = field.values;
         let inner_input = Field.quick("select", "form-select");
-        if (multiple) {
+        if (multiple) { // if it's multiple-value
             inner_input.setAttribute('multiple', '');
         }
+        // if there are values, use them, otherwise go for the basic examples
         values = values ? values : Field.example_values;
-        // inner_input.setAttribute("multiple", "");
+        
+        // if this will be used for annotation
         if (active) {
             let empty_option = document.createElement("option");
             inner_input.appendChild(empty_option);
@@ -30,6 +53,7 @@ class Field {
             new_option.innerHTML = i;
             inner_input.appendChild(new_option);
         }
+        // if this will be used for annotation
         if (active) {
             inner_input.name = field.name;
             if (field.required) {
@@ -44,6 +68,13 @@ class Field {
         return inner_input;
     }
 
+    /**
+     * Create a BS5 checkbox or radio input.
+     * @static
+     * @param {MultipleInput} field Input field to build a dropdown upon.
+     * @param {Boolean} [active=false] Whether it will be used for annotation. 
+     * @returns {HTMLElement} A checkbox or radio input.
+     */
     static checkbox_radio(field, active = false) {
         let { multiple, values } = field.values;
         values = values ? values : Field.example_values;
@@ -57,6 +88,7 @@ class Field {
             new_input.value = i;
             new_input.id = `check-${i}`;
             new_input.name = field.name;
+            // if it will be used for annotation
             if (active) {
                 if (value && value.indexOf(i) > -1) {
                     new_input.setAttribute('checked', '');
@@ -73,6 +105,13 @@ class Field {
         return inner_input;
     }
 
+    /**
+     * Quickly create a label for an input field.
+     * @static
+     * @param {String} label_text Text for the input label.
+     * @param {String} input_id ID of the input this label describes.
+     * @returns {HTMLElement} A label for an input field.
+     */
     static labeller(label_text, input_id) {
         let label = Field.quick("label", "form-label h6", label_text);
         label.id = `label-${input_id}`;
@@ -81,6 +120,11 @@ class Field {
         return label;
     }
 
+    /**
+     * Check if a value has been provided for a field, or otherwise a default, and retrieve it.
+     * @param {InputField} field Field from which the value will be extracted
+     * @returns An existing value, or a default value, or nothing.
+     */
     static include_value(field) {
         if (field.value != undefined) {
             return field.value;
@@ -92,23 +136,54 @@ class Field {
     }
 
 }
-class MovingField {
-    // Parent class for a form element that can move around
-    // to use in the design of multiple choice elements and to view form fields of a schema
 
+/**
+ * Class representing a form element or field that can move up and down among others of its kind.
+ * @property {String|Number} idx Index or identifier of this field in relation to its siblings.
+ * @property {HTMLButtonElement} up Button used to move the field one slot up.
+ * @property {HTMLButtonElement} down Button used to move the field one slot down.
+ */
+class MovingField {
+    /**
+     * Initiate a moving field.
+     * @class
+     * @param {String|Number} idx Index or identifier of this field in relation to its siblings.
+     */
     constructor(idx) {
-        // Each field will have an id and a label / title
-        // This creates a div with, a label and three buttons: up, down and remove
         this.idx = idx;
         this.up = this.add_btn('up', 'arrow-up-circle', () => this.move_up());
         this.down = this.add_btn('down', 'arrow-down-circle', () => this.move_down());
     }
 
+    /**
+     * Move the field one slot up.
+     * @abstract
+     */
+    move_up() {
+        return;
+    }
+
+    /**
+     * Move the field one slot down.
+     * @abstract
+     */
+    move_down() {
+        return;
+    }
+
+    /**
+     * Create a button for the Moving Field.
+     * @param {String} className Class name for the button indicating its function ('up', 'down', 'edit'...).
+     * @param {String} symbol Name of the Bootstrap Icon symbol to use in the button ('arrow-up-circle', 'arrow-down-circle'...).
+     * @param {Function} [action=false] What the button must do on click. If 'false', nothing happens.
+     * @returns {HTMLButtonElement} The button to be added.
+     */
     add_btn(className, symbol, action = false) {
-        // Method to create a button, e.g. up, down, remove and edit
+        // use outlines for MovingViewer and filled buttons for MovingChoice
         let button_color = this.constructor.name == 'MovingViewer' ? 'btn-outline-primary' : 'btn-primary'
         let btn = Field.quick('button', `btn ${button_color} mover ${className}`);
         btn.id = `${className}-${this.idx}`;
+        // what should the button do on click?
         if (action) {
             btn.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -116,6 +191,7 @@ class MovingField {
             });
         }
 
+        // add icon
         let icon = Field.quick('i', `bi bi-${symbol}`);
         btn.appendChild(icon);
         return btn;
@@ -123,57 +199,96 @@ class MovingField {
 
 }
 
+/**
+ * Class representing box to view and edit an input field when editing a schema.
+ * @extends MovingField
+ * @property {String} title Title of the box (title of the field, with asterisk if required).
+ * @property {Boolean} repeatable Whether the field is repeatable.
+ * @property {HTMLElement} div Box containing the title, example and buttons.
+ * @property {HTMLElement} body Example input field, showing what the field looks like.
+ * @property {bootstrap.Modal} parent_modal If the field is inside a composite field, the composite field's editor modal.
+ * @property {HTMLButtonElement} rem Button used to remove the field.
+ * @property {HTMLButtonElement} copy Button to duplicate the field.
+ * @property {HTMLButtonElement} edit Button to edit the field.
+ * @property {ComplexField} schema The schema (or mini-schema of composite field) to which the field belongs.
+ * @property {HTMLButtonElement} below Button under the field used to add a new field under it. It moves along with the field.
+ */
 class MovingViewer extends MovingField {
-    // Specific class for viewing fields of a schema
+    /**
+     * Create a box to show and allow editing / placement / removal / duplication of a field.
+     * @param {InputField} form Field to be edited.
+     * @param {ComplexField} schema Schema or mini-schema of a composite field to which the field belongs.
+     */
     constructor(form, schema) {
         super(form.id);
-        this.rem = this.add_btn('rem', 'trash', () => this.remove());
         this.title = form.required ? form.title + '*' : form.title;
         this.repeatable = form.repeatable;
+        
+        // div element
         this.div = Field.quick("div", "card border-primary viewer");
         this.div.id = form.id;
         this.body = form.viewer_input();
+        // Modal called for editing the field
         let modal_id = `mod-${form.id}-${form.schema_name}-${form.schema_status}`;
         let modal = bootstrap.Modal.getOrCreateInstance(document.getElementById(modal_id));
-        this.copy = this.add_btn('copy', 'front', () => this.duplicate(form));
         if (form.schema_status.startsWith('object')) {
             this.parent_modal = bootstrap.Modal.getOrCreateInstance(document.getElementById(schema.card_id));
         }
+
+        // more buttons
+        this.rem = this.add_btn('rem', 'trash', () => this.remove());
+        this.copy = this.add_btn('copy', 'front', () => this.duplicate(form));
         this.edit = this.add_btn('edit', 'pencil', () => {
             if (this.parent_modal) {
                 this.parent_modal.toggle();
             }
             modal.toggle();
         });
+        // aesthetics when a field has just been duplicated
         if (form.is_duplicate) {
             this.copy.setAttribute('disabled', '');
             // this.edit.classList.replace('btn-outline-primary', 'btn-primary');
             this.edit.classList.add('shadow');
         }
 
+        // bring everything together
         this.assemble();
         this.schema = schema;
     }
 
+    /**
+     * Create a duplicate of a field with empty ID.
+     * Until the duplicate has a new ID, the (mini-)schema cannot be saved or published.
+     * The duplicate itself cannot be copied (the button is disabled) and the "edit" button is highlighted.
+     * @param {InputField} form Field to duplicate / copy / clone.
+     */
     duplicate(form) {
+        // copy of the clone
         const clone = new form.constructor(this.schema.initial_name, form.schema_status);
+        
+        // keep track of how many copies have been made, for temp-ID purposes
         if (form.copies) {
             form.copies += 1;
         } else {
             form.copies = 1;
         }
+        
+        // Transfer values of the original field to the copy
         clone.id = `${form.id}-copy${form.copies}`;
         clone.title = form.title;
         clone.is_duplicate = true;
         clone.required = form.required;
         clone.repeatable = form.repeatable;
-        clone.values = { ...form.values };
+        clone.values = { ...form.values }; // new version of 'values'
         clone.type = form.type;
         clone.default = form.default;
         clone.viewer_subtitle = form.viewer_subtitle;
         clone.mode = 'mod';
+        // Create the form and the modal corresponding to the clone field
         clone.create_form();
         clone.create_modal(this.schema);
+
+        // Transfer the mini-schema if the field is composite
         if (form.constructor.name == 'ObjectInput') {
             clone.editor.field_ids = [...form.editor.field_ids];
             clone.editor.fields = { ...form.editor.fields };
@@ -183,23 +298,30 @@ class MovingViewer extends MovingField {
             });
         }
 
+        // Add the cloned field to the (mini-)schema it belongs to
         this.schema.new_field_idx = this.schema.field_ids.indexOf(form.id) + 1;
         this.schema.add_field(clone);
-
     }
 
+    /**
+     * Construct and fill the HTML Element.
+     */
     assemble() {
         let header = Field.quick('div', 'card-header mover-header');
         let header_title = document.createElement('h5');
         header_title.innerHTML = this.title;
+
+        // add symbol to indicate that a field is repeatable
         if (this.repeatable) {
             header_title.appendChild(Field.quick('i', 'bi bi-front px-2'));
         }
 
+        // add buttons in order
         let header_buttons = Field.quick('div', 'btn-list');
         for (let button of [this.up, this.down, this.copy, this.edit, this.rem]) {
             header_buttons.appendChild(button);
         }
+        // append HTML Elements to their parents
         header.appendChild(header_title);
         header.appendChild(header_buttons);
 
@@ -211,83 +333,116 @@ class MovingViewer extends MovingField {
 
     }
 
+    /**
+     * Move the viewer down one slot.
+     * This method is called when the 'down' button is clicked on,
+     * which is disabled if this is the last viewer in the sequence of viewers.
+     */
     move_down() {
-        // Method to move a viewing field downwards
-        // It has an edit button and no working input field
-        // The "input field" (with no effect) depends on the kind of field
-        // this.below is defined in schema.js as the 'add element' button below it
-        let form_index = this.schema.field_ids.indexOf(this.idx);
+        let form_index = this.schema.field_ids.indexOf(this.idx); // index of the field among other fields
+        console.log(form_index)
+        console.log(this.below)
         let sibling = this.below.nextSibling; // element under the bottom button
+        console.log(sibling)
         let sibling_button = sibling.nextSibling; // button under the bottom button
 
+        // first, move the field and its button
         this.div.parentElement.insertBefore(sibling, this.div);
         this.div.parentElement.insertBefore(sibling_button, this.div);
-        if (!sibling.previousSibling.previousSibling.classList.contains("viewer")) {
-            // if the other div went to first place        
+        
+        // if the other div went to the first place
+        if (form_index == 0) {
             sibling.querySelector(".up").setAttribute("disabled", "");
             this.up.removeAttribute("disabled");
         }
-        if (!this.below.nextSibling.classList.contains("viewer")) {
-            // if this dev went to the last place
+        
+        // if this div became last
+        if ((form_index + 2) == this.schema.field_ids.length) {
             sibling.querySelector(".down").removeAttribute("disabled");
             this.down.setAttribute("disabled", "")
         }
 
+        // move the field down in the schema
         this.schema.field_ids.splice(form_index, 1);
         this.schema.field_ids.splice(form_index + 1, 0, this.idx);
     }
 
+    /**
+     * Move the viewer up one slot.
+     * This method is called when the 'up' button is clicked on,
+     * which is disabled if this is the first viewer in the sequence of viewers.
+     */
     move_up() {
-        // Method to move a viewing field upwards
-        let form_index = this.schema.field_ids.indexOf(this.idx);
+        let form_index = this.schema.field_ids.indexOf(this.idx); // index of the field among other fields
         let sibling = this.div.previousSibling.previousSibling;
+        
+        // move the div and its button upwards
         this.div.parentElement.insertBefore(this.div, sibling);
         this.div.parentElement.insertBefore(this.below, sibling);
-        if (!this.div.previousSibling.previousSibling.classList.contains("viewer")) {
-            // if this div went to first place
+        
+        // if this div went to first place
+        if (form_index == 1) {            
             this.up.setAttribute("disabled", "");
             sibling.querySelector(".up").removeAttribute("disabled");
         }
-        if (!sibling.nextSibling.nextSibling.classList.contains("viewer")) {
-            // if we were in the last place
+
+        // if this div was the last one
+        if ((form_index + 1) == this.schema.field_ids.length) {
             this.down.removeAttribute("disabled");
             sibling.querySelector(".down").setAttribute("disabled", "")
         }
+
+        // move the field up in the schema
         this.schema.field_ids.splice(form_index, 1);
         this.schema.field_ids.splice(form_index - 1, 0, this.idx);
     }
 
+    /**
+     * Remove the viewer (and the field linked to it).
+     * This method is called when the 'rem' button is clicked on, but nothing really happens unless the
+     * confirmation modal triggered by it is accepted.
+     */
     remove() {
+        // if the field belongs to a composite field, hide its editing modal
         if (this.parent_modal) {
             this.parent_modal.toggle();
         }
+        
+        // Ask for confirmation
         Modal.ask_confirmation('Deleted fields cannot be recovered.', () => {
-            // Method to remove a viewing field (and thus also the field itself)
-            let form_index = this.schema.field_ids.indexOf(this.idx);
+            let form_index = this.schema.field_ids.indexOf(this.idx); // index of the field among other fields
             
             if (this.schema.field_ids.length > 1) {
+                // if this is the last field
                 if (this.idx == this.schema.field_ids.length - 1) {
-                    // if this is the last option
                     this.div.previousSibling.previousSibling.querySelector(".down").setAttribute("disabled", "");
                 }
+                // if this is the first field
                 if (this.idx == 0) {
-                    // if this was the first option
                     this.below.nextSibling.querySelector(".up").setAttribute("disabled", "");
                 }    
             }
 
+            // remove the box and buttons
             this.div.parentNode.removeChild(this.below);
             this.div.parentNode.removeChild(this.div);
+            
+            // remove the field from the schema
             this.schema.field_ids.splice(form_index, 1);
             delete this.schema.fields[this.idx];
+            
+            // update the schema editor
             this.schema.toggle_saving();
+            
+            // if the field belongs to a composite field, show its editing modal
             if (this.parent_modal) {
                 if (!document.querySelector(`.modal#${this.schema.card_id}`).classList.contains('show')) {
                     this.parent_modal.toggle();
                 }
             }
         }, () => {
-            console.log('dismissed')
+            // cancel if the choice is not confirmed
+            // (show the composite field again if relevant)
             if (this.parent_modal) {
                 if (!document.querySelector(`.modal#${this.schema.card_id}`).classList.contains('show')) {
                     this.parent_modal.toggle();
@@ -295,102 +450,157 @@ class MovingViewer extends MovingField {
             }
         });
     }
-
 }
 
+/**
+ * Class representing a moving input field to design options in a dropdown, checkbox or radio field.
+ * @extends MovingField
+ * @property {HTMLElement} div Div containing the input field and the buttons.
+ * @property {HTMLElement} sub_div Div that contains the input field only.
+ * @property {HTMLElement} label Label for the input ("Select option").
+ * @property {HTMLElement} input_tag Input field
+ * @property {String} [value] The value of the input field, or 'false' if it doesn't exist.
+ * @property {HTMLButtonElement} rem Button used to remove the field.
+ */
 class MovingChoice extends MovingField {
-    // Specific class for multiple choice editor
-    // It has a working text input field and no edit button
+    /**
+     * Initiate a moving field in which to define an option for a dropdown, checkbox or radio.
+     * @param {String} label_text Text for the label of the input (e.g. "Select option").
+     * @param {Number} idx Index of this field as it gets created.
+     * @param {String} [value] Value of the input field, or 'false' if it doesn't exist.
+     */
     constructor(label_text, idx, value = false) {
         super(idx);
-        this.rem = this.add_btn('rem', 'trash', () => this.remove());
-        this.label = Field.labeller(label_text, `mover-${idx}`);
+        // set up HTMLElement
         this.div = Field.quick("div", "blocked");
-        this.value = value;
         this.div.id = `block-${idx}`;
-        this.input_tag = this.add_input();
+
+        // set up sub elements
         this.sub_div = Field.quick("div", "form-field");
+        this.label = Field.labeller(label_text, `mover-${idx}`);
+        this.input_tag = this.add_input();
+        this.rem = this.add_btn('rem', 'trash', () => this.remove());
+        
+        this.value = value;
+        
+        // Bring everything together
         this.assemble();
     }
 
+    /**
+     * Bring everything together (append the sub elements to the main HTML Element) in the right order.
+     */
     assemble() {
-        // General method to add label, remove button and others to the main div
-        this.sub_div.appendChild(this.input_tag);
-        this.sub_div.appendChild(this.up);
-        this.sub_div.appendChild(this.down);
-        this.sub_div.appendChild(this.rem);
-        this.div.appendChild(this.label);
-        this.div.appendChild(this.sub_div);
+        this.sub_div.appendChild(this.input_tag); // input field
+        this.sub_div.appendChild(this.up); // button to move upwards
+        this.sub_div.appendChild(this.down); // button to move downwards
+        this.sub_div.appendChild(this.rem); // button to remove the field
+        this.div.appendChild(this.label); // label for the input field
+        this.div.appendChild(this.sub_div); // div with input field and buttons
     }
 
+    /**
+     * Create an input field for a new option.
+     * @returns {HTMLElement} Input field to define the value of the option.
+     */
     add_input() {
-        // Method to create and add the text input field
         let input_tag = Field.quick("input", "form-control mover");
         input_tag.id = `mover-${this.idx}`;
         input_tag.name = `mover-${this.idx}`;
-        input_tag.setAttribute('required', '');
+        input_tag.setAttribute('required', ''); // it must be required (or removed if it won't be filled)
+        
+        // if a value exists, fill it in
         if (this.value) {
             input_tag.value = this.value;
         }
         return input_tag
     }
 
+    /**
+     * Move the option down one slot.
+     * This method is called when the 'down' button is clicked on,
+     * which is disabled if this is the last option in the sequence.
+     */
     move_down() {
-        // Method to move the field down
-        let sibling = this.div.nextSibling;
+        let sibling = this.div.nextSibling; // choice under this one
+        // move the sibling up = move this down
         this.div.parentElement.insertBefore(sibling, this.div);
+        
+        // class "blocked" is the class of this kind of divs
+        // if the other div went to first place
         if (sibling.previousSibling.className !== "blocked") {
-            // if the other div went to first place
             sibling.querySelector(".up").setAttribute("disabled", "");
             this.up.removeAttribute("disabled");
         }
+        
+        // if this dev went to the last place
         if (this.div.nextSibling.className !== "blocked") {
-            // if this dev went to the last place
             sibling.querySelector(".down").removeAttribute("disabled");
             this.down.setAttribute("disabled", "")
         }
     }
 
+    /**
+     * Move the option up one slot.
+     * This method is called when the 'up' button is clicked on,
+     * which is disabled if this is the first option in the sequence.
+     */
     move_up() {
-        // Method to move the field up
-        let sibling = this.div.previousSibling;
+        let sibling = this.div.previousSibling; // choice on top of this one
+        
+        // move this upwards
         this.div.parentElement.insertBefore(this.div, sibling);
+        
+        // class "blocked" is the class of this kind of divs
+        // if this div went to first place
         if (this.div.previousSibling.className !== "blocked") {
-            // if this div went to first place
             this.up.setAttribute("disabled", "");
             sibling.querySelector(".up").removeAttribute("disabled");
         }
+        
+        // if we were in the last place
         if (sibling.nextSibling.className !== "blocked") {
-            // if we were in the last place
             this.down.removeAttribute("disabled");
             sibling.querySelector(".down").setAttribute("disabled", "")
         }
     }
 
+    /**
+     * Remove a Moving Choice. This is a static method because it is also called from outside
+     * when resetting the form it belongs to.
+     * @static
+     * @param {HTMLDivElement} div A DIV element from a MovingChoice to be removed from the form.
+     */
     static remove_div(div) {
-        // static method to remove a div element
-        // (because this is also called programmatically to reset the form)
-        if (div.nextSibling.classList.contains('mover')) {
-            // if this is the last option
+        // if this is the last option
+        if (!div.nextSibling.classList.contains('blocked')) {
             div.previousSibling.querySelector(".down").setAttribute("disabled", "");
         }
-        if (div.previousSibling.classList.contains('form-container')) {
-            // if this was the first option
+        // if this was the first option
+        if (!div.previousSibling.classList.contains('blocked')) {
             div.nextSibling.querySelector(".up").setAttribute("disabled", "");
         }
 
+        // check how many children there are
         let existing_children = div.parentElement.querySelectorAll(".blocked");
+        // if there are only up to three children (they will be one fewer in a moment)
         if (existing_children.length <= 3) {
-            console.log('too few children')
+            // disable their 'remove' buttons
             existing_children.forEach((child) => {
                 child.querySelector(".rem").setAttribute("disabled", "");
             });
         }
-        div.parentNode.removeChild(div);
+
+        // remove this element
+        div.remove();
     }
 
+    /**
+     * Remove this option.
+     * This method is called when the 'rem' button is clicked on,
+     * which is disabled if there are only two options.
+     */
     remove() {
-        // Method to remove the field when clicking on the remove button
         MovingChoice.remove_div(this.div);
     }
 
