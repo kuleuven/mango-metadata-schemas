@@ -923,23 +923,42 @@ class BasicForm {
     }
 }
 
+/**
+ * Class for forms used when editing a schema (draft).
+ * It includes hidden inputs that are not included in its parent class.
+ * @extends BasicForm
+ */
 class SchemaDraftForm extends BasicForm {
+    /**
+     * Initialize a form to edit a schema.
+     * @param {Schema} schema A schema to edit via this form.
+     */
     constructor(schema) {
+        // initialize a BasicForm
         super(`${schema.card_id}-${schema.data_status}`);
+        
+        // add action and method attributes for submission
         this.form.setAttribute('action', schema.urls.new);
         this.form.setAttribute('method', 'POST');
+        
+        // hidden inputs to add for submission
         const inputs = {
-            'realm' : realm,
-            'current_version' : schema.version,
-            'raw_schema' : '',
-            'with_status' : schema.status,
-            'parent' : schema.parent ? schema.parent : ''
+            'realm' : realm, // realm that the schema belongs to
+            'current_version' : schema.version, // version number
+            'raw_schema' : '', // encoded and stringified collection of fields
+            'with_status' : schema.status, // status
+            'parent' : schema.parent ? schema.parent : '' // parent, if it exists
         }
         for (let i of Object.entries(inputs)) {
             this.add_hidden_field(i[0], i[1]);
         }
     }
 
+    /**
+     * Create a new hidden field and attach to the form.
+     * @param {String} name Value of the 'name' attribute of the form input.
+     * @param {String} value Value of the form input.
+     */
     add_hidden_field(name, value) {
         const hidden_input = document.createElement('input');
         hidden_input.type = 'hidden';
@@ -948,6 +967,11 @@ class SchemaDraftForm extends BasicForm {
         this.form.appendChild(hidden_input);
     }
 
+    /**
+     * Update an existing field of the form with a new value.
+     * @param {String} name Value of the 'name' attribute of the form input.
+     * @param {String} value Value of the form input.
+     */
     update_field(name, value) {
         this.form.querySelector(`input[name="${name}"]`).value = value;
     }
