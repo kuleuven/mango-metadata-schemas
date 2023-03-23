@@ -158,8 +158,8 @@ class ComplexField {
 
     replace_field(old_id, form_object) {
         let form = this.form_div;
-        const old_adder = form.querySelectorAll('.adder')[this.field_ids.indexOf(old_id)];
-        old_adder.nextSibling.remove();
+        const old_adder = form.querySelectorAll('.adder')[this.field_ids.indexOf(old_id) + 1];
+        old_adder.previousSibling.remove();
         old_adder.remove();
         delete this.fields[old_id];
         this.new_field_idx = this.field_ids.indexOf(old_id);
