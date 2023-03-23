@@ -216,6 +216,7 @@ class MovingField {
 class MovingViewer extends MovingField {
     /**
      * Create a box to show and allow editing / placement / removal / duplication of a field.
+     * @class
      * @param {InputField} form Field to be edited.
      * @param {ComplexField} schema Schema or mini-schema of a composite field to which the field belongs.
      */
@@ -465,6 +466,7 @@ class MovingViewer extends MovingField {
 class MovingChoice extends MovingField {
     /**
      * Initiate a moving field in which to define an option for a dropdown, checkbox or radio.
+     * @class
      * @param {String} label_text Text for the label of the input (e.g. "Select option").
      * @param {Number} idx Index of this field as it gets created.
      * @param {String} [value] Value of the input field, or 'false' if it doesn't exist.
@@ -618,6 +620,7 @@ class MovingChoice extends MovingField {
 class BasicForm {
     /**
      * Initialize a standard form.
+     * @class
      * @param {String} id ID of the field or schema this form is used to edit.
      */
     constructor(id) {
@@ -931,6 +934,7 @@ class BasicForm {
 class SchemaDraftForm extends BasicForm {
     /**
      * Initialize a form to edit a schema.
+     * @class
      * @param {Schema} schema A schema to edit via this form.
      */
     constructor(schema) {
@@ -985,6 +989,7 @@ class SchemaDraftForm extends BasicForm {
 class Modal {
     /**
      * Initialize a modal.
+     * @class
      * @param {String} modal_id ID of the modal.
      * @param {String} header_title Text of the title in the header of the modal.
      */
@@ -1182,6 +1187,7 @@ class Modal {
 class AccordionItem {
     /**
      * Initialize a new accordion item to host a schema and all its versions.
+     * @class
      * @param {String} id ID of the accordion item.
      * @param {String} header_title Title of the accordion item, i.e. the name of the schema it shows.
      * @param {String} accordion ID of the accordion itself.
