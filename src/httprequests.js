@@ -143,7 +143,7 @@ class TemplatesRequest extends MangoRequest {
                 const current_version = urls.schema_version;
                 const version_data = grouped_templates.filter((x) => x.name == current_schema)[0].schema_info;
                 // if the version of that schema still exists, focus on that tab
-                if (current_version && version_data.versions_sorted.in1dexOf(current_version) > -1) {
+                if (current_version && version_data.versions_sorted.indexOf(current_version) > -1) {
                     let simple_version = current_version.replaceAll('.', '');
                     let version_trigger = document.querySelector(`button#v${simple_version}-tab-${current_schema}`);
                     bootstrap.Tab.getOrCreateInstance(version_trigger).show();
