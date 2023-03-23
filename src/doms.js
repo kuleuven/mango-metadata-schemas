@@ -1241,8 +1241,23 @@ class AccordionItem {
     }
 }
 
+/**
+ * Class to create a navigation bar with pills or tabs.
+ * This is used to display the different versions of a schema, with tabs that have badges,
+ * and to switch between views and editors within a version of a schema.
+ * @property {HTMLUListElement} nav_bar A list of tabs for navigation.
+ * @property {HTMLDivElement} tab_content The content of the tabs
+ * @property {String} id ID of the instance, used for the IDs of its DOM components.
+ */
 class NavBar {
+    /**
+     * Initialize a navigation bar to host versions of a schema or view/editors of a version.
+     * @class
+     * @param {String} id ID of the NavBar instance, used for the IDs of the navigation list and contents.
+     * @param {String[]} extra_classes Names of classes to be added to the list of navigation bar, e.g. 'justify-content-end' and 'nav-pills'.
+     */
     constructor(id, extra_classes = []) {
+        // create or retrieve a navigation bar and content
         this.nav_bar = document.getElementById('nav-tab-' + id);
         if (this.nav_bar == null) {
             this.nav_bar = Field.quick('ul', 'nav');
@@ -1260,20 +1275,43 @@ class NavBar {
 
     }
 
+    /**
+     * Add a new item to the navigation bar and content.
+     * @param {String} item_id Identifier of the item within the navigation bar.
+     * @param {String|HTMLElement} button_text Content of the button that activates the tab.
+     * @param {Boolean} [active=false] Whether the tab should be focused on.
+     * @param {Number} [position=-1] Index of the item. If -1, the item is added at the end.
+     */
     add_item(item_id, button_text, active = false, position = -1) {
         this.add_button(item_id, button_text, active, position);
         this.add_tab(item_id, active, position);
     }
 
+    /**
+     * Remove an item from the navigation bar and content.
+     * @param {String} item_id Identified of the item within the navigation bar.
+     */
     remove_item(item_id) {
         document.getElementById(`${item_id}-tab-${this.id}`).parentElement.remove();
         document.getElementById(`${item_id}-pane-${this.id}`).remove();
     }
 
+    /**
+     * Add a button to the list in the navigation bar, with the function of activating a corresponding tab.
+     * @param {String} item_id Identifier of the item within the navigation bar.
+     * @param {String|HTMLElement} button_text Content of the button.
+     * @param {Boolean} active Whether the tab should be focused on.
+     * @param {Number} [position=-1] Index of the item. If -1, the item is added at the end.
+     */
     add_button(item_id, button_text, active, position = -1) {
+        // create item and button
         let li = Field.quick('li', 'nav-item');
         let button = document.createElement('button');
+        
+        // provide the 'active' class if relevant
         button.className = active ? 'nav-link active' : 'nav-link';
+        
+        // fill the contents of the button
         if (typeof button_text == 'string') {
             button.innerHTML = button_text
         } else {
@@ -1286,6 +1324,8 @@ class NavBar {
         button.role = 'tab';
         button.setAttribute('aria-controls', `${item_id}-pane-${this.id}`);
         li.appendChild(button);
+        
+        // add the button to the navbar
         if (position != -1 && this.nav_bar.children.length > position) {
             let sibling = this.nav_bar.children[position];
             this.nav_bar.insertBefore(li, sibling);
@@ -1294,14 +1334,21 @@ class NavBar {
         }
     }
 
-
+    /**
+     * Add a content tab for an item.
+     * @param {String} item_id Identifier of the item among other tabs.
+     * @param {Boolean} active Whether the tab should be focused on.
+     * @param {Number} [position=-1] Index of the item. If -1, the item is added at the end.
+     */
     add_tab(item_id, active, position = -1) {
-        let tab = Field.quick('div',
-            active ? 'tab-pane fade show active' : 'tab-pane fade');
+        // Create the tab with the right classes
+        let tab = Field.quick('div', active ? 'tab-pane fade show active' : 'tab-pane fade');
         tab.id = `${item_id}-pane-${this.id}`;
         tab.role = 'tabpanel';
         tab.setAttribute('aria-labelledby', `${item_id}-tab-${this.id}`);
         tab.tabIndex = '0';
+        
+        // Assign appropriate position
         if (position != -1 && this.tab_content.children.length > position) {
             let sibling = this.tab_content.children[position];
             this.tab_content.insertBefore(tab, sibling);
@@ -1310,20 +1357,35 @@ class NavBar {
         }
     }
 
+    /**
+     * Add some content to an existing tab.
+     * @param {String} item_id Identifier of the item among other tabs.
+     * @param {HTMLElement} content Element to append to the tab.
+     */
     add_tab_content(item_id, content) {
         this.tab_content.querySelector(`#${item_id}-pane-${this.id}`).appendChild(content);
     }
 
+    /**
+     * Add a button to the navigation bar that does not link to a content tab but triggers an action.
+     * @param {String} text Text inside the button.
+     * @param {String} color Color class, e.g. 'success', 'danger'...
+     * @param {Function} action Action to trigger when the button is clicked.
+     */
     add_action_button(text, color, action) {
+        // Create the button
         let btn = Field.quick('button', `btn btn-outline-${color}`, text);
         let id = text.toLowerCase().replaceAll(' ', '-');
         btn.id = `${id}-${this.id}`;
         btn.type = 'button';
+        
+        // Assign the action
         btn.addEventListener('click', (e) => {
             e.preventDefault();
             action();
         });
+        
+        // Add to the navigation bar
         this.nav_bar.appendChild(btn);
     }
-
 }
