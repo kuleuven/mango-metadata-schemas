@@ -977,19 +977,32 @@ class SchemaDraftForm extends BasicForm {
     }
 }
 
-// create a modal - needs both the constructor and .create_modal()
+/**
+ * Class to create a standard BS5 Modal, typically containing a form to edit a Schema or InputField.
+ * @property {String} id ID of the modal itself.
+ * @property {String} header_title Text of the title in the header of the modal.
+ */
 class Modal {
-    constructor(modal_id, header_title, header_id) {
+    /**
+     * Initialize a modal.
+     * @param {String} modal_id ID of the modal.
+     * @param {String} header_title Text of the title in the header of the modal.
+     */
+    constructor(modal_id, header_title) {
         this.id = modal_id;
         this.header_title = header_title;
-        this.header_id = header_id;
     }
 
+    /**
+     * Create the header for the modal.
+     * @returns {HTMLDivElement} The header for the modal.
+     */
     create_header() {
         let modal_header = Field.quick("div", "modal-header");
 
-        let modal_title = Field.quick("h5", "modal-title", this.header_title, this.header_id);
+        let modal_title = Field.quick("h5", "modal-title", this.header_title, `${this.id}-title`);
 
+        // include the dismiss button
         let modal_close = Field.quick("button", "btn-close");
         modal_close.setAttribute("data-bs-dismiss", "modal");
         modal_close.ariaLabel = "Close";
@@ -999,36 +1012,48 @@ class Modal {
         return modal_header;
     }
 
+    /**
+     * Create the body of the modal.
+     * @param {HTMLElement[]} body_contents Elements to append to the body of the modal, e.g. a form.
+     * @returns {HTMLDivElement} The body of the modal.
+     */
     create_body(body_contents) {
-        // content has to be a node to append
         let modal_body = Field.quick("div", "modal-body");
         body_contents.forEach((x) => modal_body.appendChild(x));
 
         return modal_body;
     }
 
+    /**
+     * Create the footer of the modal
+     * @returns {HTMLDivElement} Footer of the modal.
+     */
     create_footer() {
         let modal_footer = Field.quick("div", "modal-footer");
 
+        // add a cancelling button
         let footer_close = Field.quick("button", "btn btn-secondary", "Cancel");
         footer_close.type = "button";
         footer_close.setAttribute("data-bs-dismiss", "modal");
 
-        // let footer_save = Field.quick("button", "btn btn-primary submit", "Submit");
-        // footer_save.type = "button";
-
         modal_footer.appendChild(footer_close);
-        // modal_footer.appendChild(footer_save);
 
         return modal_footer;
     }
 
+    /**
+     * Assemble the modal and attach it to the "body" element.
+     * @param {HTMLElement[]} body_contents Elements to add to the body of the modal, e.g. a form.
+     * @param {String} [size=null] Size of the modal, e.g. 'sm', 'md'...
+     */
     create_modal(body_contents, size = null) {
+        // Initialize the modal itself
         let modal = Field.quick("div", "modal");
         modal.id = this.id;
         modal.tabIndex = "-1";
         modal.role = "dialog";
 
+        // Create the divs that go inside the modal
         let modal_dialog = Field.quick("div", size == null ? "modal-dialog" : `modal-dialog modal-${size}`);
 
         let modal_content = Field.quick("div", "modal-content");
@@ -1039,6 +1064,7 @@ class Modal {
 
         let modal_footer = this.create_footer();
 
+        // Append different elements to each other
         modal_content.appendChild(modal_header);
         modal_content.appendChild(modal_body);
         modal_content.appendChild(modal_footer);
@@ -1046,20 +1072,36 @@ class Modal {
         modal_dialog.appendChild(modal_content);
         modal.appendChild(modal_dialog);
 
+        // Attach to the body of the document
         document.querySelector("body").appendChild(modal);
     }
 
+    /**
+     * Fill in the existing confirmation modal and show it to obtain a simple yes/no answer
+     * to a confirmation question (e.g. Are you sure you want to delete this field?).
+     * This does not apply to modals created with the Modal class, but refers to a modal.
+     * @static
+     * @param {String} body Descriptive text to append to the modal (what are the consequences of accepting this?).
+     * @param {Function} action What to do after a positive answer.
+     * @param {Function} dismiss What to do after dismissal of the modal (if anything).
+     */
     static ask_confirmation(body, action, dismiss) {
+        // capture the modal
         let conf_modal = document.querySelector('div.modal#confirmation-dialog');
         let modal = bootstrap.Modal.getOrCreateInstance(conf_modal);
-        conf_modal.querySelector('p#confirmation-text')
-            .innerHTML = body;
+        
+        // apply the provided text
+        conf_modal.querySelector('p#confirmation-text').innerHTML = body;
+        
+        // capture action button and assign action
         let action_btn = conf_modal.querySelector('button#action')
         action_btn.type = 'button';
         action_btn.addEventListener('click', () => {
-                action();
-                modal.hide();
-            });
+            action();
+            modal.hide();
+        });
+        
+        // capture dismiss button and attach action
         conf_modal.querySelector('button[data-bs-dismiss="modal"]')
             .addEventListener('click', () => {
                 if (dismiss != undefined) {
@@ -1068,52 +1110,63 @@ class Modal {
                     return;
                 }
             });
+        // show the modal
         modal.show();
     }
+    
+    /**
+     * Fill in the existing confirmation modal and its form and show it to obtain a simple yes/no answer
+     * to a confirmation question (e.g. Are you sure you want to discard this draft?).
+     * This does not apply to modals created with the Modal class, but refers to a modal.
+     * The confirmation button becomes now a submission button for the form contained in the modal.
+     * @static
+     * @param {String} body Descriptive text to append to the modal (what are the consequences of accepting this?).
+     * @param {String} url URL to post the contents of the hidden form to.
+     * @param {Object<String,String>} form_data Names and values of the hidden fields to add to the form.
+     * @param {Function} extra_Action Something extra to do on submission, if relevant.
+     */
     static submit_confirmation(body, url, form_data, extra_action) {
+        // capture the modal
         let conf_modal = document.querySelector('div.modal#confirmation-dialog');
         conf_modal.querySelector('button#action').type = 'submit';
         let modal = bootstrap.Modal.getOrCreateInstance(conf_modal);
-        conf_modal.querySelector('p#confirmation-text')
-            .innerHTML = body;
+        
+        // fill in the explanatory text
+        conf_modal.querySelector('p#confirmation-text').innerHTML = body;
+        
+        // capture and fill in the form with hidden fields
         let form = conf_modal.querySelector('form');
         form.setAttribute('method', 'POST');
         form.setAttribute('action', url);
         const modal_body = form.querySelector('div.modal-body');
         for (let item of Object.entries(form_data)) {
-            let hidden_input = document.createElement('input')
+            let hidden_input = document.createElement('input');
             hidden_input.type = 'hidden';
             hidden_input.name = item[0];
             hidden_input.value = item[1];
             modal_body.appendChild(hidden_input);
         }
+        // assign extra action if it exists
         if (extra_action != undefined) {
             form.addEventListener('submit', () => {
                 extra_action();
             });
         }
+
+        // show modal
         modal.show();
     }
 
+    /**
+     * Update the values of the hidden inputs in the form of the confirmation modal right before submission.
+     * @param {Object<String,String>} form_data Value of name and value attributes of the fields in the form.
+     */
     static fill_confirmation_form(form_data) {
         const form = document.querySelector('div.modal#confirmation-dialog div.modal-body');
-        console.log(form_data)
         Object.entries(form_data).forEach((item) => {
             form.querySelector(`input[name="${item[0]}"]`).value = item[1];
         });
-        console.log(form);
-        
     }
-
-    static clean_confirmation() {
-        let conf_modal = document.querySelector('div.modal#confirmation-dialog');
-        conf_modal.querySelectorAll('input[type="hidden"]')
-            .forEach((x) => x.remove());
-        const form = conf_modal.querySelector('form');
-        form.removeAttribute('action');
-        form.removeAttribute('method');
-    }
-
 }
 
 class AccordionItem {

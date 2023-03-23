@@ -134,7 +134,7 @@ class InputField {
 
     create_modal(schema) {
         let modal_id = `${this.mode}-${this.id}-${this.schema_name}-${this.schema_status}`;
-        let edit_modal = new Modal(modal_id, `Add ${this.button_title}`, `title-${this.form_type}`);
+        let edit_modal = new Modal(modal_id, `Add ${this.button_title}`);
         let form = this.form_field.form;
         edit_modal.create_modal([form], 'lg');
         this.modal = bootstrap.Modal.getOrCreateInstance(document.getElementById(modal_id));

@@ -67,7 +67,7 @@ class ComplexField {
         let formTemp = Field.quick("div", "formContainer");
         formTemp.id = this.data_status + '-templates';
         let modal_id = `${this.choice_id}-${this.data_status}`;
-        let form_choice_modal = new Modal(modal_id, "What form element would you like to add?", "choiceTitle");
+        let form_choice_modal = new Modal(modal_id, "What form element would you like to add?");
         form_choice_modal.create_modal([formTemp], 'lg');
         let this_modal = document.getElementById(modal_id);
         this_modal.addEventListener('show.bs.modal', () => {
