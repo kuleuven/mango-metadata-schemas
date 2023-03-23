@@ -1,53 +1,105 @@
+/**
+ * Master class to represent input fields. Only the children classes are actually instantiated.
+ * @property {String} description Description to show in the example of the options viewer. For now an empty string except in composite fields.
+ * @property {String} dummy_title Title for the example in the options viewer. Always "Informative label".
+ * @property {String} mode In first instance, "add"; when an existing field can be edited, "mod".
+ * @property {Boolean} is_duplicate Whether the field has just been created via duplication of a different field.
+ * @property {String} schema_name Name of the schema the field belongs to.
+ * @property {String} schema_status Status of the schema as it is used in the ID of the form ('new', 'draft', 'copy' or 'object...').
+ * @property {Boolean} required Whether the field should be required when implementing the metadata.
+ * @property {Boolean} repeatable Whether the field can be repeated in the implementation form.
+ * @property {Object} values Variable properties specific to different kinds of fields.
+ * @property {String|Number} default Default value of the field, if the field is required.
+ */
 class InputField {
+    /**
+     * Initialize a new Field in a (mini-)schema.
+     * @class
+     * @param {String} schema_name Name of the schema that the field is attached to, for form identification purposes.
+     * @param {String} [data_status=draft] Status of the schema version that the field is attached to, for form identification purposes.
+     */
     constructor(schema_name, data_status = 'draft') {
-        this.description = ""; // description to show in the options viewer
-        this.dummy_title = "Informative label"; // dummy title in options viewer (probably could go)
-        this.required = false; // whether the field is required
-        this.values = {}; // values to return in the json
-        this.mode = 'add'; // whether the form has to be created or edited ("mod")
-        this.repeatable = false;
-        this.schema_name = schema_name;
+        // Strings for the example
+        this.description = "";
+        this.dummy_title = "Informative label";
+        
+        // Attributes to limit some behavior
+        this.mode = 'add';
         this.is_duplicate = false;
+        
+        // Info about the field contents
+        this.required = false;
+        this.repeatable = false;
+        this.values = {};
+        
+        // Schema information
+        this.schema_name = schema_name;
         this.schema_status = data_status;
     }
 
+    /**
+     * Retrieve the contents in JSON format for form submission.
+     */
     get json() {
         return this.to_json();
     }
 
+    /**
+     * Turn the relevant fields into an Object to be saved in a JSON file.
+     * @returns {{title: String, type: String, ...}} JSON representation of the contents of the field.
+     */
     to_json() {
+        // always include the title and type, expand whatever values are in this field
         let json = { title: this.title, type: this.type, ...this.values };
+        
+        // add required, default and repeatable fields if relevant
         if (this.required) {
             json.required = this.required;
             if (this.default) json.default = this.default;
         }
         if (this.repeatable) json.repeatable = this.repeatable;
+
         return json;
     }
 
+    /**
+     * Generate an example of the field for illustration.
+     * @returns {HTMLDivElement} An element that contains an optional description, a title and an illustration of what the field looks like in a form.
+     */
     create_example() {
         let example = Field.quick("div", "ex my-2", this.description);
 
         let inner_label = Field.quick("label", "form-label h6", this.dummy_title);
 
         example.appendChild(inner_label);
+        // generate the appropriate illustration of the field (depends on the child classes)
         example.appendChild(this.constructor.ex_input());
         return example;
     }
 
+    /**
+     * Show the field when editing a schema.
+     * First, generate a form to design the field and a modal that contains said form.
+     * Create a button that triggers the modal and attach it, next to an illustration example,
+     * to an element (which is returned).
+     * @param {Schema} schema (Mini-)schema the field belongs to.
+     * @returns {HTMLDivElement} Element that contains an illustration example and a button to activate an editor modal.
+     */
     render(schema) {
         this.id = `${this.form_type}-${schema.id}`;
+        
+        // create the form to design the field and the modal that will host it
         this.create_form();
+        this.create_modal(schema);
 
-        let new_form = Field.quick("div", "shadow border rounded p-4 mb-3");
-
-        let new_button = Field.quick("button", "btn btn-primary choice-button", this.button_title);
-        this.create_modal(schema)
-
-        new_button.setAttribute("data-bs-toggle", "modal");
+        // create the button that triggers the modal
         let modal_id = `add-${this.id}-${this.schema_name}-${schema.data_status}`;
+        let new_button = Field.quick("button", "btn btn-primary choice-button", this.button_title);
+        new_button.setAttribute("data-bs-toggle", "modal");        
         new_button.setAttribute("data-bs-target", '#' + modal_id);
 
+        // append everything to a div
+        let new_form = Field.quick("div", "shadow border rounded p-4 mb-3");
         new_form.appendChild(new_button);
         new_form.appendChild(this.create_example());
 
