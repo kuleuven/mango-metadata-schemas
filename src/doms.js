@@ -1169,7 +1169,24 @@ class Modal {
     }
 }
 
+/**
+ * Class to create a standard BS5 Accordion Item, in which the information of a given schema
+ * and all its versions will be displayed.
+ * @property {String} id The ID of the accordion item we are creating.
+ * @property {String} accordion The ID of the accordion itself.
+ * @property {String} header_title The title of the accordion item, i.e. the name of the schema it shows.
+ * @property {HTMLDivElement} div The accordion item itself.
+ * @property {HTMLDivElement} card_body The body of the accordion item, where the tabs will be displayed.
+ * @property {Boolean} new Whether the item corresponds to the "new schema" editor.
+ */
 class AccordionItem {
+    /**
+     * Initialize a new accordion item to host a schema and all its versions.
+     * @param {String} id ID of the accordion item.
+     * @param {String} header_title Title of the accordion item, i.e. the name of the schema it shows.
+     * @param {String} accordion ID of the accordion itself.
+     * @param {Boolean} is_new Whether the item corresponds to the "new schema" editor.
+     */
     constructor(id, header_title, accordion, is_new = false) {
         this.id = id;
         this.parent = accordion;
@@ -1178,7 +1195,12 @@ class AccordionItem {
         this.new = is_new;
         this.create();
     }
+    
+    /**
+     * Assemble the parts of the accordion
+     */
     create() {
+        // Create the header
         let header = Field.quick('div', 'accordion-header');
         header.id = this.id + '-header';
         let header_button = Field.quick('button', this.new ? 'btn btn-primary m-2' : 'accordion-button h4', this.header_title);
@@ -1188,6 +1210,7 @@ class AccordionItem {
         header_button.ariaControls = this.id;
         header.appendChild(header_button);
 
+        // Create the body
         let body = Field.quick('div', 'accordion-collapse collapse');
         body.id = this.id;
         body.setAttribute('aria-labelledby', this.id + '-header');
@@ -1195,23 +1218,26 @@ class AccordionItem {
         this.card_body = Field.quick('div', 'accordion-body');
         body.appendChild(this.card_body);
 
+        // Bring everything together
         this.div.appendChild(header);
         this.div.appendChild(body);
-
-        this.collapse = new bootstrap.Collapse(body, { toggle: false });
     }
 
+    /**
+     * Append a new element to the accordion item.
+     * @param {HTMLElement} element An element to append to the accordion item, e.g. a new tab.
+     * @param {Number} [i=null] Index of the element.
+     */
     append(element, i = null) {
         let elements = this.card_body.childNodes;
+        // If `i` is not specified or it's too large
         if (i == null || i >= elements.childNodes.length - 1) {
+            // add the element to the end of the accordion
             this.card_body.appendChild(element);
         } else {
+            // add the element in the requested position
             this.card_body.insertBefore(element, elements[i + 1]);
         }
-    }
-
-    toggle() {
-        this.collapse.toggle();
     }
 }
 
