@@ -64,16 +64,12 @@ class ComplexField {
         this.status = data.status; // only relevant for Schema class
         this.data_status = this.set_data_status();
         
-        // if there are any fields at all
-        if (this.field_ids.length > 0) {
-            // go through each of the names and create and add the corresponding field
-            for (let entry of this.field_ids) {
-                let new_field = InputField.choose_class(this.initial_name, this.data_status, entry);
-                new_field.create_form();
-                new_field.create_modal(this);
-                this.fields[entry[0]] = new_field;
-            }
-        }
+        this.field_ids.forEach((field_id) => {
+            let new_field = InputField.choose_class(this.initial_name, this.data_status, [field_id, data.properties[field_id]]);
+            new_field.create_form();
+            new_field.create_modal(this);
+            this.fields[field_id] = new_field;
+        });
     }
 
     /**
@@ -99,7 +95,7 @@ class ComplexField {
         form_choice_modal.create_modal([formTemp], 'lg');
         
         // when the modal is first shown, render all the initial fields
-        let this_modal = document.getElementById(modal_id);
+        let this_modal = document.getElementById(this.modal_id);
         this_modal.addEventListener('show.bs.modal', () => {
             let formTemp = this_modal.querySelector('div.formContainer');
             if (formTemp.childNodes.length == 0) {
@@ -466,21 +462,30 @@ class ObjectEditor extends ComplexField {
 /**
  * Class for a version of a schema.
  * @extends ComplexField
- * @property {String} card_id
- * @property {String} name
- * @property {String} version
- * @property {String} container
- * @property {UrlsList} urls
- * @property {String} parent
- * @property {Object} origin
- * @property {String[]} origin.ids
- * @property {Object<String,FieldInfo>} origin.json
- * @property {Schema} child
- * @property {AccordionItem} card
- * @property {SchemaDraftForm} form
- * @property {NavBar} nav_bar
+ * @property {String} card_id ID of the DIV that everything related to this version of the schema is rendered; also part of the IDs of elements inside of it. It combines the name and version.
+ * @property {String} name ID of the schema itself, if it exists.
+ * @property {String} version Version number of this version of the schema.
+ * @property {String} container ID of the DOM element inside which this schema version is displayed.
+ * @property {UrlsList} urls Collection of URLs and other information obtained from the server side.
+ * @property {String} parent If this schema was born as clone of another schema, the name and version of the parent schema.
+ * @property {Object} origin If this is a draft initiated as clone of a published schema, information on the fields that are cloned with it.
+ * @property {String[]} origin.ids IDs of the fields cloned with a clone schema.
+ * @property {Object<String,FieldInfo>} origin.json Collection of Object-versions of the fields cloned with a clone schema.
+ * @property {Schema} child If this is a published schema, the draft Schema for its clone.
+ * @property {AccordionItem|HTMLDivElement} card The DIV that contains everything related to this version of the schema. It's an `AccordionItem` for the new (empty) schema.
+ * @property {SchemaDraftForm} form Form that gets submitted when the schema version is saved or published.
+ * @property {NavBar} nav_bar Navigation bar and tab contents with view and editor(s) of this version of the schema.
  */
 class Schema extends ComplexField {
+    /**
+     * Initialize a new version of a schema.
+     * @class
+     * @param {String} card_id ID for the DIV this version will be hosted on, combining the version number and name.
+     * @param {String} container_id ID of the parent DIV.
+     * @param {UrlsList} urls Collection of URLs and other information obtained from the server side.
+     * @param {String} [version=1.0.0] Version number of this version of the schema.
+     * @param {String} [data_status=draft] Derived status used for IDs of DOM elements.
+     */
     constructor(card_id, container_id, urls, version = "1.0.0", data_status = 'draft') {
         super(card_id, data_status);
         this.card_id = card_id;
@@ -490,16 +495,35 @@ class Schema extends ComplexField {
         this.urls = urls;
     }
 
+    /**
+     * Get the form with the moving viewers of the fields.
+     * @return {HTMLFormElement}
+     */
     get form_div() {
         return document.querySelector(`form#form-${this.card_id}-${this.data_status}`);
     }
 
+    /**
+     * Capture data from the JSON representation of a schema.
+     * @param {SchemaContents} data JSON representation of a schema
+     */
     from_json(data) {
         super.from_json(data);
+
+        // retrieve schema-specific information
         this.name = data.schema_name;
         this.version = data.version;
         this.parent = data.parent;
     }
+
+    /**
+     * Obtain the data_status of the schema.
+     * This is used in the IDs of DOM elements related to editing a schema.
+     * - 'new' indicates a new draft from a published version.
+     * - 'draft' indicates a new schema from scratch or an existing draft version.
+     * - 'copy' indicates a clone of a published version (before it has been saved as draft).
+     * @returns {String} Derived status as used in IDs for DOM elements.
+     */
     set_data_status() {
         if (this.status == 'published') {
             return 'new';
@@ -510,26 +534,49 @@ class Schema extends ComplexField {
         }
     }
 
-
+    /**
+     * Create the editing form and option-display for a new schema to design from scratch.
+     */
     create_creator() {
         this.status = 'draft';
+
+        // Create modal that shows the possible fields to add
         this.display_options();
+
+        // Create the form to assign ID and label and add fields
         this.create_editor();
+
+        // Create and fill the accordion item that creates a new schema
         this.card = new AccordionItem(this.card_id, 'New schema', this.container, true);
         document.getElementById(this.container).appendChild(this.card.div);
         this.card.append(this.form.form);
     }
 
+    /**
+     * Create an editing form for this schema. The form contains
+     * - a field to provide a name (read-only if a draft has been saved)
+     * - a field to provide a user-facing title/label (read-only if a version has been published)
+     * - one or more buttons to add fields, and MovingViewers if there are fields already
+     * - submission buttons
+     */
     create_editor() {
+        // create a form with hidden fields for submission
         let form = new SchemaDraftForm(this);
+
+        // define if this is the first draft of a schema and it has never been saved
         let is_new = this.data_status == 'copy' || this.card_id.startsWith('schema-editor');
+        
+        // create and add an input field for the ID (or 'name')
         form.add_input("Schema ID", this.card_id + '-name', {
-            placeholder: "schema-name", validation_message: "This field is compulsory, please only use lower case letters or numbers, '_' and '-'. Existing IDs cannot be reused.",
-            pattern: schema_pattern, description: is_new ? "This cannot be changed after the draft is saved." : false
+            placeholder: "schema-name",
+            validation_message: "This field is compulsory, please only use lower case letters or numbers, '_' and '-'. Existing IDs cannot be reused.",
+            pattern: schema_pattern,
+            description: is_new ? "This cannot be changed after the draft is saved." : false
         });
         const name_input = form.form.querySelector(`#${this.card_id}-name`);
-        name_input.name = 'schema_name'
+        name_input.name = 'schema_name';
 
+        // create and add an input field for the user-facing label/title
         form.add_input("Schema label", this.card_id + '-label', {
             placeholder: "Some informative label",
             validation_message: "This field is compulsory.",
@@ -538,45 +585,34 @@ class Schema extends ComplexField {
         const title_input = form.form.querySelector(`#${this.card_id}-label`);
         title_input.name = 'title';
 
+        // create and add the first button to add fields
         let button = this.create_button();
         form.form.insertBefore(button, form.divider);
+
+        // create and add a submission button that saves the draft without publishing
         form.add_action_button("Save draft", 'draft');
         form.add_submit_action('draft', (e) => {
-            // e.preventDefault();                
+            // BS5 validity check
             if (!form.form.checkValidity()) {
                 e.preventDefault();
                 e.stopPropagation();
                 form.form.classList.add('was-validated');
             } else {
-                // save form!
-                this.save_draft(form, 'save');
+                this.save_draft('save');
                 form.form.classList.remove('was-validated');
             }
         });
+        
+        // create and add a submission button that publishes the draft
         form.add_action_button("Publish", 'publish', 'warning');
-
-
-        if (!is_new) {
-            name_input.setAttribute('readonly', '');
-            if (schemas[this.name].published.length + schemas[this.name].archived.length > 0) {
-                title_input.setAttribute('readonly', '');
-            }
-        } else if (!this.field_ids.length > 0) {
-            form.form.querySelector('button#publish').setAttribute('disabled', '');
-        }
-
-        if (this.field_ids.length == 0) {
-            form.form.querySelector('button#publish').setAttribute('disabled', '');
-        }
-
         form.add_submit_action('publish', (e) => {
             e.preventDefault();
+            // BS5 validity check
             if (!form.form.checkValidity()) {
                 e.stopPropagation();
                 form.form.classList.add('was-validated');
             } else {
-                console.log('Ready to publish');
-
+                // trigger confirmation message, which also has its hidden fields
                 let second_sentence = this.data_status == 'draft' && schemas[this.name] && schemas[this.name].published.length > 0 ?
                     ` Version ${schemas[this.name].published[0].version} will be archived.` :
                     '';
@@ -589,147 +625,206 @@ class Schema extends ComplexField {
                     raw_schema: '',
                     parent: ''
                 }
+                // fill the confirmation modal with the right hidden fields
+                // if accepted, go through the 'save_draft' part and submit
                 Modal.submit_confirmation(
                     "Published schemas cannot be edited." + second_sentence,
                     this.urls.new, starting_data,
-                    () => { this.save_draft(form, 'publish'); }
+                    () => { this.save_draft('publish'); }
                 );
-
                 form.form.classList.remove('was-validated');
             }
         });
+
+        if (!is_new) {
+            name_input.setAttribute('readonly', ''); // name cannot be changed if a version has been saved
+            if (schemas[this.name].published.length + schemas[this.name].archived.length > 0) {
+                title_input.setAttribute('readonly', ''); // title cannot be changed if there is a published or archived version in history
+            }
+        }
+
+        // if there are no fields, the draft cannot be published
+        if (this.field_ids.length == 0) {
+            form.form.querySelector('button#publish').setAttribute('disabled', '');
+        }
+
         this.form = form;
     }
 
+    /**
+     * For clones: fill a clone Schema based on the contents of its parent.
+     * @param {Schema} parent Schema of the parent.
+     */
     from_parent(parent) {
-        this.field_ids = [...parent.field_ids];
-        this.parent = `${parent.name}-${parent.version}`;
+        this.field_ids = [...parent.field_ids]; // duplicate field ids
+        this.parent = `${parent.name}-${parent.version}`; // register name and version of the parent
         this.initial_name = `${parent.name}-new`;
-        this.status = 'draft';
+        this.status = 'draft'; // start as draft (but data_status will be 'copy')
         this.origin = { ids: [...parent.field_ids], json: { ...parent.properties } };
-        if (this.field_ids.length > 0) {
-            for (let entry of Object.entries(parent.properties)) {
-                let new_field = InputField.choose_class(this.initial_name, 'child', entry);
-                new_field.create_form();
-                new_field.create_modal(this);
-                this.fields[entry[0]] = new_field;
-            }
-        }
+        // go through each existing field and clone it
+        Object.entries(parent.properties).forEach((entry) => {
+            let new_field = InputField.choose_class(this.initial_name, 'child', entry);
+            new_field.create_form();
+            new_field.create_modal(this);
+            this.fields[entry[0]] = new_field;
+        });
     }
 
+    /**
+     * For published versions: create a clone/child as base for a new schema.
+     */
     setup_copy() {
+        // get the object-version of the current fields
         this.fields_to_json()
+        
+        // initialize a new schema and transfer the contents
         this.child = new Schema(this.card_id, this.container, this.urls, "1.0.0", "copy");
         this.child.from_parent(this);
     }
 
+    /**
+     * Design the navigation bar and tab contents for this version of the schema.
+     * For a published version, this includes the 'view', 'new draft' (if relevant) and 'copy to new schema',
+     * as well as the 'archive' button.
+     * For a draft version, this includes the 'view' and 'edit' tabs as well as the 'discard' button.
+     */
     create_navbar() {
-        // design navbar
+        // initialize NavBar
         this.nav_bar = new NavBar(this.card_id, ['justify-content-end', 'nav-pills']);
+        
+        // add button and tab for viewing the saved form of the schema version
         this.nav_bar.add_item('view', 'View', true);
-
         let viewer = ComplexField.create_viewer(this);
         this.nav_bar.add_tab_content('view', viewer);
 
         if (this.status == 'draft') {
+            // add button and tab for editing the schema
             this.nav_bar.add_item('edit', 'Edit');
 
+            // create the modal to show the options for new fields
             this.display_options();
-            this.create_editor();
-            let inputs = this.form.form.querySelectorAll('input.form-control');
-            inputs[0].value = this.name; // id
-            inputs[1].value = this.title; // label
-            this.nav_bar.add_tab_content('edit', this.form.form);
 
+            // create the editing form
+            this.create_editor();
+            // fill in the name and titles
+            this.form.form.querySelector('[name="schema_name"]').value = this.name; // id
+            this.form.form.querySelector('[name="title"]').value = this.title; // label
+            
+            // add the new form to the 'edit' tab
+            this.nav_bar.add_tab_content('edit', this.form.form);
+            
+            // add and define 'discard' button
             this.nav_bar.add_action_button('Discard', 'danger', () => {
+                // fill the confirmation modal with the hidden form to delete this schema
                 Modal.submit_confirmation(
                     'A deleted draft cannot be recovered.',
                     this.urls.delete,
-                    { 'realm': realm, 'schema_name': this.name, 'with_status': 'draft' },
-                    () => {}
+                    { 'realm': realm, 'schema_name': this.name, 'with_status': 'draft' }
                 );
             });
         } else if (this.status == 'published') {
+            // create modal and form for a new draft
             this.draft_from_publish();
-            this.setup_copy();
-            this.child.display_options();
-            this.nav_bar.add_item('child', 'Copy to new schema');
-            this.child.create_editor();
-            this.nav_bar.add_tab_content('child', this.child.form.form);
 
+            // initalize a new schema as child/clone and create its modal and form
+            this.setup_copy();
+            this.child.display_options(); // create field-choice modal
+            this.nav_bar.add_item('child', 'Copy to new schema'); // add to tabs
+            this.child.create_editor(); // create form
+            this.nav_bar.add_tab_content('child', this.child.form.form); // add form to tab
+
+            // add and define the 'archive' button
             this.nav_bar.add_action_button('Archive', 'danger', () => {
+                // Fill the confirmation modal with the hidden fields to archive this schema version
                 Modal.submit_confirmation(
                     'Archived schemas cannot be implemented.',
                     this.urls.archive,
-                    { 'realm': realm, 'schema_name': this.name, 'with_status': 'published' },
-                    () => {});
+                    { 'realm': realm, 'schema_name': this.name, 'with_status': 'published' });
             });
         }
     }
 
+    /**
+     * Set up an editor for a draft from a published version
+     */
     draft_from_publish() {
+        // only if there are no existing drafts
         if (schemas[this.name].draft.length == 0) {
-            this.display_options();
-            this.nav_bar.add_item('new', 'New (draft) version', false, 1);
-            this.create_editor();
-            let inputs = this.form.form.querySelectorAll('input.form-control');
-            inputs[0].value = this.name; // id
-            inputs[1].value = this.title; // label
-
-            this.nav_bar.add_tab_content('new', this.form.form);
+            this.display_options(); // create field-choice modal
+            this.nav_bar.add_item('new', 'New (draft) version', false, 1); // create tab
+            this.create_editor(); // create form
+            
+            // fill in name and title
+            this.form.form.querySelector('[name="schema_name"]').value = this.name; // id
+            this.form.form.querySelector('[name="title"]').value = this.title; // label
+            
+            this.nav_bar.add_tab_content('new', this.form.form); // add form to tab
         }
     }
 
+    /**
+     * Show the schema version on the page: create its tabs and render its fields.
+     */
     view() {
-        this.create_navbar();
+        this.create_navbar(); // create navigation bar and tabs
+        
+        // create a div, append the navigation bar and tabs, and append it to the container
         this.card = document.createElement('div')
         this.card.id = this.card_id;
         this.card.appendChild(this.nav_bar.nav_bar);
         this.card.appendChild(this.nav_bar.tab_content);
         document.getElementById(this.container).appendChild(this.card);
+
+        // show a message if there are no fields
         if (this.field_ids.length == 0) {
             let msg = Field.quick('div', 'viewer',
                 'This schema does not have any fields yet. Go to "edit" mode to add one.');
             this.nav_bar.tab_content.querySelector('.input-view').appendChild(msg);
         }
         
+        // show all existing fields
         this.field_ids.forEach((field_id, idx) => {
             this.new_field_idx = idx;
-            this.view_field(this.fields[field_id]);
+            this.view_field(this.fields[field_id]); // show in editor
             if (this.status == 'published') {
-                this.child.new_field_idx = idx;
+                this.child.new_field_idx = idx; // show the fields in the clone editor
                 this.child.view_field(this.child.fields[field_id]);
             }
         });
     }
 
-    save_draft(form, action) {
-        // action indicates whether it's saved or published
+    /**
+     * Make final adjustments before posting a draft to be saved or published.
+     * @param {String} action If 'publish', the draft will be published, otherwise it will just be saved.
+     */
+    save_draft(action) {
+        // update the status
         let status = action == 'publish' ? 'published' : 'draft'
+        
+        // if this is a new version from an existing published one, increment the versio number
         if (this.data_status == 'new') {
             let incremented_major = parseInt(this.version.split('.')[0]) + 1;
-            let new_version = `${incremented_major}.0.0`;
-            this.version = new_version;
+            this.version = `${incremented_major}.0.0`;
         }
         this.status = status;
-        this.post();
-    }
 
-    post() {
+        // retrieve Object-version of the fields as this.properties
         this.fields_to_json();
-        console.log(this.properties)
+
+        // group updated date to submit
         let form_fields = {
             current_version: this.version,
             with_status: this.status,
-            raw_schema: btoa(JSON.stringify(this.properties))
+            raw_schema: btoa(JSON.stringify(this.properties)) // stringify fields (properties)
         };
-        if (this.parent) {
-            form_fields.parent = this.parent;
-        }
-        if (this.status == 'draft') {
+
+        // register parent if relevant
+        if (this.parent) { form_fields.parent = this.parent; }
+        
+        // update the form right before submission
+        if (this.status == 'draft') { // original form for drafts
             Object.entries(form_fields).forEach((item) => this.form.update_field(item[0], item[1]));
-            console.log(this.form.form)
-        } else {
+        } else { // confirmation form (which does not include name and title yet) for published
             form_fields.schema_name = this.name;
             form_fields.title = this.title;
             Modal.fill_confirmation_form(form_fields);

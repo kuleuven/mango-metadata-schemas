@@ -940,14 +940,11 @@ class ObjectInput extends InputField {
         // Assign the id of the modal as the hook of the editor
         this.editor.card_id = `${this.mode}-${this.id}-${this.schema_name}-${this.schema_status}`;
 
-        // If there are subfields
-        if (this.editor.field_ids.length > 0) {
-            // Go through each subfield and render it
-            this.editor.field_ids.forEach((field_id, idx) => {
-                this.editor.new_field_idx = idx;
-                this.editor.view_field(this.editor.fields[field_id]);
-            });
-        }
+        // Go through each subfield and render it
+        this.editor.field_ids.forEach((field_id, idx) => {
+            this.editor.new_field_idx = idx;
+            this.editor.view_field(this.editor.fields[field_id]);
+        });
     }
 }
 
