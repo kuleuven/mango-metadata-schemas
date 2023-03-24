@@ -1,9 +1,9 @@
 /**
  * Master class to represent schemas and mini-schemas. Only the child classes are actually instantiated.
- * @property {String} choice_id
+ * @property {String} modal_id ID of the modal through which a new input field can be chosen.
  * @property {String} initial_name Placeholder name for DOM element IDs.
- * @property {String} title User-facing label of the schema.
- * @property {String} data_status Derived status used for IDs in the DOMs elements.
+ * @property {String} title User-facing label of the schema (or composite field).
+ * @property {String} data_status Derived status used for IDs of DOM elements, e.g. 'new', 'copy', 'draft'...
  * @property {Object<String,InputField>} initials Collection of empty fields to start creating.
  * @property {TypedInput} initials.typed Initial simple field.
  * @property {SelectInput} initials.select Initial single-value multiple-choice field.
@@ -15,21 +15,34 @@
  * @property {Number} new_field_idx Index of the following field that could be added.
  */
 class ComplexField {
+    /**
+     * Initialize a Schema, mini-schema for a composite field or dummy mini-schema for illustrating a composite field.
+     * @param {String} name Initial name of the schema, for IDs of the DOM elements.
+     * @param {String} data_status Derived status used in IDs of DOM elements.
+     */
     constructor(name, data_status = 'draft') {
-        this.choice_id = `choice-${name}`;
+        // properties of the schema itself
+        this.modal_id = `choice-${name}-${data_status}`;
         this.initial_name = name;
         this.data_status = data_status;
+
+        // empty fields to start with
         this.initials = {
             typed: new TypedInput(name, this.data_status),
             select: new SelectInput(name, this.data_status),
             checkbox: new CheckboxInput(name, this.data_status),
             object: new ObjectInput(name, this.data_status)
         };
+
+        // initial state before adding any fields
         this.field_ids = [];
         this.fields = {};
         this.new_field_idx = 0;
     }
 
+    /**
+     * Collect the Object-version of the fields into the `properties` property to save as JSON.
+     */
     fields_to_json() {
         this.properties = {};
         this.field_ids.forEach((field_id) => {
@@ -37,33 +50,54 @@ class ComplexField {
         });
     }
 
+    /**
+     * Capture data from the JSON representation of a schema.
+     * @param {SchemaContents} data JSON representation of a schema
+     */
     from_json(data) {
+        // The ID of the schema is coded as `schema_name` for the schemas
+        // In the case of composite fields, we take the title instead (it doesn't really matter)
         this.name = data.schema_name || data.title;
         this.title = data.title;
         this.field_ids = Object.keys(data.properties);
-        this.status = data.status;
+        this.status = data.status; // only relevant for Schema class
         this.data_status = this.set_data_status();
+        
+        // if there are any fields at all
         if (this.field_ids.length > 0) {
-            for (let entry of Object.entries(data.properties)) {
+            // go through each of the names and create and add the corresponding field
+            for (let entry of this.field_ids) {
                 let new_field = InputField.choose_class(this.initial_name, this.data_status, entry);
                 new_field.create_form();
                 new_field.create_modal(this);
-
                 this.fields[entry[0]] = new_field;
             }
         }
     }
+
+    /**
+     * Compute the `data_status` property based on the status of the version.
+     * @returns {String}
+     */
     set_data_status() {
         return;
     }
 
+    /**
+     * Create a modal that offers the different fields that can be added and fill it when shown.
+     */
     display_options() {
-        this.data_status = this.set_data_status(); // to make sure
+        this.data_status = this.set_data_status(); // to make sure it's correct (but maybe this is redundant)
+        
+        // create a div to fill in with the different field examples
         let formTemp = Field.quick("div", "formContainer");
         formTemp.id = this.data_status + '-templates';
-        let modal_id = `${this.choice_id}-${this.data_status}`;
-        let form_choice_modal = new Modal(modal_id, "What form element would you like to add?");
+
+        // create the modal and add the div
+        let form_choice_modal = new Modal(this.modal_id, "What form element would you like to add?");
         form_choice_modal.create_modal([formTemp], 'lg');
+        
+        // when the modal is first shown, render all the initial fields
         let this_modal = document.getElementById(modal_id);
         this_modal.addEventListener('show.bs.modal', () => {
             let formTemp = this_modal.querySelector('div.formContainer');
@@ -76,56 +110,88 @@ class ComplexField {
         });
     }
 
-    get form_div() {
-        const form = this.data_status.startsWith('object')
-            ? document.querySelector(`.modal#${this.card_id} form`)
-            : document.querySelector(`form#form-${this.card_id}-${this.data_status}`);
-        return form;
-    }
-
+    /**
+     * Create a MovingViewer for a field and add it to the editing section of the (mini-)schema.
+     * @param {InputField} form_object Field belonging to this schema.
+     */
     view_field(form_object) {
+        // identify the DOM element where the moving viewer will be inserted
         let form = this.form_div;
         if (form == undefined) {
             return;
         }
-        let clicked_button = form.querySelectorAll('.adder')[this.new_field_idx];
-        let below = clicked_button.nextSibling;
-        let moving_viewer = form_object.view(this);
-        let new_button = this.create_button();
 
+        // select the button that (supposedly, not necessarily) was used to add this field
+        let clicked_button = form.querySelectorAll('.adder')[this.new_field_idx];
+
+        // select whatever is currently under the 'clicked' button
+        let below = clicked_button.nextSibling;
+
+        // obtain the MovingViewer of the field and create a new button for it (to add things under it)
+        let moving_viewer = form_object.view(this);
+        moving_viewer.below = this.create_button();
+        
+        // add both the MovingViewer and its button after the clicked button
         below.parentElement.insertBefore(moving_viewer.div, below);
-        below.parentElement.insertBefore(new_button, below);
-        moving_viewer.below = new_button;
+        below.parentElement.insertBefore(moving_viewer.below, below);
+
+        // disable/re-enable the buttons of the existing viewers
         let viewers = below.parentElement.querySelectorAll('.viewer');
+        
+        // if this new field is in the first place
         if (this.new_field_idx === 0) {
+            // disable its up-button
             moving_viewer.up.setAttribute('disabled', '');
+            
+            // re-enable the up-button of the field that was first before, if relevant
             if (viewers.length > 1) {
                 viewers[1].querySelector('.up').removeAttribute('disabled');
             }
         }
+        
+        // if this new field is in the last place
         if (this.new_field_idx === this.field_ids.length - 1) {
+            // disable its down-button
             moving_viewer.down.setAttribute('disabled', '');
+            
+            // re-enable the down-button of the field that was last before, if relevant
             if (viewers.length > 1) {
                 viewers[viewers.length - 2].querySelector('.down').removeAttribute('disabled');
             }
         }
     }
 
-    
+    /**
+     * Add a new field to the (mini-)schema.
+     * @param {InputField} form_object Field to be added to this schema.
+     */
     add_field(form_object) {
-        // Register a created form field, add it to the fields dictionary and view it
+        // Add the field ID to the list of field IDs, in the right order
         this.field_ids.splice(this.new_field_idx, 0, form_object.id);
+
+        // Add the field to the object with fields
         this.fields[form_object.id] = form_object;
+
+        // Enable or disable 'saving' the schema based on whether this field has been created by duplicating.
         this.toggle_saving();
 
+        // Create the MovingViewer and add it to the editing section of the schema
         this.view_field(form_object);
     }
 
+    /**
+     * Update an existing field in a schema.
+     * @param {InputField} form_object Field to be updated.
+     */
     update_field(form_object) {
-        // TODO have checks so we don't just replace everything
+        // Replace the field in this.fields
         this.fields[form_object.id] = form_object;
+
+        // Identify the form with MovingViewers and the MovingViewer itself
         let form = this.form_div;
         let viewer = form.querySelector('#' + form_object.id);
+        
+        // Update the title of the MovingViewer
         viewer.querySelector('h5').innerHTML = form_object.required ? form_object.title + '*' : form_object.title;
         let rep_icon = Field.quick('i', 'bi bi-front px-2');
         if (form_object.repeatable) {
@@ -133,28 +199,51 @@ class ComplexField {
         } else if (viewer.querySelector('h5 .bi-front') != null) {
             viewer.querySelector('h5').removeChild(rep_icon);
         }
+        
+        // Replace the contents of the MovingViewer
         let form_field = viewer.querySelector('.card-body');
         let new_input = form_object.viewer_input();
         form_field.replaceChild(new_input, form_field.firstChild);
     }
 
+    /**
+     * Replace (rename) an existing field in a schema.
+     * @param {String} old_id ID of the field to be replaced.
+     * @param {InputField} form_object Replacement field.
+     */
     replace_field(old_id, form_object) {
+        // Identify the form with MovingViewers
         let form = this.form_div;
+
+        // Identify the button under the field that we want to replace and remove it along with the MovingViewer on top of it
         const old_adder = form.querySelectorAll('.adder')[this.field_ids.indexOf(old_id) + 1];
         old_adder.previousSibling.remove();
         old_adder.remove();
+
+        // Remove the existing field from this.fields and from this.field_ids
         delete this.fields[old_id];
-        this.new_field_idx = this.field_ids.indexOf(old_id);
+        this.new_field_idx = this.field_ids.indexOf(old_id); // set next-field index to the index of the replaced field
         this.field_ids.splice(this.new_field_idx, 1);
+
+        // Add the replacement field
         this.add_field(form_object);
     }
+
+    /**
+     * Disable or enable saving a (mini-)schema based on whether any of the existing fields is a duplicate.
+     * Duplicates don't have ids, so we cannot save a schema until that issue is resolved.
+     */
     toggle_saving() {
+        // Identify the form with moving viewers
         let form = this.form_div;
+        
+        // Check if any field is a duplicate
         const has_duplicates = Object.values(this.fields).some((field) => field.is_duplicate);
 
+        // Buttons to update:
         const buttons = this.constructor.name == 'Schema'
-            ? ['publish', 'draft'].map((btn) => form.querySelector('button#' + btn))
-            : [form.querySelector('button#add')];
+            ? ['publish', 'draft'].map((btn) => form.querySelector('button#' + btn)) // publish and draft for schemas
+            : [form.querySelector('button#add')]; // "add/update" for a composite field
         if (has_duplicates) {
             buttons.forEach((btn) => btn.setAttribute('disabled', ''));
         } else {
@@ -162,43 +251,74 @@ class ComplexField {
         }
     }
 
-
+    /**
+     * Create a button to create more form elements. On click, it updates the value of the `new_field_idx` property.
+     * It also activates the modal that offers the different types of fields.
+     * @returns {HTMLDivElement} A DIV with the button.
+     */
     create_button() {
-        // Create a button to create more form elements
+        // create a div and its button
         let div = Field.quick('div', 'd-grid gap-2 adder mt-2');
-        let modal_id = `${this.choice_id}-${this.data_status}`
         let button = Field.quick("button", "btn btn-primary btn-sm", "Add element");
         button.type = "button";
+        // attach button to modal
         button.setAttribute("data-bs-toggle", "modal");
-        button.setAttribute("data-bs-target", `#${modal_id}`);
+        button.setAttribute("data-bs-target", `#${this.modal_id}`);
 
+        // on click, the modal will also update `new_field_idx` based on the index of the field on top of it
         button.addEventListener('click', () => {
             this.new_field_idx = div.previousSibling.classList.contains('viewer') ?
                 this.field_ids.indexOf(div.previousSibling.id) + 1 :
                 0;
         });
+
         div.appendChild(button);
         return div;
     }
+    
+    /**
+     * Reset the contents of this schema: no fields, initial name
+     */
     reset() {
         this.field_ids = [];
         this.fields = {};
         this.new_field_idx = 0;
-        this.name = this.constructor.name == 'Schema' && this.status == 'draft'
-            ? 'schema-editor'
-            : this.parent ? this.parent.match(/(.+)-\d\.\d\.\d/)[1] : this.name;
+        
+        // if relevant, reset the name
+        // if this is the initial schema and a new draft has been created
+        if (this.constructor.name == 'Schema' && this.status == 'draft') {
+            this.name = 'schema-editor' // then the name should be 'schema-editor'
+        } else if (this.parent) { // if this is the clone of another schema
+            this.name = this.parent.match(/(.+)-\d\.\d\.\d/)[1] // get the name of the parent (no versions)
+        }
     }
 
-    
+    /**
+     * Create a form or simulation of form from a Schema.
+     * In the schema manager, this generates the 'view' of an existing version.
+     * In the metadata annotation, this generates the form to be filled.
+     * @param {Schema} schema Schema to view.
+     * @param {Boolean} [active=false] Whether the form will be used for application of metadata.
+     * @returns {HTMLDivElement|HTMLFormElement}
+     */
     static create_viewer(schema, active = false) {
-        let div = schema.constructor.name == 'SchemaForm' ?
-            Field.quick('form', 'mt-3 needs-validation') :
-            Field.quick('div', 'input-view');
+        // create a form or div depending on whether it's for annotation or not
+        // active can be true for a composite field during annotation, but we should not create a form for it
+        let div = schema.constructor.name == 'SchemaForm'
+            ? Field.quick('form', 'mt-3 needs-validation')
+            : Field.quick('div', 'input-view');
+        
+        // go through each of the fields
+        // QUESTION should the code inside the forEach be defined in the InputField classes?
         schema.field_ids.forEach((field_id) => {
             let subfield = schema.fields[field_id];
+
+            // create a div for the input field
             let small_div = Field.quick('div', 'mini-viewer');
             small_div.name = `viewer-${field_id}`;
             let label;
+
+            // special box and label if the field is a composite field
             if (subfield.constructor.name == 'ObjectInput') {
                 label = Field.quick('h5', 'border-bottom border-secondary');
                 label.innerHTML = subfield.required ? subfield.title + '*' : subfield.title;
@@ -210,18 +330,25 @@ class ComplexField {
                     `viewer-${subfield.id}`
                 );
             }
+
+            // define options if the field is repeatable
             if (subfield.repeatable) {
                 let icon = Field.quick('i', 'bi bi-front px-2');
                 if (active) {
+                    // for annotation, create a button
                     let button = Field.quick('button', 'btn btn-outline-dark p-0 mx-2');
                     button.type = 'button';
+
+                    // behavior when the 'repeat' button is clicked
                     button.addEventListener('click', () => {
+                        // clone the div of the field, but instead of the 'repeat' button make a 'remove' button
                         let clone = small_div.cloneNode(true);
                         let clone_button = clone.querySelector('button i');
                         clone_button.classList.remove('bi-front');
                         clone_button.classList.add('bi-trash');
                         clone_button.parentElement.addEventListener('click', () => clone.remove());
 
+                        // add the cloned div right after the div it came from
                         if (small_div.nextSibling == undefined) {
                             small_div.parentElement.appendChild(clone);
                         } else {
@@ -234,11 +361,14 @@ class ComplexField {
                     label.appendChild(icon);
                 }
             }
+
+            // create the contents of the viewer based on the specific kind of field
             let input = subfield.viewer_input(active = active);
             small_div.appendChild(label);
             small_div.appendChild(input);
             div.appendChild(small_div);
         });
+
         return div;
     }
 
@@ -302,6 +432,9 @@ class ObjectEditor extends ComplexField {
         return this.create_button();
     }
 
+    get form_div() {
+        return document.querySelector(`.modal#${this.card_id} form`);
+    }
     clone(new_parent) {
         let clone = new ObjectEditor(new_parent);
         clone.field_ids = [...this.field_ids];
@@ -340,6 +473,10 @@ class Schema extends ComplexField {
         this.version = version;
         this.container = container_id;
         this.urls = urls;
+    }
+
+    get form_div() {
+        return document.querySelector(`form#form-${this.card_id}-${this.data_status}`);
     }
 
     from_json(data) {

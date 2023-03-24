@@ -24,7 +24,7 @@
  * @property {String} mode In first instance, "add"; when an existing field can be edited, "mod".
  * @property {Boolean} is_duplicate Whether the field has just been created via duplication of a different field.
  * @property {String} schema_name Name of the schema the field belongs to.
- * @property {String} schema_status Status of the schema as it is used in the ID of the form ('new', 'draft', 'copy' or 'object...').
+ * @property {String} schema_status Derived status of the schema as it is used in the ID of the form ('new', 'draft', 'copy' or 'object...').
  * @property {Boolean} required Whether the field should be required when implementing the metadata.
  * @property {Boolean} repeatable Whether the field can be repeated in the implementation form.
  * @property {Object} values Variable properties specific to different kinds of fields.
