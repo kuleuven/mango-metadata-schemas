@@ -17,6 +17,7 @@
 class ComplexField {
     /**
      * Initialize a Schema, mini-schema for a composite field or dummy mini-schema for illustrating a composite field.
+     * @class
      * @param {String} name Initial name of the schema, for IDs of the DOM elements.
      * @param {String} data_status Derived status used in IDs of DOM elements.
      */
@@ -371,7 +372,6 @@ class ComplexField {
 
         return div;
     }
-
 }
 
 /**
@@ -382,6 +382,10 @@ class ComplexField {
  */
 class DummyObject extends ComplexField {
     schema_name = 'example';
+    /**
+     * Initialize the DummyObject.
+     * @class
+     */
     constructor() {
         // Initialize the basics - all we care about is actually the viewer
         super(schema_name, schema_name);
@@ -422,30 +426,41 @@ class DummyObject extends ComplexField {
  * @property {String} card_id ID of the editing modal of the composite field this is linked to. Assigned by `ObjectInput.create_modal()`.
  */
 class ObjectEditor extends ComplexField {
+    /**
+     * Create a mini-schema for a composite field.
+     * @param {ObjectInput} parent Composite field this mini-schema is linked to.
+     */
     constructor(parent) {
         super(parent.id, `object-${parent.schema_status}`);
         this.parent_status = parent.schema_status;
-        if (parent.form_field) this.form_id = parent.form_field.form.id;
+        if (parent.form_field) {
+            this.form_id = parent.form_field.form.id;
+        }
     }
 
+    /**
+     * Create a button to add more fields.
+     * @returns {HTMLDivElement} A DIV with a button.
+     */
     get button() {
         return this.create_button();
     }
 
+    /**
+     * Get the form with the moving viewers of the fields.
+     * @return {HTMLFormElement}
+     */
     get form_div() {
         return document.querySelector(`.modal#${this.card_id} form`);
     }
-    clone(new_parent) {
-        let clone = new ObjectEditor(new_parent);
-        clone.field_ids = [...this.field_ids];
-        clone.fields = { ...this.fields };
-        return clone;
-    }
 
+    /**
+     * Obtain the data_status of the mini-schema.
+     * @returns {String} Derived status as used in IDs for DOM elements.
+     */
     set_data_status() {
         return `object-${this.parent_status}`;
     }
-
 }
 
 /**
