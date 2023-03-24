@@ -624,6 +624,7 @@ class TypedInput extends InputField {
                 .innerHTML = validator;
         }
     }
+
     /**
      * Parse an object to fill in the properties of the object instance.
      * Next to the parent class workflow, define the subtitle and retrieve the minimum and maximum for numeric inputs.
@@ -830,7 +831,7 @@ class ObjectInput extends InputField {
     form_type = "object";
     button_title = "Composite field";
     description = "This can contain any combination of the previous form elements.<br>"
-    
+
     /**
      * Create and link a mini-schema (ObjectEditor) to contain the subfields.
      */
@@ -872,11 +873,11 @@ class ObjectInput extends InputField {
     from_json(data) {
         // register the contents
         super.from_json(data);
-        
+
         // copy the data to the `json_source` property so the `editor` can access it
         this.json_source = data;
     }
-    
+
     /**
      * Create an example of a Composite Field.
      * @static
@@ -892,7 +893,7 @@ class ObjectInput extends InputField {
         inner_input.setAttribute('style', 'display:block;');
         return inner_input;
     }
-    
+
     /**
      * Create an element with a nested form, either to view in a schema-view or to fill in annotation.
      * The result is a box with the corresponding `viewer_input` outputs of the components.
@@ -913,12 +914,12 @@ class ObjectInput extends InputField {
 
         // create and link an ObjectEditor (mini-schema)
         this.create_editor();
-        
+
         // if there is existing data, fill in the editor
         if (this.json_source != undefined) {
             this.editor.from_json(this.json_source);
         }
-        
+
         // finish the form
         this.end_form();
 
@@ -935,10 +936,10 @@ class ObjectInput extends InputField {
     create_modal(schema) {
         // Initiate the modal
         super.create_modal(schema);
-        
+
         // Assign the id of the modal as the hook of the editor
         this.editor.card_id = `${this.mode}-${this.id}-${this.schema_name}-${this.schema_status}`;
-        
+
         // If there are subfields
         if (this.editor.field_ids.length > 0) {
             // Go through each subfield and render it
@@ -950,6 +951,16 @@ class ObjectInput extends InputField {
     }
 }
 
+/**
+ * Class representing a multiple-choice field
+ * Its `form_type` depends on the subclass; its `type` is always "select".
+ * Its `button_title` depends on the subclass.
+ * @extends InputField
+ * @property {Array<String|Number>} values.values Posible values to choose from.
+ * @property {Boolean} values.multiple Whether multiple values can be selected.
+ * @property {String} values.ui UI rendering of the field (dropdown, checkbox or radio).
+ * @property {Boolean} repeatable Whether the field can be repeatable (it cannot).
+ */
 class MultipleInput extends InputField {
     constructor(schema_name, data_status = 'draft') {
         super(schema_name, data_status);
@@ -959,43 +970,72 @@ class MultipleInput extends InputField {
 
     repeatable = false;
 
+    /**
+     * Parse an object to fill in the properties of the object instance.
+     * Next to the parent class workflow, retrieve the 'values', 'multiple' and 'ui' attributes.
+     * @param {FieldInfo} data JSON representation of the contents of the field.
+     */
+    from_json(data) {
+        // Retrieve the common attributes
+        super.from_json(data);
+
+        // Retrive multiple-choice specific attributes
+        this.values = { 'values': data.values, 'multiple': data.multiple, 'ui': data.ui };
+    }
+
+    /**
+     * Create an element with the right type of input field, either to view in a schema-view or to fill in annotation.
+     * @param {Boolean} active Whether the form is meant to be used in annotation.
+     * @returns {HTMLDivElement}
+     */
     viewer_input(active = false) {
-        // I just send the Fields data (values, actual value, and name if active)
-        let div = this.values.ui == 'dropdown' ?
-            Field.dropdown(this, active) :
-            Field.checkbox_radio(this, active);
+        let div = this.values.ui == 'dropdown' // If UI is 'dropdown'
+            ? Field.dropdown(this, active) // create a dropdown
+            : Field.checkbox_radio(this, active); // otherwise a checkbox or radio
         return div;
     }
 
+    /**
+     * Create a form to edit the field.
+     * Between setup and ending, add moving options depending on the existing values.
+     */
     create_form() {
+        // Setup form
         this.setup_form();
+
+        // Add moving input fields to design the options
         this.form_field.add_moving_options("Select option", this.values.values);
+        
+        // Finish form
         this.end_form();
     }
 
+    /**
+     * Read the form used to edit the field and register the values (on submission).
+     * @param {FormData} data Contents of the editing form of the field.
+     */
+    recover_fields(data) {
+        // reset whatever values existing
+        this.values.values = [];
+        // go through values in the form
+        for (let pair of data.entries()) {
+            // add the value of moving input fields only
+            if (pair[0].startsWith("mover")) { this.values.values.push(pair[1]); }
+        }
+    }
+    
+    /**
+     * Bring the field and its form back to the original settings.
+     */
     reset() {
         let form = this.form_field.form;
+        // remove all moving fields except for two
         while (form.querySelectorAll(".blocked").length > 2) {
             MovingChoice.remove_div(form.querySelector(".blocked"));
         }
+
+        // reset the form and field
         super.reset();
-        // form.reset();
-        // form.classList.remove('was-validated');
-    }
-
-    recover_fields(data) {
-        this.values.values = [];
-        for (let pair of data.entries()) {
-            if (pair[0].startsWith("mover")) {
-                this.values.values.push(pair[1]);
-            }
-        }
-    }
-
-    from_json(data) {
-        super.from_json(data);
-        this.values = { 'values': data.values, 'multiple': data.multiple, 'ui': data.ui };
-        this.create_form();
     }
 }
 
