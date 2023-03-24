@@ -194,7 +194,7 @@ class AnnotationRequest extends MangoRequest {
      * Get an existing schema and metadata associated with it to edit the metadata of a collection or data-object.
      * @class
      * @param {String} schema_url URL from which to retrieve the metadata schema.
-     * @param {Object} annotated_data Key-value pairs with existing metadata related to the schema.
+     * @param {Object<String,String[]>} annotated_data Key-value pairs with existing metadata related to the schema.
      * @param {String} prefix Prefix for the metadata attribute names, e.g. `mgs.book`
      */
     constructor(schema_url, annotated_data, prefix) {
@@ -204,7 +204,7 @@ class AnnotationRequest extends MangoRequest {
 
     /**
      * Read the JSON of a schema, generate a form for implementation and fill it with existing metadata.
-     * @param {Object} annotated_data Key-value pairs with existing metadata related to the schema.
+     * @param {Object<String,String[]>} annotated_data Key-value pairs with existing metadata related to the schema.
      * @param {String} prefix Prefix for the metadata attribute names, e.g. `mgs.book`
      */
     parse_response(annotated_data, prefix) {
@@ -216,6 +216,7 @@ class AnnotationRequest extends MangoRequest {
             // generate the form
             let schema = new SchemaForm(json, container_id, prefix);
             // fill the form with existing metadata
+            console.log(annotated_data)
             schema.add_annotation(annotated_data);
         })
     }

@@ -862,6 +862,7 @@ class SchemaGroup {
 
     /**
      * Create and fill an accordion item and the tabs for the versions of a schema.
+     * @class
      * @param {String} name Name of the schema.
      * @param {String} title User-facing label of the schema.
      * @param {Array<Object>} versions List of versions with their name, number and status.
@@ -973,37 +974,51 @@ class SchemaGroup {
 
 /**
  * Class for a published version of a schema to be used when applying metadata.
- * @property {String} name
- * @property {String} title
- * @property {String} container_id
- * @property {String} prefix
- * @property {String} realm
- * @property {String} version
- * @property {String} parent
- * @property {Object<String,InputField>} fields
- * @property {String[]} field_ids
- * @property {HTMLFormElement} form
- * 
+ * @property {String} name Name of the schema.
+ * @property {String} title User-facing label/title of the schema.
+ * @property {String} container_id ID of the DIV to which the form will be attached.
+ * @property {String} prefix Prefix of the metadata attribute names, e.g. `msg.book`.
+ * @property {String} realm Name of the realm to which the schema belongs.
+ * @property {String} version Version number of the current schema version.
+ * @property {String} parent Name of the schema this schema was cloned from, if relevant. (Not implemented)
+ * @property {Object<String,InputField>} fields Collection of fields that constitute this schema.
+ * @property {String[]} field_ids Ordered list of IDs of the fields.
+ * @property {HTMLFormElement} form Form used to implement the metadata annotation. 
  */
 class SchemaForm {
+    /**
+     * Create a form to apply metadata from a schema.
+     * @param {SchemaInfo} json Contents of the JSON file on which the schema is stored.
+     * @param {String} container_id ID of the DIV to which the form will be attached.
+     * @param {String} prefix Prefix of the metadata attribute names, e.g. `msg.book`.
+     */
     constructor(json, container_id, prefix) {
+        // retrieve properties from the JSON contents
         this.name = json.schema_name;
         this.title = json.title;
-
-        this.container = container_id; // div in which to render
-        this.prefix = prefix; // for flattening
-
         this.realm = json.realm;
         this.version = json.version;
         this.parent = json.parent;
 
+        this.container = container_id;
+        this.prefix = prefix;
+       
+        // Initialized empty set of fields
         this.fields = {};
         this.field_ids = Object.keys(json.properties);
+        
+        // create the form and add the fields
         this.from_json(json.properties);
     }
 
+    /**
+     * Create the form with all its fields.
+     * @param {Object<String,FieldInfo>} schema_json Collection of Object-versions of fields.
+     */
     from_json(schema_json) {
+        // Go through each field in the JSON file and create its InputField
         for (let entry of Object.entries(schema_json)) {
+            // the 'data_status' argument is not relevant here
             let new_field = InputField.choose_class(this.name, '', entry);
             if (new_field.constructor.name == 'ObjectInput') {
                 new_field.editor = new ObjectEditor(new_field);
@@ -1011,13 +1026,19 @@ class SchemaForm {
             }
             this.fields[entry[0]] = new_field;
         }
+
+        // Create names with the flattened ids, even inside objects
         SchemaForm.flatten_object(this, this.prefix);
+
+        // Create the form, enabled for annotation
         let form_div = ComplexField.create_viewer(this, true);
 
+        // Add a title to the form
         let title = document.createElement('h3');
         title.innerHTML = `<small class="text-muted">Metadata schema:</small> ${this.title} ${this.version}`;
         document.getElementById(this.container).appendChild(title);
 
+        // Retrieve information from the URL and add it to the form as hidden fields
         const url = new URL(window.location.href)
         const url_params = url.searchParams;
         for (let item of ['item_type', 'object_path', 'schema', 'realm']) {
@@ -1028,14 +1049,18 @@ class SchemaForm {
             form_div.appendChild(hidden_input);
         }
 
+        // Create a row for the submission button
         let submitting_row = Field.quick('div', 'row border-top pt-2')
-
         let submitter = Field.quick('button', 'btn btn-primary', 'Save metadata');
         submitter.type = 'submit';
         submitting_row.appendChild(submitter);
         form_div.appendChild(submitting_row);
+
+        // Add attributes to the form so it submits directly
         form_div.setAttribute('action', post_url);
         form_div.setAttribute('method', 'POST');
+
+        // Include BS5 validation
         form_div.addEventListener('submit', (e) => {
             if (!form_div.checkValidity()) {
                 e.preventDefault();
@@ -1048,61 +1073,100 @@ class SchemaForm {
         this.form = form_div;
     }
 
+    /**
+     * Fill in the form with existing metadata.
+     * @param {Object<String,String[]>} annotated_data Key-value pairs with the existing metadata.
+     */
     add_annotation(annotated_data) {
-        // this still needs to be tested
-        // as list of key-value pairs?
-        let keys = Object.keys(annotated_data).filter((x) => x.startsWith(this.prefix));
-        let non_objects = [...new Set(keys)].filter((fid) => fid.split('.').length == 3);
-        non_objects.forEach((fid) => this.register_non_object(fid, annotated_data));
-        let in_objects = keys.filter((fid) => fid.split('.').length > 3);
-        let objs = [...new Set(in_objects.map((x) => x.match(`${this.prefix}.(?<field>[^\.]+).*`).groups.field))];
-        objs.forEach((fid) => this.register_object(fid, annotated_data, in_objects));
-
-        let hidden_input = document.createElement('input')
+        // add a hidden field withthe value of 'redirect_route
+        let hidden_input = document.createElement('input');
         hidden_input.type = 'hidden';
         hidden_input.name = 'redirect_route';
-        hidden_input.value = annotated_data['redirect_route'];
+        hidden_input.value = annotated_data.redirect_route[0];
         this.form.appendChild(hidden_input);
-        return;
+
+        // exclude non-metadata keys, e.g. 'redirect_route'
+        let keys = Object.keys(annotated_data).filter((x) => x.startsWith(this.prefix));
+
+        // extract fields that are not in composite fields and register them
+        let non_objects = keys.filter((fid) => fid.split('.').length == 3);
+        non_objects.forEach((fid) => this.register_non_object(fid, annotated_data));
+        
+        // extract fields that are in composite fields
+        let in_objects = keys.filter((fid) => fid.split('.').length > 3);
+        // identify the unique composite fields
+        let objs = [...new Set(in_objects.map((x) => x.match(`${this.prefix}.(?<field>[^\.]+).*`).groups.field))];
+        // go through each composite field and register its subfields
+        objs.forEach((fid) => this.register_object(fid, annotated_data, in_objects));
     }
 
+    /**
+     * Retrieve the annotated data corresponding to fields inside a given composite field.
+     * @param {String} obj Flattened ID of the composite field.
+     * @param {Object<String,String[]>} annotated_data Key-value pairs with the existing metadata.
+     * @param {String[]} object_fields Flattened IDs of fields inside composite fields.
+     * @param {String} prefix Prefix common to all these fields.
+     */
     register_object(obj, annotated_data, object_fields, prefix = null) {
+        // Start with the original prefix, but accumulate when we have nested composite fields
         prefix = prefix || this.prefix;
+
+        // Identify the fields that belong to this particular composite fields
         let fields = object_fields.filter((fid) => fid.startsWith(`${prefix}.${obj}.`));
         // THIS CODE DOES NOT DEAL WITH DUPLICATED OBJECTS (TEMPORARILY DISABLED)
+
+        // Identify the div inside the form that hosts the fields for this composite field
         let viewer = this.form.querySelector(`h5#viewer-${obj}`).parentElement;
 
+        // Extract the fields that are not inside nested composite fields and register them
         let not_nested = fields.filter((fid) => fid.split('.').length == (prefix.split('.').length + 2));
         not_nested.forEach((fid) => this.register_non_object(fid, annotated_data, viewer));
 
+        // Extract the fields that are inside nested composite fields
         let nested = fields.filter((fid) => fid.split('.').length > (prefix.split('.').length + 2));
+        // Identify the unique nested composite fields
         let sub_objs = [...new Set(nested.map((x) => x.match(`${prefix}.${obj}.(?<field>[^\.]+).*`).groups.field))];
+        // Go through each nested composite field and register its subfields, with an accumulated prefix
         sub_objs.forEach((fid) => this.register_object(fid, annotated_data, nested, `${prefix}.${obj}`));
     }
 
+    /**
+     * Register the annotated value of a specific (non composite) field.
+     * @param {String} fid Flattened ID of the field to fill in.
+     * @param {Object<String,String[]>} annotated_data Key-value pairs with the existing metadata.
+     * @param {HTMLFormElement|HTMLDivElement} form Form or div element inside which we can find the input field to fill in.
+     */
     register_non_object(fid, annotated_data, form = null) {
+        // Start with the original form, but in fields inside a composite field it will be its div.
         form = form || this.form;
+
+        // Extract the data linked to this field
         let existing_values = annotated_data[fid];
+
+        // Identify checkboxes as cases where there are multiple input fields with the same name in the form
+        // (this is only for multiple-value multiple-choice fields)
         let is_checkbox = [...form.querySelectorAll(`[name="${fid}"]`)]
             .filter((x) => x.classList.contains('form-check-input'))
             .length > 0;
+        // if we indeed have multiple-value multiple-choice
         if (is_checkbox) {
             form.querySelectorAll(`[name="${fid}"]`)
                 .forEach((chk) => {
                     if (existing_values.indexOf(chk.value) > -1) chk.setAttribute('checked', '');
                 });
-        } else if (existing_values.length == 1) {
+        } else if (existing_values.length == 1) { // if there is only one value for this field
             form.querySelector(`[name="${fid}"]`).value = existing_values[0];
-        } else {
-            // if the field has been duplicated
+        } else { // if the field has been duplicated
             let field_id = fid.match(`${this.prefix}.(?<field>.+)`).groups.field;
+            // go through each of the values and repeat the input field with its corresponding value
             for (let i = 0; i < existing_values.length; i++) {
                 let viewer = form.querySelectorAll(`div.mini-viewer[name="${field_id}"]`)[i];
                 let sibling = viewer.nextSibling;
                 let value = existing_values[i];
                 if (i == 0) {
-                    viewer.querySelector('input').value = value;
+                    viewer.querySelector('input').value = value; // use the existing field if this is the first item
                 } else {
+                    // clone the input field and fill it if it's not the first item
                     let new_viewer = viewer.cloneNode(true);
                     new_viewer.querySelector('input').value = value;
                     sibling == undefined ? form.appendChild(new_viewer) : form.insertBefore(new_viewer, sibling);
@@ -1111,12 +1175,22 @@ class SchemaForm {
         }
     }
 
+    /**
+     * Recursive function that assigns a `name` property to each field with the flattened id.
+     * @static
+     * @param {SchemaForm|ObjectEditor} object_editor Schema or mini-schema for a composite field.
+     * @param {String} flattened_id Prefix to be added to the id of a field.
+     */
     static flatten_object(object_editor, flattened_id) {
+        // go through each field
         object_editor.field_ids.forEach((field_id) => {
+            // flatten the id
             let subfield_flattened = `${flattened_id}.${field_id}`;
+            // if the field is composite, apply this to each field inside
             if (object_editor.fields[field_id].constructor.name == 'ObjectInput') {
                 SchemaForm.flatten_object(object_editor.fields[field_id].editor, subfield_flattened);
             } else {
+                // assign the flattened id as a name
                 object_editor.fields[field_id].name = subfield_flattened;
             }
         });
