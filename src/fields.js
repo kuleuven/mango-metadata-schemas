@@ -401,6 +401,15 @@ class InputField {
     }
 
     /**
+     * Read the form used to edit the field and register the appropriate values.
+     * Implemented within each subclass, except for `ObjectInput`.
+     * @param {FormData} data Contents of the editing form of the field.
+     */
+    recover_fields(data) {
+        return;
+    }
+
+    /**
      * Create an Element to show and edit the field.
      * @param {Schema} schema (Mini-)schema the field belongs to.
      * @returns {MovingViewer} Element to show and edit the field.
@@ -461,6 +470,12 @@ class InputField {
  * @property {Number} values.minimum For numeric inputs, the maximum possible value.
  */
 class TypedInput extends InputField {
+    /**
+     * Initialize a new single field in a (mini-)schema.
+     * @class
+     * @param {String} schema_name Name of the schema that the field is attached to, for form identification purposes.
+     * @param {String} [data_status=draft] Status of the schema version that the field is attached to, for form identification purposes.
+     */
     constructor(schema_name, data_status = 'draft') {
         super(schema_name, data_status);
         this.type = "text";
@@ -472,46 +487,20 @@ class TypedInput extends InputField {
     description = "Text options: regular text, number (integer or float), date, time, datetime, e-mail, URL or single checkbox.<br>"
 
     /**
-     * Parse an object to fill in the properties of the object instance.
-     * Next to the parent class workflow, define the subtitle and retrieve the minimum and maximum for numeric inputs.
-     * @param {FieldInfo} data JSON representation of the contents of the field.
+     * Depending on the existence of minimum or maximum for the numeric fields,
+     * provide the appropriate descriptive text.
+     * @returns {String} Text describing the range of a numeric field.
      */
-    from_json(data) {
-        super.from_json(data);
-        let par_text = this.type;
-        if (this.type == 'integer' | this.type == 'float') {
-            this.values = { 'minimum': data.minimum, 'maximum': data.maximum };
-            let range_text = this.print_range();
-            par_text = `${this.type} ${range_text}`;
-        }
-        this.viewer_subtitle = `Input type: ${par_text}`;
-    }
-
-    /**
-     * Create an example of a Simple Field.
-     * @static
-     * @returns {HTMLInputElement} The field to add in an illustration example.
-     */
-    static ex_input() {
-        let inner_input = Field.quick("input", "form-control");
-        inner_input.value = "Some text";
-        inner_input.setAttribute('readonly', '');
-        return inner_input;
-    }
-
-    /**
-     * If relevant, create and add an input field for the default value.
-     */
-    add_default_field() {
-        // if the field does not exist yet (it may have been removed for textarea and checkbox)
-        if (this.form_field.form.querySelector(`#div-${this.id}-default`) == null) {
-            this.form_field.add_input(
-                'Default value', `${this.id}-default`,
-                {
-                    description: "Default value for this field: only valid if the field is required.",
-                    value: this.default, required: false
-                }
-            );
+    print_range() {
+        // if we have both values
+        if (this.values.minimum && this.values.maximum) {
+            return `between ${this.values.minimum} and ${this.values.maximum}`;
+        } else if (this.values.minimum) { // if we have the minimum only
+            return `larger than ${this.values.minimum}`;
+        } else if (this.values.maximum) { // if we have the maximum only
+            return `smaller than ${this.values.maximum}`;
+        } else { // if we don't have any
+            return '';
         }
     }
 
@@ -635,6 +624,49 @@ class TypedInput extends InputField {
                 .innerHTML = validator;
         }
     }
+    /**
+     * Parse an object to fill in the properties of the object instance.
+     * Next to the parent class workflow, define the subtitle and retrieve the minimum and maximum for numeric inputs.
+     * @param {FieldInfo} data JSON representation of the contents of the field.
+     */
+    from_json(data) {
+        super.from_json(data);
+        let par_text = this.type;
+        if (this.type == 'integer' | this.type == 'float') {
+            this.values = { 'minimum': data.minimum, 'maximum': data.maximum };
+            let range_text = this.print_range();
+            par_text = `${this.type} ${range_text}`;
+        }
+        this.viewer_subtitle = `Input type: ${par_text}`;
+    }
+
+    /**
+     * Create an example of a Simple Field.
+     * @static
+     * @returns {HTMLInputElement} The field to add in an illustration example.
+     */
+    static ex_input() {
+        let inner_input = Field.quick("input", "form-control");
+        inner_input.value = "Some text";
+        inner_input.setAttribute('readonly', '');
+        return inner_input;
+    }
+
+    /**
+     * If relevant, create and add an input field for the default value.
+     */
+    add_default_field() {
+        // if the field does not exist yet (it may have been removed for textarea and checkbox)
+        if (this.form_field.form.querySelector(`#div-${this.id}-default`) == null) {
+            this.form_field.add_input(
+                'Default value', `${this.id}-default`,
+                {
+                    description: "Default value for this field: only valid if the field is required.",
+                    value: this.default, required: false
+                }
+            );
+        }
+    }
 
     /**
      * Create an element with an input field, either to view in a schema-view or to fill in annotation.
@@ -720,21 +752,21 @@ class TypedInput extends InputField {
 
         // add the dropdown for the possible options
         let text_options = [
-            "text", "textarea", "email", "url", 
+            "text", "textarea", "email", "url",
             "date", "time", "datetime-local",
             "integer", "float",
             "checkbox"];
         this.form_field.add_select("Input type", `${this.id}-format`, text_options, this.type);
-        
+
         // when selecting from the dropdown, adapt the contents of the form
         this.form_field.form.querySelector(".form-select").addEventListener('change', () => {
             let selected = this.form_field.form.elements[`${this.id}-format`].value;
             this.manage_format(selected)
         });
-        
+
         // add any other relevant input field
         this.manage_format(this.type);
-        
+
         // finish form
         this.end_form();
     }
@@ -774,91 +806,54 @@ class TypedInput extends InputField {
         super.reset();
     }
 
-    /**
-     * Depending on the existence of minimum or maximum for the numeric fields,
-     * provide the appropriate descriptive text.
-     * @returns {String} Text describing the range of a numeric field.
-     */
-    print_range() {
-        // if we have both values
-        if (this.values.minimum && this.values.maximum) {
-            return `between ${this.values.minimum} and ${this.values.maximum}`;
-        } else if (this.values.minimum) { // if we have the minimum only
-            return `larger than ${this.values.minimum}`;
-        } else if (this.values.maximum) { // if we have the maximum only
-            return `smaller than ${this.values.maximum}`;
-        } else { // if we don't have any
-            return '';
-        }
-    }
 }
 
+/**
+ * Class representing a composite field
+ * Its `form_type` is always "object", like its `type`.
+ * Its `button_title` is "Composite field" and its description is a brief summary.
+ * @extends InputField
+ * @property {ObjectEditor} editor Mini-schema containing the InputFields corresponding to the components of the composite field
+ * @property {FieldInfo} json_source Contents coming from a JSON file, used to fill in the `editor`.
+ */
 class ObjectInput extends InputField {
+    /**
+     * Initialize a new Field in a (mini-)schema.
+     * @class
+     * @param {String} schema_name Name of the schema that the field is attached to, for form identification purposes.
+     * @param {String} [data_status=draft] Status of the schema version that the field is attached to, for form identification purposes.
+     */
     constructor(schema_name, data_status = 'draft') {
         super(schema_name, data_status);
-        this.form_type = "object";
-        this.button_title = "Composite field";
-        this.description = "This can contain any combination of the previous form elements.<br>"
     }
 
-    static ex_input() {
-        let mini_object = new DummyObject();
-        let inner_input = ComplexField.create_viewer(mini_object, true);
-        inner_input.querySelectorAll('input').forEach((input) => input.setAttribute('readonly', ''));
-        inner_input.setAttribute('style', 'display:block;');
-        return inner_input;
-    }
-
+    form_type = "object";
+    button_title = "Composite field";
+    description = "This can contain any combination of the previous form elements.<br>"
+    
+    /**
+     * Create and link a mini-schema (ObjectEditor) to contain the subfields.
+     */
     create_editor() {
+        // If it doesn't exist, create a new ObjectEditor, otherwise just update the id of the form
         if (this.editor == undefined) {
             this.editor = new ObjectEditor(this);
         } else {
             this.editor.form_id = this.form_field.form.id;
         }
+        // Start up the editor (offering subfield options)
         this.editor.display_options();
     }
 
-    create_modal(schema) {
-        super.create_modal(schema);
-        this.editor.card_id = `${this.mode}-${this.id}-${this.schema_name}-${this.schema_status}`;
-        if (this.editor.field_ids.length > 0) {
-            this.editor.field_ids.forEach((field_id, idx) => {
-                this.editor.new_field_idx = idx;
-                this.editor.view_field(this.editor.fields[field_id]);
-            });
-        }
-    }
-
-    viewer_input(active = false) {
-        return ComplexField.create_viewer(this.editor, active);
-    }
-
-    create_form() {
-        this.setup_form();
-        this.create_editor();
-        if (this.json_source != undefined) {
-            this.editor.from_json(this.json_source);
-        }
-        this.end_form();
-        const switches = this.form_field.form.querySelector('#switches-div');
-        this.form_field.form.insertBefore(this.editor.button, switches);
-
-    }
-
-    recover_fields(data) {
-        // I'm not so sure about this one...
-        this.properties = {};
-        this.editor.field_ids.forEach((field_id) => {
-            let field = this.editor.fields[field_id];
-            this.properties[field_id] = field.json;
-        });
-    }
-
+    /**
+     * Turn the relevant fields into an Object to be saved in a JSON file, based on the contents of `editor`.
+     * Overrides the parent version.
+     * @returns {FieldInfo} JSON representation of the contents of the field.
+     */
     to_json() {
-        // this.editor.name = this.form_field.form
-        //     .querySelector(`[name="${this.editor.id_field}"]`)
-        //     .value;
+        // Update `this.editor.properties` with the Object version of its subfields
         this.editor.fields_to_json();
+        // create the object
         let json = {
             title: this.title,
             properties: this.editor.properties,
@@ -866,13 +861,92 @@ class ObjectInput extends InputField {
         }
 
         if (this.required) json.required = this.required;
-        if (this.repeatable) json.repeatable = this.repeatable;
+        if (this.repeatable) json.repeatable = this.repeatable; // temporarily not implemented
         return json;
     }
 
+    /**
+     * Parse an object to fill in the properties of the object instance.
+     * @param {FieldInfo} data JSON representation of the contents of the field.
+     */
     from_json(data) {
+        // register the contents
         super.from_json(data);
+        
+        // copy the data to the `json_source` property so the `editor` can access it
         this.json_source = data;
+    }
+    
+    /**
+     * Create an example of a Composite Field.
+     * @static
+     * @returns {HTMLInputElement} The field to add in an illustration example.
+     */
+    static ex_input() {
+        // instantiate a mini-schema just for illustration
+        let mini_object = new DummyObject();
+
+        // render the example fields into a simulated viewer
+        let inner_input = ComplexField.create_viewer(mini_object, true);
+        inner_input.querySelectorAll('input').forEach((input) => input.setAttribute('readonly', ''));
+        inner_input.setAttribute('style', 'display:block;');
+        return inner_input;
+    }
+    
+    /**
+     * Create an element with a nested form, either to view in a schema-view or to fill in annotation.
+     * The result is a box with the corresponding `viewer_input` outputs of the components.
+     * @param {Boolean} active Whether the form is meant to be used in annotation.
+     * @returns {HTMLDivElement}
+     */
+    viewer_input(active = false) {
+        return ComplexField.create_viewer(this.editor, active);
+    }
+
+    /**
+     * Create a form to edit the field.
+     * Between setup and ending, create and link an ObjectEditor and fill it with existing data.
+     */
+    create_form() {
+        // setup the form
+        this.setup_form();
+
+        // create and link an ObjectEditor (mini-schema)
+        this.create_editor();
+        
+        // if there is existing data, fill in the editor
+        if (this.json_source != undefined) {
+            this.editor.from_json(this.json_source);
+        }
+        
+        // finish the form
+        this.end_form();
+
+        // insert the 'add element' button before the switches
+        // (although while the composite field is not repeatable, there are no switches)
+        const switches = this.form_field.form.querySelector('#switches-div');
+        this.form_field.form.insertBefore(this.editor.button, switches);
+    }
+
+    /**
+     * Create a modal to host the form to edit the field and define what happens when the form is "submitted".
+     * @param {Schema} schema (Mini-)schema that the field is attached to.
+     */
+    create_modal(schema) {
+        // Initiate the modal
+        super.create_modal(schema);
+        
+        // Assign the id of the modal as the hook of the editor
+        this.editor.card_id = `${this.mode}-${this.id}-${this.schema_name}-${this.schema_status}`;
+        
+        // If there are subfields
+        if (this.editor.field_ids.length > 0) {
+            // Go through each subfield and render it
+            this.editor.field_ids.forEach((field_id, idx) => {
+                this.editor.new_field_idx = idx;
+                this.editor.view_field(this.editor.fields[field_id]);
+            });
+        }
     }
 }
 
