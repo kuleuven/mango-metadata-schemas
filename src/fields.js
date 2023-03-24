@@ -18,6 +18,7 @@
  * Master class to represent input fields. Only the children classes are actually instantiated.
  * @property {String} id Identifier of the field in relation to other fields, used in the DOM elements related to it. It matches `field_id` unless the field is new.
  * @property {String} field_id ID of the field as it will show in the "ID" input field of the editing form (empty if it has not been defined).
+ * @property {String} form_type Internal type to distinguish different subclasses in the DOM IDs.
  * @property {String} description Description to show in the example of the options viewer. For now an empty string except in composite fields.
  * @property {String} dummy_title Title for the example in the options viewer. Always "Informative label".
  * @property {String} mode In first instance, "add"; when an existing field can be edited, "mod".
@@ -139,7 +140,7 @@ class InputField {
     setup_form() {
         // create a new form
         this.form_field = new BasicForm(this.id);
-        
+
         // add an input field to provide the ID of the field
         this.form_field.add_input(
             `ID for ${this.form_type} (underlying label)`, `${this.id}-id`,
@@ -149,7 +150,7 @@ class InputField {
                 pattern: "[a-z0-9_]+"
             }
         );
-        
+
         // add an input field to provide the title of the field
         this.form_field.add_input(
             `Label for ${this.form_type} (display name)`, `${this.id}-label`,
@@ -171,21 +172,21 @@ class InputField {
 
         // Add a space before switches and buttons
         this.form_field.form.appendChild(document.createElement('br'));
-        
+
         // define whether there should be a dropdown option
         let dropdownable = this_class == 'SelectInput' | this_class == 'CheckboxInput';
-        
+
         // define whether the field may be repeated
         // ObjectInput included as in_object to TEMPORARILY disable repeatable objects
         let in_object = this.schema_status.startsWith('object') || this_class == 'ObjectInput';
-        
+
         // define whether the field may be required
         let requirable = !(this_class == 'CheckboxInput' | this_class == 'ObjectInput');
-        
+
         // generate the list of switches
         let switchnames = requirable ? ['required'] : [];
         let switches = requirable ? { required: this.required } : {};
-        
+
         // dropdownable is mutually exclusive with repeatable
         if (dropdownable) {
             switchnames.push('dropdown');
@@ -202,7 +203,7 @@ class InputField {
         // define the behavior of the 'required' switch
         if (requirable) {
             let req_input = this.form_field.form.querySelector(`#${this.id}-required`);
-            
+
             // if it's a simple field with a checkbox
             if (this.type == 'checkbox') {
                 req_input.setAttribute('disabled', '');
@@ -245,18 +246,18 @@ class InputField {
     create_modal(schema) {
         // define the ID of the editing modal
         let modal_id = `${this.mode}-${this.id}-${this.schema_name}-${this.schema_status}`;
-        
+
         // create the modal
         let edit_modal = new Modal(modal_id, `Add ${this.button_title}`);
-        
+
         // retrieve the form and add it to the modal
         let form = this.form_field.form;
         edit_modal.create_modal([form], 'lg');
-        
+
         // capture modal for manipulation
         let modal_dom = document.getElementById(modal_id);
         this.modal = bootstrap.Modal.getOrCreateInstance(modal_dom);
-        
+
         // define behavior on form submission
         this.form_field.add_submit_action('add', (e) => {
             e.preventDefault();
@@ -270,10 +271,10 @@ class InputField {
 
                 // ok the form
                 form.classList.remove('was-validated');
-                
+
                 // close the modal
                 this.modal.toggle();
-                
+
                 // if the field is part of the composite field, re-activate the composite field's editing modal
                 if (schema.constructor.name == 'ObjectEditor') {
                     let parent_modal_dom = document.getElementById(`${schema.card_id}`);
@@ -286,7 +287,7 @@ class InputField {
 
                 // create id for the new field
                 let clone_modal_id = `${clone.mode}-${clone.id}-${clone.schema_name}-${clone.schema_status}`;
-                
+
                 // if the new field is completely new or has changed ID
                 if (clone_modal_id != modal_id) {
                     // fill the new field's modal with its form
@@ -359,13 +360,13 @@ class InputField {
             let clone = new this.constructor(schema.initial_name, this.schema_status);
             // id as it will show in the "ID" field of the form
             clone.field_id = new_id;
-            
+
             // transfer the form
             clone.form_field = this.form_field;
-            
+
             // register the main info
             clone.title = data.get(`${this.id}-label`);
-            clone.required = this.required;            
+            clone.required = this.required;
             clone.repeatable = this.repeatable;
             clone.default = this.default;
             clone.id = this.id // temporarily, to recover data
@@ -429,7 +430,7 @@ class InputField {
      */
     static choose_class(schema_name, data_status, [id, data] = []) {
         let new_field;
-        
+
         // if the type is 'object', create a composite field
         if (data.type == 'object') {
             new_field = new ObjectInput(schema_name, data_status);
@@ -451,6 +452,14 @@ class InputField {
     }
 }
 
+/**
+ * Class representing a simple field.
+ * Its `form_type` is always "text", whereas its `type` refers to one of many possible input options.
+ * Its `button_title` is "Simple field" and its `description` includes the many input options.
+ * @extends InputField
+ * @property {Number} values.minimum For numeric inputs, the minimum possible value.
+ * @property {Number} values.minimum For numeric inputs, the maximum possible value.
+ */
 class TypedInput extends InputField {
     constructor(schema_name, data_status = 'draft') {
         super(schema_name, data_status);
@@ -458,10 +467,31 @@ class TypedInput extends InputField {
         this.values = {};
     }
 
-    form_type = "text";
-    button_title = "Simple field";
-    description = "Text options: regular text, number (integer or float), date, time, e-mail, URL or single checkbox.<br>"
+    form_type = "text"; // name of the class for DOM IDs
+    button_title = "Simple field"; // user-facing name
+    description = "Text options: regular text, number (integer or float), date, time, datetime, e-mail, URL or single checkbox.<br>"
 
+    /**
+     * Parse an object to fill in the properties of the object instance.
+     * Next to the parent class workflow, define the subtitle and retrieve the minimum and maximum for numeric inputs.
+     * @param {FieldInfo} data JSON representation of the contents of the field.
+     */
+    from_json(data) {
+        super.from_json(data);
+        let par_text = this.type;
+        if (this.type == 'integer' | this.type == 'float') {
+            this.values = { 'minimum': data.minimum, 'maximum': data.maximum };
+            let range_text = this.print_range();
+            par_text = `${this.type} ${range_text}`;
+        }
+        this.viewer_subtitle = `Input type: ${par_text}`;
+    }
+
+    /**
+     * Create an example of a Simple Field.
+     * @static
+     * @returns {HTMLInputElement} The field to add in an illustration example.
+     */
     static ex_input() {
         let inner_input = Field.quick("input", "form-control");
         inner_input.value = "Some text";
@@ -469,7 +499,11 @@ class TypedInput extends InputField {
         return inner_input;
     }
 
+    /**
+     * If relevant, create and add an input field for the default value.
+     */
     add_default_field() {
+        // if the field does not exist yet (it may have been removed for textarea and checkbox)
         if (this.form_field.form.querySelector(`#div-${this.id}-default`) == null) {
             this.form_field.add_input(
                 'Default value', `${this.id}-default`,
@@ -481,8 +515,139 @@ class TypedInput extends InputField {
         }
     }
 
+    /**
+     * Handle the input fields and values dependent on specific types of simple fields.
+     * If a field editor is generated for the first time, include the appropriate fields.
+     * If a different type is chosen while editing the field, add/remove the appropriate fields.
+     * @param {String} format Selected type of the input field.
+     */
+    manage_format(format) {
+        // Have a minimum or maximum values been defined?
+        let has_range = this.values.minimum != undefined || this.values.maximum != undefined;
+
+        // ID of the input fields for minimum and maximum (for numbers)
+        let min_id = `${this.id}-min`;
+        let max_id = `${this.id}-max`;
+
+        // DIV and input fields for the default value (not always present)
+        let default_div = this.form_field.form.querySelector(`#div-${this.id}-default`);
+        let default_input = this.form_field.form.querySelector(`#${this.id}-default`);
+
+        // add or remove default based on type
+        if (format == 'textarea' || format == 'checkbox') {
+            if (default_div != null) {
+                this.form_field.form.removeChild(default_div);
+            }
+            this.default = undefined;
+            if (format == 'checkbox') {
+                this.required = false;
+                this.repeatable = false;
+            }
+        } else {
+            this.add_default_field();
+        }
+
+        // disable or enable switches based on type (if they have already been created)
+        let switches_div = this.form_field.form.querySelector('div#switches-div');
+        if (switches_div != undefined) {
+            let switches = switches_div.querySelectorAll('input[role="switch"]');
+            if (format == 'checkbox') {
+                switches.forEach((sw) => { sw.setAttribute('disabled', '') });
+            } else {
+                switches.forEach((sw) => sw.removeAttribute('disabled'));
+            }
+        }
+
+        // add or remove range inputs based on type
+        if (format == "integer" | format == 'float') {
+            // adapt the type of the default input field
+            if (default_input !== null) { default_input.type = 'number'; }
+
+            // if there is no field for minimum and maximum yet
+            // (because the numeric type has just been selected via the dropdown)
+            if (this.form_field.form.querySelector('#' + min_id) == undefined) {
+                // add input field for the minimum value
+                this.form_field.add_input("Minimum", min_id,
+                    {
+                        placeholder: '0',
+                        value: has_range ? this.values.minimum : false, // value if it exists
+                        validation_message: "This field is compulsory and the value must be lower than the maximum.",
+                        required: false
+                    });
+
+                this.form_field.add_input("Maximum", max_id,
+                    {
+                        placeholder: '100',
+                        value: has_range ? this.values.maximum : false, // value if it exists
+                        validation_message: "This field is compulsory and the value must be higher than the minimum.",
+                        required: false
+                    });
+            }
+            // assign the right type to the input fields for minimum and maximum
+            let min_button = this.form_field.form.querySelector('#' + min_id);
+            min_button.type = 'number';
+            let max_button = this.form_field.form.querySelector('#' + max_id);
+            max_button.type = 'number';
+
+            // allow decimals for float input
+            if (format == 'float') {
+                min_button.setAttribute('step', 'any');
+                max_button.setAttribute('step', 'any');
+                if (default_input !== null) { default_input.setAttribute('step', 'any'); }
+            }
+
+            // adapt minima of maximum and default fields when a new minimum is provided
+            min_button.addEventListener('change', () => {
+                max_button.min = min_button.value;
+                if (default_input != null) {
+                    default_input.min = min_button.value;
+                }
+            });
+
+            // adapt maxima of minimum and default fields when a new maximum is provided
+            max_button.addEventListener('change', () => {
+                min_button.max = max_button.value;
+                default_input.max = max_button.value;
+            });
+        } else { // if the field is not numeric (anymore)
+            // remove the min and max input fields
+            if (this.form_field.form.querySelectorAll('.form-container [type="number"]').length > 0) {
+                this.form_field.form.removeChild(document.getElementById(`div-${min_id}`));
+                this.form_field.form.removeChild(document.getElementById(`div-${max_id}`));
+            }
+
+            // if minimum and maximum values had been provided
+            if (has_range) {
+                delete this.values.minimum;
+                delete this.values.maximum;
+            }
+
+            // adapt the type of the default input
+            if (default_input !== null) { default_input.type = format; }
+        }
+
+        // adapt the description of the default input field based on the type
+        if (default_input !== null) {
+            let num_validator = default_input.input == 'number' ? this.print_range() : '';
+            let validator = `This field must be of type ${format}${num_validator}.`
+            default_input.parentElement
+                .querySelector('.invalid-feedback')
+                .innerHTML = validator;
+        }
+    }
+
+    /**
+     * Create an element with an input field, either to view in a schema-view or to fill in annotation.
+     * The restrictions of the field are described in a subtitle on top of the input field in the schema-view
+     * and as a description under the input field in the annotation form.
+     * In schema-view, the field is read-only, but the default value is filled in if appropriate.
+     * @param {Boolean} active Whether the form is meant to be used in annotation.
+     * @returns {HTMLDivElement}
+     */
     viewer_input(active = false) {
         let div = document.createElement('div');
+
+        // set up input field description as subtitle or as input-description
         let subtitle = active ?
             Field.quick('div', 'form-text', this.viewer_subtitle) :
             Field.quick('p', 'card-subtitle', this.viewer_subtitle);
@@ -493,6 +658,8 @@ class TypedInput extends InputField {
         if (this.type == 'textarea') {
             input = Field.quick("textarea", "form-control input-view");
         } else if (this.type == 'checkbox') {
+
+            // single checkbox with no text and only "true" as possible value
             input = Field.quick('div', 'form-check');
             let input_input = Field.quick('input', 'form-check-input');
             input_input.type = 'checkbox';
@@ -503,9 +670,11 @@ class TypedInput extends InputField {
             input.appendChild(input_input);
             input.appendChild(input_label);
         } else {
+            // input with the right type (for validation and other features)
             input = Field.quick("input", "form-control input-view");
             input.type = this.type == 'float' | this.type == 'integer' ? 'number' : this.type;
             input.setAttribute('aria-describedby', subtitle.id);
+            // only these types can be required and have a default value
             if (this.required && this.default !== undefined) {
                 input.value = this.default;
             }
@@ -531,175 +700,55 @@ class TypedInput extends InputField {
                 }
             } else {
                 input.name = this.name;
-                if (this.required) {
-                    input.setAttribute('required', '');
-                }
-                if (value != undefined) {
-                    input.value = value;
-                }
-                if (this.values.minimum != undefined) {
-                    input.min = this.values.minimum;
-                    input.max = this.values.maximum;
-                }
+                if (this.required) { input.setAttribute('required', ''); }
+                if (value != undefined) { input.value = value; }
+                if (this.values.minimum != undefined) { input.min = this.values.minimum; }
+                if (this.values.maximum != undefined) { input.max = this.values.maximum; }
                 div.appendChild(subtitle);
             }
         }
         return div;
     }
 
-    to_json() {
-        let json = super.to_json();
-        if (this.type == 'number' || this.type == 'float') {
-            delete json.format;
-        }
-        return json;
-    }
-
-    from_json(data) {
-        super.from_json(data);
-        let par_text = this.type;
-        if (this.type == 'integer' | this.type == 'float') {
-            this.values = { 'minimum': data.minimum, 'maximum': data.maximum };
-            let range_text = this.print_range();
-            par_text = `${this.type} ${range_text}`;
-        }
-        this.viewer_subtitle = `Input type: ${par_text}`;
-    }
-
-    reset() {
-        let form = this.form_field.form;
-        if (document.getElementById(`div-${this.id}-min`) != undefined) {
-            form.removeChild(document.getElementById(`div-${this.id}-min`));
-            form.removeChild(document.getElementById(`div-${this.id}-max`));
-        }
-        super.reset();
-        // form.reset();
-        // form.classList.remove('was-validated');
-    }
-
-    manage_format(format) {
-        // Add or remove the fields to set minimum and maximum value when input is numeric
-        // Also add or remove default field depending on whether it's a textarea
-        let has_range = Object.keys(this.values).indexOf('minimum') > -1;
-
-        let min_id = `${this.id}-min`;
-        let max_id = `${this.id}-max`;
-
-        let default_div = this.form_field.form.querySelector(`#div-${this.id}-default`);
-        let default_input = this.form_field.form.querySelector(`#${this.id}-default`);
-
-        // add or remove default based on type
-        if (format == 'textarea' || format == 'checkbox') {
-            if (default_div != null) {
-                this.form_field.form.removeChild(default_div);
-            }
-            this.default = undefined;
-            if (format == 'checkbox') {
-                this.required = false;
-                this.repeatable = false;
-            }
-        } else {
-            this.add_default_field();
-        }
-
-        // disable or enable switches based on type
-        let switches_div = this.form_field.form.querySelector('div#switches-div');
-        if (switches_div != undefined) {
-            let switches = switches_div.querySelectorAll('input[role="switch"]');
-            if (format == 'checkbox') {
-                switches.forEach((sw) => { sw.setAttribute('disabled', '') });
-            } else {
-                switches.forEach((sw) => sw.removeAttribute('disabled'));
-            }
-        }
-
-        // add or remove range based on type
-        if (format == "integer" | format == 'float') {
-            if (default_input !== null) {
-                default_input.type = 'number';
-            }
-
-            if (this.form_field.form.querySelector('#' + min_id) == undefined) {
-                this.form_field.add_input("Minimum", min_id,
-                    {
-                        placeholder: '0',
-                        value: has_range ? this.values.minimum : false,
-                        validation_message: "This field is compulsory and the value must be lower than the maximum.",
-                        required: false
-                    });
-
-                this.form_field.add_input("Maximum", max_id,
-                    {
-                        placeholder: '100',
-                        value: has_range ? this.values.maximum : false,
-                        validation_message: "This field is compulsory and the value must be lower than the minimum.",
-                        required: false
-                    });
-
-            }
-            let min_button = this.form_field.form.querySelector('#' + min_id);
-            min_button.type = 'number';
-            let max_button = this.form_field.form.querySelector('#' + max_id);
-            max_button.type = 'number';
-
-            if (format == 'float') {
-                min_button.setAttribute('step', 'any');
-                max_button.setAttribute('step', 'any');
-                if (default_input !== null) {
-                    default_input.setAttribute('step', 'any');
-                }
-            }
-
-            min_button.addEventListener('change', () => {
-                max_button.min = min_button.value;
-                if (default_input != null) {
-                    default_input.min = min_button.value;
-                }
-            });
-            max_button.addEventListener('change', () => {
-                min_button.max = max_button.value;
-                default_input.max = max_button.value;
-            });
-        } else {
-            if (this.form_field.form.querySelectorAll('.form-container [type="number"]').length > 0) {
-                this.form_field.form.removeChild(document.getElementById(`div-${min_id}`));
-                this.form_field.form.removeChild(document.getElementById(`div-${max_id}`));
-            }
-            if (has_range) {
-                delete this.values.minimum;
-                delete this.values.maximum;
-            }
-
-            if (format == 'textarea') {
-
-            } else if (default_input !== null) {
-                default_input.type = format;
-            }
-        }
-        if (default_input !== null) {
-            let num_validator = default_input.input == 'number' ? this.print_range() : '';
-            let validator = `This field must be of type ${format}${num_validator}.`
-            default_input.parentElement
-                .querySelector('.invalid-feedback')
-                .innerHTML = validator;
-        }
-    }
-
+    /**
+     * Create a form to edit the field.
+     * Between setup and ending, add the dropdown to select the type and any other appropriate field.
+     */
     create_form() {
+        // initiate the form
         this.setup_form();
-        let text_options = ["text", "textarea", "date", "email", "time", "datetime-local", "url", "integer", "float", "checkbox"];
+
+        // add the dropdown for the possible options
+        let text_options = [
+            "text", "textarea", "email", "url", 
+            "date", "time", "datetime-local",
+            "integer", "float",
+            "checkbox"];
         this.form_field.add_select("Input type", `${this.id}-format`, text_options, this.type);
-        this.manage_format(this.type);
+        
+        // when selecting from the dropdown, adapt the contents of the form
         this.form_field.form.querySelector(".form-select").addEventListener('change', () => {
             let selected = this.form_field.form.elements[`${this.id}-format`].value;
             this.manage_format(selected)
         });
+        
+        // add any other relevant input field
+        this.manage_format(this.type);
+        
+        // finish form
         this.end_form();
     }
 
+    /**
+     * Read the form used to edit the field and register the values (on submission).
+     * @param {FormData} data Contents of the editing form of the field.
+     */
     recover_fields(data) {
+        // capture type
         this.type = data.get(`${this.id}-format`);
         let par_text = this.type;
+
+        // capture minimum and maximum values if relevant
         if (this.type === "integer" | this.type == 'float') {
             this.values.minimum = data.get(`${this.id}-min`);
             this.values.maximum = data.get(`${this.id}-max`);
@@ -707,26 +756,41 @@ class TypedInput extends InputField {
             let range_text = this.print_range();
             par_text = `${this.type} ${range_text}`;
         }
+
+        // define the description of the field for the viewer and editor
         this.viewer_subtitle = `Input type: ${par_text}`;
     }
 
-    print_range() {
-        if (this.values.minimum && this.values.maximum) {
-            // if we have both values
-            return `between ${this.values.minimum} and ${this.values.maximum}`;
-        } else if (this.values.minimum) {
-            // if we have the minimum
-            return `larger than ${this.values.minimum}`;
-        } else if (this.values.maximum) {
-            // if we have the maximum
-            return `smaller than ${this.values.maximum}`;
-        } else {
-            // if we don't have any
-            return '';
+    /**
+     * Bring the field and its form back to the original settings.
+     */
+    reset() {
+        let form = this.form_field.form;
+        // remove the min and max fields if they exist
+        if (document.getElementById(`div-${this.id}-min`) != undefined) {
+            form.removeChild(document.getElementById(`div-${this.id}-min`));
+            form.removeChild(document.getElementById(`div-${this.id}-max`));
         }
-
+        super.reset();
     }
 
+    /**
+     * Depending on the existence of minimum or maximum for the numeric fields,
+     * provide the appropriate descriptive text.
+     * @returns {String} Text describing the range of a numeric field.
+     */
+    print_range() {
+        // if we have both values
+        if (this.values.minimum && this.values.maximum) {
+            return `between ${this.values.minimum} and ${this.values.maximum}`;
+        } else if (this.values.minimum) { // if we have the minimum only
+            return `larger than ${this.values.minimum}`;
+        } else if (this.values.maximum) { // if we have the maximum only
+            return `smaller than ${this.values.maximum}`;
+        } else { // if we don't have any
+            return '';
+        }
+    }
 }
 
 class ObjectInput extends InputField {
