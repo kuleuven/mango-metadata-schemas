@@ -952,7 +952,7 @@ class ObjectInput extends InputField {
 }
 
 /**
- * Class representing a multiple-choice field
+ * Class representing a multiple-choice field.
  * Its `form_type` depends on the subclass; its `type` is always "select".
  * Its `button_title` depends on the subclass.
  * @extends InputField
@@ -962,6 +962,12 @@ class ObjectInput extends InputField {
  * @property {Boolean} repeatable Whether the field can be repeatable (it cannot).
  */
 class MultipleInput extends InputField {
+    /**
+     * Initialize a new MultipleInput Field in a (mini-)schema.
+     * @class
+     * @param {String} schema_name Name of the schema that the field is attached to, for form identification purposes.
+     * @param {String} [data_status=draft] Status of the schema version that the field is attached to, for form identification purposes.
+     */
     constructor(schema_name, data_status = 'draft') {
         super(schema_name, data_status);
         this.type = "select";
@@ -1039,73 +1045,137 @@ class MultipleInput extends InputField {
     }
 }
 
-// The classes above can probably be removed
+/**
+ * Class representing a single-value multiple-choice field.
+ * Its `form_type` is always "selection"; its `type` remains "select".
+ * Its `button_type` is always "Single-value multiple choice".
+ * Its `values.multiple` property is always "false"; its `values.ui` property can only be "dropdown" or "radio".
+ * @extends MultipleInput
+ * @property {String} dropdown_alt The alternative to dropdown: "radio".
+ */
 class SelectInput extends MultipleInput {
+    /**
+     * Initialize a new SelectInput Field in a (mini-)schema.
+     * @class
+     * @param {String} schema_name Name of the schema that the field is attached to, for form identification purposes.
+     * @param {String} [data_status=draft] Status of the schema version that the field is attached to, for form identification purposes.
+     */
     constructor(schema_name, data_status = 'draft') {
         super(schema_name, data_status);
-        this.form_type = "selection";
-        this.button_title = "Singe-value multiple choice";
         this.values.multiple = false;
         this.values.ui = 'radio';
     }
+    
+    form_type = "selection";
+    button_title = "Singe-value multiple choice";
     dropdown_alt = 'radio';
 
+    /**
+     * If relevant, create and add a dropdown for the default value.
+     * The dropdown options do not adapt as you edit the possible options because that's too much work.
+     * But once you have saved your input, the next edit will offer the right options.
+     */
     add_default_field() {
-        this.form_field.add_select("Default value (if field is required)", `${this.id}-default`, this.values.values);
+        this.form_field.add_select(
+            "Default value (if field is required)",
+            `${this.id}-default`,
+            this.values.values);
     }
+
+    /**
+     * Create an example of a Single-value Multiple Choice field
+     * @static
+     * @returns {HTMLInputElement} The field to add in an illustration example.
+     */
     static ex_input() {
+        // create two columns, one to show a dropdown and one for radio buttons
         let columns = Field.quick('div', 'row h-50');
+        let col1 = Field.quick('div', 'col-6 p-2 mb-2');
+        let col2 = Field.quick('div', 'col-6 p-2 mb-2');
+        columns.appendChild(col1);
+        columns.appendChild(col2);
+        
+        // create a dummy version for illustration with three default values
         let example_input = new SelectInput('example');
         example_input.values.values = ['one', 'two', 'three'];
         example_input.name = 'select-example';
+
+        // create the dropdown rendering of the illustrative example and append to left column
         let dropdown = Field.dropdown(example_input);
         dropdown.querySelector('option[value="one"]').setAttribute('selected', '');
         dropdown.setAttribute('readonly', '');
+        col1.appendChild(dropdown);
+        
+        // create the radio rendering of the illustrative example and append to right column
         let radio = Field.checkbox_radio(example_input);
         radio.querySelector('input[value="one"]').setAttribute('checked', '');
         radio.querySelectorAll('input').forEach((input) => input.setAttribute('readonly', ''));
-        let col1 = Field.quick('div', 'col-6 p-2 mb-2');
-        col1.appendChild(dropdown);
-        let col2 = Field.quick('div', 'col-6 p-2 mb-2');
         col2.appendChild(radio);
-        columns.appendChild(col1);
-        columns.appendChild(col2);
+        
         return columns;
     }
 }
 
+/**
+ * Class representing a multiple-value multiple-choice field.
+ * Its `form_type` is always "checkbox"; its `type` remains "select".
+ * Its `button_type` is always "Multiple-value multiple choice".
+ * Its `values.multiple` property is always "true"; its `values.ui` property can only be "dropdown" or "checkbox".
+ * @extends MultipleInput
+ * @property {String} dropdown_alt The alternative to dropdown: "checkbox".
+ */
 class CheckboxInput extends MultipleInput {
+    /**
+     * Initialize a new CheckboxInput Field in a (mini-)schema.
+     * @class
+     * @param {String} schema_name Name of the schema that the field is attached to, for form identification purposes.
+     * @param {String} [data_status=draft] Status of the schema version that the field is attached to, for form identification purposes.
+     */
     constructor(schema_name, data_status = 'draft') {
         super(schema_name, data_status);
-        this.form_type = "checkbox";
-        this.button_title = "Multiple-value multiple choice";
         this.values.multiple = true;
         this.values.ui = 'checkbox';
     }
+
+    form_type = "checkbox";
+    button_title = "Multiple-value multiple choice";
     dropdown_alt = 'checkbox';
 
+    /**
+     * Create an example of a Multiple-value Multiple Choice field
+     * @static
+     * @returns {HTMLInputElement} The field to add in an illustration example.
+     */
     static ex_input() {
+        // create two columns, one to show a dropdown and one for checkboxes
         let columns = Field.quick('div', 'row');
+        let col1 = Field.quick('div', 'col-6 p-2');
+        let col2 = Field.quick('div', 'col-6 p-2');
+        columns.appendChild(col1);
+        columns.appendChild(col2);
+        
+        // create a dummy version for illustration with three default values
         let example_input = new CheckboxInput('example');
         example_input.values.values = ['one', 'two', 'three'];
         example_input.name = 'checkbox-example';
+        
+        // create the dropdown rendering of the illustrative example and append to left column
         let dropdown = Field.dropdown(example_input);
         dropdown.querySelectorAll('option')
             .forEach((option) => {
                 if (option.value == "one" || option.value == "two") option.setAttribute('selected', '');
             });
         dropdown.setAttribute('readonly', '');
+        col1.appendChild(dropdown);
+        
+        // create the checkboxes rendering of the illustrative example and append to right column
         let checkboxes = Field.checkbox_radio(example_input);
         checkboxes.querySelectorAll('input').forEach((input) => {
             if (input.value != "three") input.setAttribute('checked', '');
             input.setAttribute('readonly', '');
         })
-        let col1 = Field.quick('div', 'col-6 p-2');
-        col1.appendChild(dropdown);
-        let col2 = Field.quick('div', 'col-6 p-2');
         col2.appendChild(checkboxes);
-        columns.appendChild(col1);
-        columns.appendChild(col2);
+        
         return columns;
     }
 }
