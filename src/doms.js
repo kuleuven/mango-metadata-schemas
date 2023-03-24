@@ -425,8 +425,8 @@ class MovingViewer extends MovingField {
             }
 
             // remove the box and buttons
-            this.div.parentNode.removeChild(this.below);
-            this.div.parentNode.removeChild(this.div);
+            this.below.remove();
+            this.div.remove();
             
             // remove the field from the schema
             this.schema.field_ids.splice(form_index, 1);

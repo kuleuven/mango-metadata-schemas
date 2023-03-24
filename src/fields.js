@@ -15,7 +15,7 @@
  */
 
 /**
- * Master class to represent input fields. Only the children classes are actually instantiated.
+ * Master class to represent input fields. Only the child classes are actually instantiated.
  * @property {String} id Identifier of the field in relation to other fields, used in the DOM elements related to it. It matches `field_id` unless the field is new.
  * @property {String} field_id ID of the field as it will show in the "ID" input field of the editing form (empty if it has not been defined).
  * @property {String} form_type Internal type to distinguish different subclasses in the DOM IDs.
@@ -312,7 +312,7 @@ class InputField {
      * @returns {HTMLDivElement} Element that contains an illustration example and a button to activate an editor modal.
      */
     render(schema) {
-        this.id = `${this.form_type}-${schema.id}`;
+        this.id = `${this.form_type}-${schema.initial_name}`;
 
         // create the form to design the field and the modal that will host it
         this.create_form();

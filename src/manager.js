@@ -41,7 +41,7 @@ const realm = urls.realm;
 
 /**
  * Register of existing schemas
- * @type {Object<String,Array<String>>}
+ * @type {Object<String,String[]>}
  */
 const schemas = {};
 

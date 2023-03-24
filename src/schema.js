@@ -1,9 +1,23 @@
-// set up and manipulate a metadata schema
+/**
+ * Master class to represent schemas and mini-schemas. Only the child classes are actually instantiated.
+ * @property {String} choice_id
+ * @property {String} initial_name Placeholder name for DOM element IDs.
+ * @property {String} title User-facing label of the schema.
+ * @property {String} data_status Derived status used for IDs in the DOMs elements.
+ * @property {Object<String,InputField>} initials Collection of empty fields to start creating.
+ * @property {TypedInput} initials.typed Initial simple field.
+ * @property {SelectInput} initials.select Initial single-value multiple-choice field.
+ * @property {CheckboxInput} initials.checkbox Initial multiple-value multiple-choice field.
+ * @property {ObjectInput} initials.object Initial composite field.
+ * @property {String[]} field_ids Ordered names of the fields.
+ * @property {Object<String,InputField>} fields Collection of fields that belong to the schema.
+ * @property {Object<String,FieldInfo>} properties Object-version of the information of the fields, to store in a JSON.
+ * @property {Number} new_field_idx Index of the following field that could be added.
+ */
 class ComplexField {
-    constructor(choice_id, name, data_status = 'draft') {
-        this.type = "object";
-        this.choice_id = `${choice_id}-${name}`;
-        this.id = Math.round(Math.random() * 100);
+    constructor(name, data_status = 'draft') {
+        this.choice_id = `choice-${name}`;
+        this.initial_name = name;
         this.data_status = data_status;
         this.initials = {
             typed: new TypedInput(name, this.data_status),
@@ -11,19 +25,9 @@ class ComplexField {
             checkbox: new CheckboxInput(name, this.data_status),
             object: new ObjectInput(name, this.data_status)
         };
-        this.field_ids = []; // ids of the forms as they are added
-        this.fields = {}; // dictionary where forms will be added
-        this.initial_name = name;
-        this.new_field_idx = 0;
-    }
-
-    reset() {
         this.field_ids = [];
         this.fields = {};
         this.new_field_idx = 0;
-        this.name = this.constructor.name == 'Schema' && this.status == 'draft'
-            ? 'schema-editor'
-            : this.parent ? this.parent.match(/(.+)-\d\.\d\.\d/)[1] : this.name;
     }
 
     fields_to_json() {
@@ -49,17 +53,8 @@ class ComplexField {
             }
         }
     }
-
     set_data_status() {
-        if (this.status == undefined || this.status.startsWith('object')) {
-            return `object-${this.parent_status}`;
-        } else if (this.status == 'published') {
-            return 'new';
-        } else if (this.origin == undefined) {
-            return 'draft';
-        } else {
-            return 'copy';
-        }
+        return;
     }
 
     display_options() {
@@ -116,20 +111,7 @@ class ComplexField {
         }
     }
 
-    toggle_saving() {
-        let form = this.form_div;
-        const has_duplicates = Object.values(this.fields).some((field) => field.is_duplicate);
-
-        const buttons = this.constructor.name == 'Schema'
-            ? ['publish', 'draft'].map((btn) => form.querySelector('button#' + btn))
-            : [form.querySelector('button#add')];
-        if (has_duplicates) {
-            buttons.forEach((btn) => btn.setAttribute('disabled', ''));
-        } else {
-            buttons.forEach((btn) => btn.removeAttribute('disabled'));
-        }
-    }
-
+    
     add_field(form_object) {
         // Register a created form field, add it to the fields dictionary and view it
         this.field_ids.splice(this.new_field_idx, 0, form_object.id);
@@ -166,6 +148,20 @@ class ComplexField {
         this.field_ids.splice(this.new_field_idx, 1);
         this.add_field(form_object);
     }
+    toggle_saving() {
+        let form = this.form_div;
+        const has_duplicates = Object.values(this.fields).some((field) => field.is_duplicate);
+
+        const buttons = this.constructor.name == 'Schema'
+            ? ['publish', 'draft'].map((btn) => form.querySelector('button#' + btn))
+            : [form.querySelector('button#add')];
+        if (has_duplicates) {
+            buttons.forEach((btn) => btn.setAttribute('disabled', ''));
+        } else {
+            buttons.forEach((btn) => btn.removeAttribute('disabled'));
+        }
+    }
+
 
     create_button() {
         // Create a button to create more form elements
@@ -184,7 +180,16 @@ class ComplexField {
         div.appendChild(button);
         return div;
     }
+    reset() {
+        this.field_ids = [];
+        this.fields = {};
+        this.new_field_idx = 0;
+        this.name = this.constructor.name == 'Schema' && this.status == 'draft'
+            ? 'schema-editor'
+            : this.parent ? this.parent.match(/(.+)-\d\.\d\.\d/)[1] : this.name;
+    }
 
+    
     static create_viewer(schema, active = false) {
         let div = schema.constructor.name == 'SchemaForm' ?
             Field.quick('form', 'mt-3 needs-validation') :
@@ -239,26 +244,36 @@ class ComplexField {
 
 }
 
+/**
+ * Class for illustration of an ObjectEditor.
+ * It has three fixed IDs to illustrate: a simple text input, a simple date input and a radio.
+ * @extends ComplexField
+ * @property {String} schema_name The name of the fake object ("example").
+ */
 class DummyObject extends ComplexField {
+    schema_name = 'example';
     constructor() {
-        super('example', 'example', 'example');
+        // Initialize the basics - all we care about is actually the viewer
+        super(schema_name, schema_name);
         delete this.initials;
         this.field_ids = ['text', 'date', 'hair'];
 
-        let name = new TypedInput('example');
+        // Create a simple field of type 'text' for illustration
+        let name = new TypedInput(schema_name);
         name.id = 'text';
         name.title = "Full name";
         name.value = "Jane Doe";
         this.fields.text = name;
 
-
-        let bday = new TypedInput('example');
+        // Create a simple field of type 'date' for illustration
+        let bday = new TypedInput(schema_name);
         bday.type = 'date';
         bday.title = "Birth date";
         bday.value = "1970-05-03";
         this.fields.date = bday;
 
-        let hair = new SelectInput('example');
+        // Create a single-value multiple-choice field for illustration
+        let hair = new SelectInput(schema_name);
         hair.name = 'hair'
         hair.values.values = ['brown', 'red', 'blond', 'dark', 'pink'];
         hair.value = 'red';
@@ -267,12 +282,20 @@ class DummyObject extends ComplexField {
     }
 }
 
+/**
+ * Class for mini-schemas connected to a composite field.
+ * `data_status` always starts with 'object', followed by the `data_status`
+ * of the schema that the composite field belongs to.
+ * @extends ComplexField
+ * @property {String} parent_status `data_status` of the (mini-)schema the composite field belongs to.
+ * @property {String} form_id ID of the editing form of the composite field this is linked to.
+ * @property {String} card_id ID of the editing modal of the composite field this is linked to. Assigned by `ObjectInput.create_modal()`.
+ */
 class ObjectEditor extends ComplexField {
     constructor(parent) {
-        super('choice', parent.id, `object-${parent.schema_status}`);
+        super(parent.id, `object-${parent.schema_status}`);
         this.parent_status = parent.schema_status;
         if (parent.form_field) this.form_id = parent.form_field.form.id;
-        this.id_field = `${parent.id}-id`;
     }
 
     get button() {
@@ -286,20 +309,37 @@ class ObjectEditor extends ComplexField {
         return clone;
     }
 
+    set_data_status() {
+        return `object-${this.parent_status}`;
+    }
+
 }
 
+/**
+ * Class for a version of a schema.
+ * @extends ComplexField
+ * @property {String} card_id
+ * @property {String} name
+ * @property {String} version
+ * @property {String} container
+ * @property {UrlsList} urls
+ * @property {String} parent
+ * @property {Object} origin
+ * @property {String[]} origin.ids
+ * @property {Object<String,FieldInfo>} origin.json
+ * @property {Schema} child
+ * @property {AccordionItem} card
+ * @property {SchemaDraftForm} form
+ * @property {NavBar} nav_bar
+ */
 class Schema extends ComplexField {
     constructor(card_id, container_id, urls, version = "1.0.0", data_status = 'draft') {
-        super('choice', card_id, data_status);
+        super(card_id, data_status);
         this.card_id = card_id;
         this.name = card_id.match(/^(.*)-\d\d\d$/)[1];
         this.version = version;
         this.container = container_id;
         this.urls = urls;
-    }
-
-    get accordion_item() {
-        return this.card.div;
     }
 
     from_json(data) {
@@ -308,13 +348,23 @@ class Schema extends ComplexField {
         this.version = data.version;
         this.parent = data.parent;
     }
+    set_data_status() {
+        if (this.status == 'published') {
+            return 'new';
+        } else if (this.origin == undefined) {
+            return 'draft';
+        } else {
+            return 'copy';
+        }
+    }
+
 
     create_creator() {
         this.status = 'draft';
         this.display_options();
         this.create_editor();
         this.card = new AccordionItem(this.card_id, 'New schema', this.container, true);
-        document.getElementById(this.container).appendChild(this.accordion_item);
+        document.getElementById(this.container).appendChild(this.card.div);
         this.card.append(this.form.form);
     }
 
@@ -417,8 +467,7 @@ class Schema extends ComplexField {
 
     setup_copy() {
         this.fields_to_json()
-        this.child = new Schema(this.card_id, this.container, this.urls,
-            "1.0.0", "copy");
+        this.child = new Schema(this.card_id, this.container, this.urls, "1.0.0", "copy");
         this.child.from_parent(this);
     }
 
@@ -536,6 +585,15 @@ class Schema extends ComplexField {
     }
 }
 
+/**
+ * Class for a schema with all its versions, to render on the page.
+ * @property {String} name
+ * @property {String} title
+ * @property {Array<Object>} versions
+ * @property {String[]} statuses
+ * @property {UrlsList} urls
+ * @property {Object<String,String[]>} summary
+ */
 class SchemaGroup {
     static badge_url = 'https://img.shields.io/badge/';
     static status_colors = {
@@ -619,6 +677,20 @@ class SchemaGroup {
     }
 }
 
+/**
+ * Class for a published version of a schema to be used when applying metadata.
+ * @property {String} name
+ * @property {String} title
+ * @property {String} container_id
+ * @property {String} prefix
+ * @property {String} realm
+ * @property {String} version
+ * @property {String} parent
+ * @property {Object<String,InputField>} fields
+ * @property {String[]} field_ids
+ * @property {HTMLFormElement} form
+ * 
+ */
 class SchemaForm {
     constructor(json, container_id, prefix) {
         this.name = json.schema_name;
@@ -680,8 +752,6 @@ class SchemaForm {
 
         document.getElementById(this.container).appendChild(form_div);
         this.form = form_div;
-        this.names = [...this.form.querySelectorAll('input, select')].map((x) => x.name);
-
     }
 
     add_annotation(annotated_data) {
