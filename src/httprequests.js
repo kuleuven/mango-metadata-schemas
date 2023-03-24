@@ -15,7 +15,7 @@
  * @property {String} schema_info.latest_version - The version number (in semantic versioning) of the latest version.
  * @property {Array<String>} schema_info.versions_sorted - The existing version numbers.
  * @property {String} schema_info.realm - Realm to which the schema belongs.
- * @property {String} schema_info.title - User-friendly label of the schema.
+ * @property {String} schema_info.title - User-facing label of the schema.
  * @property {Number} schema_info.timestamp - ???
  * @property {String} url - URL template to retrieve the contents of a version of the schema.
  * 
@@ -28,7 +28,7 @@
  * @property {String} schema_name - Name of the schema.
  * @property {String} version - Version number of the schema version.
  * @property {String} status - Status of the schema version ('draft', 'published' or 'archived).
- * @property {String} title - User-friendly label of the schema.
+ * @property {String} title - User-facing label of the schema.
  * @property {String} edited_by - User that has last edited the schema.
  * @property {String} realm - Realm to which the schema belongs.
  * @property {String} parent - If relevant, name and version number of the schema from which this schema emerged.

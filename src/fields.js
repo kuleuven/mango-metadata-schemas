@@ -1,5 +1,23 @@
 /**
+ * Representation of a field to be saved as JSON.
+ * @typedef {Object} FieldInfo
+ * @property {String} title User-facing label of the field, to be printed in the form and the rendering.
+ * @property {String} type Type of input, to be defined in the specific class or among choices for a simple field.
+ * @property {Boolean} [required] Whether the field will be required in the form.
+ * @property {String} [default] If the field is required (and even then, optionally), the default value in the field.
+ * @property {Boolean} [repeatable] For simple fields, whether the field can be repeated in the form.
+ * @property {String} [minimum] For simple fields with numeric type, the minimum possible value.
+ * @property {String} [maximum] For simple fields with numeric type, the maximum possible value.
+ * @property {Boolean} [multiple] For multiple-choice fields, whether only multiple values can be chosen.
+ * @property {String} [ui] For multiple-choice fields, whether the field is rendered as "dropdown", "checkbox" or "radio".
+ * @property {String[]} [values] For multiple-choice fields, the list of options.
+ * @property {Object} [properties] For composite fields, the collection of subfields.
+ */
+
+/**
  * Master class to represent input fields. Only the children classes are actually instantiated.
+ * @property {String} id Identifier of the field in relation to other fields, used in the DOM elements related to it. It matches `field_id` unless the field is new.
+ * @property {String} field_id ID of the field as it will show in the "ID" input field of the editing form (empty if it has not been defined).
  * @property {String} description Description to show in the example of the options viewer. For now an empty string except in composite fields.
  * @property {String} dummy_title Title for the example in the options viewer. Always "Informative label".
  * @property {String} mode In first instance, "add"; when an existing field can be edited, "mod".
@@ -10,6 +28,9 @@
  * @property {Boolean} repeatable Whether the field can be repeated in the implementation form.
  * @property {Object} values Variable properties specific to different kinds of fields.
  * @property {String|Number} default Default value of the field, if the field is required.
+ * @property {BasicForm} form_field Form to edit the contents of the field.
+ * @property {bootstrap.Modal} modal Modal to which the editing form is attached.
+ * @property {String} button_title User-facing of the type of form.
  */
 class InputField {
     /**
@@ -22,16 +43,16 @@ class InputField {
         // Strings for the example
         this.description = "";
         this.dummy_title = "Informative label";
-        
+
         // Attributes to limit some behavior
         this.mode = 'add';
         this.is_duplicate = false;
-        
+
         // Info about the field contents
         this.required = false;
         this.repeatable = false;
         this.values = {};
-        
+
         // Schema information
         this.schema_name = schema_name;
         this.schema_status = data_status;
@@ -39,6 +60,7 @@ class InputField {
 
     /**
      * Retrieve the contents in JSON format for form submission.
+     * @returns {FieldInfo} JSON representation of the contents of the field.
      */
     get json() {
         return this.to_json();
@@ -46,12 +68,12 @@ class InputField {
 
     /**
      * Turn the relevant fields into an Object to be saved in a JSON file.
-     * @returns {{title: String, type: String, ...}} JSON representation of the contents of the field.
+     * @returns {FieldInfo} JSON representation of the contents of the field.
      */
     to_json() {
         // always include the title and type, expand whatever values are in this field
         let json = { title: this.title, type: this.type, ...this.values };
-        
+
         // add required, default and repeatable fields if relevant
         if (this.required) {
             json.required = this.required;
@@ -60,6 +82,24 @@ class InputField {
         if (this.repeatable) json.repeatable = this.repeatable;
 
         return json;
+    }
+
+    /**
+     * Parse an object to fill in the properties of the object instance.
+     * @param {FieldInfo} data JSON representation of the contents of the field.
+     */
+    from_json(data) {
+        this.title = data.title;
+        this.type = data.type;
+        if (data.required) {
+            this.required = data.required;
+            if (data.default) {
+                this.default = data.default;
+            }
+        }
+        if (data.repeatable) {
+            this.repeatable = data.repeatable;
+        }
     }
 
     /**
@@ -78,36 +118,29 @@ class InputField {
     }
 
     /**
-     * Show the field when editing a schema.
-     * First, generate a form to design the field and a modal that contains said form.
-     * Create a button that triggers the modal and attach it, next to an illustration example,
-     * to an element (which is returned).
-     * @param {Schema} schema (Mini-)schema the field belongs to.
-     * @returns {HTMLDivElement} Element that contains an illustration example and a button to activate an editor modal.
+     * Add a field to provide a default value, if relevant.
+     * @abstract
      */
-    render(schema) {
-        this.id = `${this.form_type}-${schema.id}`;
-        
-        // create the form to design the field and the modal that will host it
-        this.create_form();
-        this.create_modal(schema);
-
-        // create the button that triggers the modal
-        let modal_id = `add-${this.id}-${this.schema_name}-${schema.data_status}`;
-        let new_button = Field.quick("button", "btn btn-primary choice-button", this.button_title);
-        new_button.setAttribute("data-bs-toggle", "modal");        
-        new_button.setAttribute("data-bs-target", '#' + modal_id);
-
-        // append everything to a div
-        let new_form = Field.quick("div", "shadow border rounded p-4 mb-3");
-        new_form.appendChild(new_button);
-        new_form.appendChild(this.create_example());
-
-        return new_form;
+    add_default_field() {
+        return;
     }
 
+    /**
+     * Create a form to edit the field.
+     * @abstract
+     */
+    create_form() {
+        return;
+    }
+
+    /**
+     * Initalize a form to edit the field and add the components at the beginning of the form.
+     */
     setup_form() {
+        // create a new form
         this.form_field = new BasicForm(this.id);
+        
+        // add an input field to provide the ID of the field
         this.form_field.add_input(
             `ID for ${this.form_type} (underlying label)`, `${this.id}-id`,
             {
@@ -116,6 +149,8 @@ class InputField {
                 pattern: "[a-z0-9_]+"
             }
         );
+        
+        // add an input field to provide the title of the field
         this.form_field.add_input(
             `Label for ${this.form_type} (display name)`, `${this.id}-label`,
             {
@@ -124,34 +159,51 @@ class InputField {
             });
     }
 
-    add_default_field() {
-        return;
-    }
-
+    /**
+     * Add the last parts of the form
+     * The behavior is more or less subclass-specific, so maybe it can be cleaned up a bit.
+     */
     end_form() {
         let this_class = this.constructor.name;
 
+        // Add a field to provide a default value, if relevant
         this.add_default_field();
 
-        // Add require switch and submit button to form
+        // Add a space before switches and buttons
         this.form_field.form.appendChild(document.createElement('br'));
+        
+        // define whether there should be a dropdown option
         let dropdownable = this_class == 'SelectInput' | this_class == 'CheckboxInput';
+        
+        // define whether the field may be repeated
         // ObjectInput included as in_object to TEMPORARILY disable repeatable objects
         let in_object = this.schema_status.startsWith('object') || this_class == 'ObjectInput';
+        
+        // define whether the field may be required
         let requirable = !(this_class == 'CheckboxInput' | this_class == 'ObjectInput');
+        
+        // generate the list of switches
         let switchnames = requirable ? ['required'] : [];
         let switches = requirable ? { required: this.required } : {};
+        
+        // dropdownable is mutually exclusive with repeatable
         if (dropdownable) {
             switchnames.push('dropdown');
             switches.dropdown = this.values.ui == 'dropdown';
         } else if (!in_object) {
+            // only if it is NOT dropdownable and also not in a composite field (nor a composite field itself)
+            // this could be limited to simple fields, but this way we can make the composite fields repeatable easily
+            // which is the way it was for a while
             switchnames.push('repeatable');
             switches.repeatable = this.repeatable;
         }
         this.form_field.add_switches(this.id, switchnames, switches);
 
+        // define the behavior of the 'required' switch
         if (requirable) {
             let req_input = this.form_field.form.querySelector(`#${this.id}-required`);
+            
+            // if it's a simple field with a checkbox
             if (this.type == 'checkbox') {
                 req_input.setAttribute('disabled', '');
             }
@@ -160,13 +212,15 @@ class InputField {
                 this.required ? req_input.setAttribute('checked', '') : req_input.removeAttribute('checked');
             });
         }
+
+        // define the behavior of the 'dropdown' switch
         if (dropdownable) {
             let dd_input = this.form_field.form.querySelector(`#${this.id}-dropdown`);
             dd_input.addEventListener('change', () => {
                 this.values.ui = this.values.ui == 'dropdown' ? this.dropdown_alt : 'dropdown';
                 this.values.ui == 'dropdown' ? dd_input.setAttribute('checked', '') : dd_input.removeAttribute('checked');
             });
-        } else if (!in_object) {
+        } else if (!in_object) { // define the behavior of the 'repeatable' switch
             let rep_input = this.form_field.form.querySelector(`#${this.id}-repeatable`);
             if (this.type == 'checkbox') {
                 rep_input.setAttribute('disabled', '');
@@ -177,40 +231,65 @@ class InputField {
             });
         }
 
+        // add a button to confirm the changes
         this.form_field.add_action_button(this.mode == 'add'
             ? `Add to ${this.schema_status.startsWith('object') ? 'object' : 'schema'}`
             : "Update",
             'add');
-
     }
 
+    /**
+     * Create a modal to host the form to edit the field and define what happens when the form is "submitted".
+     * @param {Schema} schema (Mini-)schema that the field is attached to.
+     */
     create_modal(schema) {
+        // define the ID of the editing modal
         let modal_id = `${this.mode}-${this.id}-${this.schema_name}-${this.schema_status}`;
+        
+        // create the modal
         let edit_modal = new Modal(modal_id, `Add ${this.button_title}`);
+        
+        // retrieve the form and add it to the modal
         let form = this.form_field.form;
         edit_modal.create_modal([form], 'lg');
-        this.modal = bootstrap.Modal.getOrCreateInstance(document.getElementById(modal_id));
+        
+        // capture modal for manipulation
         let modal_dom = document.getElementById(modal_id);
-
+        this.modal = bootstrap.Modal.getOrCreateInstance(modal_dom);
+        
+        // define behavior on form submission
         this.form_field.add_submit_action('add', (e) => {
             e.preventDefault();
+            // BS5 validation check
             if (!form.checkValidity()) {
                 e.stopPropagation();
                 form.classList.add('was-validated');
             } else {
-                // if the id is repeated it will replace the other field
+                // create a new field of the same type with the data in the form
                 let clone = this.register_fields(schema);
+
+                // ok the form
                 form.classList.remove('was-validated');
+                
+                // close the modal
                 this.modal.toggle();
+                
+                // if the field is part of the composite field, re-activate the composite field's editing modal
                 if (schema.constructor.name == 'ObjectEditor') {
                     let parent_modal_dom = document.getElementById(`${schema.card_id}`);
                     let parent_modal = bootstrap.Modal.getOrCreateInstance(parent_modal_dom);
                     parent_modal.toggle();
                 }
+
+                // recreate the updated (probably cleaned) form
                 modal_dom.querySelector('.modal-body').appendChild(form);
 
+                // create id for the new field
                 let clone_modal_id = `${clone.mode}-${clone.id}-${clone.schema_name}-${clone.schema_status}`;
+                
+                // if the new field is completely new or has changed ID
                 if (clone_modal_id != modal_id) {
+                    // fill the new field's modal with its form
                     let clone_modal_dom = document.getElementById(clone_modal_id);
                     let clone_form = clone.form_field.form;
                     clone_modal_dom.querySelector('.modal-body').appendChild(clone_form);
@@ -226,37 +305,69 @@ class InputField {
         });
     }
 
+    /**
+     * Prepare and make a new instance of a field available when editing a schema.
+     * @param {Schema} schema (Mini-)schema the field belongs to.
+     * @returns {HTMLDivElement} Element that contains an illustration example and a button to activate an editor modal.
+     */
+    render(schema) {
+        this.id = `${this.form_type}-${schema.id}`;
+
+        // create the form to design the field and the modal that will host it
+        this.create_form();
+        this.create_modal(schema);
+
+        // create the button that triggers the modal
+        let modal_id = `add-${this.id}-${this.schema_name}-${schema.data_status}`;
+        let new_button = Field.quick("button", "btn btn-primary choice-button", this.button_title);
+        new_button.setAttribute("data-bs-toggle", "modal");
+        new_button.setAttribute("data-bs-target", '#' + modal_id);
+
+        // append everything to a div
+        let new_form = Field.quick("div", "shadow border rounded p-4 mb-3");
+        new_form.appendChild(new_button);
+        new_form.appendChild(this.create_example());
+
+        return new_form;
+    }
+
+    /**
+     * Create or update an input field and update the Schema it belongs to.
+     * Read the data from the editing form of the field and either update the field or create a new one.
+     * In the latter case, reset the original form so it can be used for new instances of the field.
+     * @param {Schema} schema (Mini-)schema the field belongs to.
+     * @returns {InputField} Updated version of the input field.
+     */
     register_fields(schema) {
-        // Read data from the modal form
-        // With this form we create a new instance of the class with the output of the form
-        // and give it to the schema as a created field
-        // Then we reset this form so we can create more fields
+        // retrieve data from the form
         let data = new FormData(this.form_field.form);
         let old_id = this.id;
         let new_id = data.get(`${this.id}-id`);
+        // capture the 'default' value if relevant
         if (this.required) {
             this.default = data.get(`${this.id}-default`);
         }
+
+        // if we are updating an existing field without changing the ID
         if (old_id == new_id) {
             this.title = data.get(`${this.id}-label`);
-            this.recover_fields(data);
-            schema.update_field(this);
+            this.recover_fields(data); // update the field
+            schema.update_field(this); // update the schema
             return this;
-        } else {
+        } else { // if we are changing IDs or creating a new field altogether
+            // create a new field with the same type
             let clone = new this.constructor(schema.initial_name, this.schema_status);
+            // id as it will show in the "ID" field of the form
             clone.field_id = new_id;
+            
+            // transfer the form
             clone.form_field = this.form_field;
+            
+            // register the main info
             clone.title = data.get(`${this.id}-label`);
-
-            clone.required = this.required;
-            this.required = false;
-
+            clone.required = this.required;            
             clone.repeatable = this.repeatable;
-            this.repeatable = false;
-
             clone.default = this.default;
-            this.default = undefined;
-
             clone.id = this.id // temporarily, to recover data
 
             if (this.constructor.name == 'ObjectInput') {
@@ -267,14 +378,18 @@ class InputField {
             }
 
             clone.recover_fields(data);
+            // when the field is not new anymore, its id matches the field_id
             clone.id = clone.field_id;
-            this.reset(); // specific
 
+            // bring the current form, editor and contents to their original values
+            this.reset();
+
+            // set the mode of the new field, create form and modal that hosts the form
             clone.mode = 'mod';
             clone.create_form();
-
             clone.create_modal(schema);
 
+            // register new field in the schema
             if (this.mode == 'mod') {
                 schema.replace_field(old_id, clone);
             } else {
@@ -282,47 +397,57 @@ class InputField {
             }
             return clone;
         }
-
     }
 
+    /**
+     * Create an Element to show and edit the field.
+     * @param {Schema} schema (Mini-)schema the field belongs to.
+     * @returns {MovingViewer} Element to show and edit the field.
+     */
     view(schema) {
-        // Method to view the created form
         return new MovingViewer(this, schema);
     }
 
+    /**
+     * Bring the field and its form back to the original settings.
+     */
     reset() {
-        this.form_field.reset();
+        this.required = false;
+        this.repeatable = false;
         this.default = undefined;
+        this.form_field.reset();
     }
 
+    /**
+     * Select and instantiate the right class depending on the value of the JSON-originated date.
+     * @static
+     * @param {String} schema_name Name of the schema the field is attached to, for DOM ID purposes.
+     * @param {String} data_status Status of the schema version the field is attached to, for DOM ID purposes.
+     * @param {String} id ID of the field to create.
+     * @param {FieldInfo} data Contents of the field to create.
+     * @returns {InputField} The right input field with the data from the FieldInfo object.
+     */
     static choose_class(schema_name, data_status, [id, data] = []) {
         let new_field;
+        
+        // if the type is 'object', create a composite field
         if (data.type == 'object') {
             new_field = new ObjectInput(schema_name, data_status);
         } else if (data.type == 'select') {
+            // if the type is 'select', create a multiple-value or single-value multiple choice, depending on the value of 'multiple'
             new_field = data.multiple ? new CheckboxInput(schema_name, data_status) : new SelectInput(schema_name, data_status);
         } else {
+            // the other remaining option is the single field
             new_field = new TypedInput(schema_name, data_status);
         }
+        // fill in the basic information not present in the FieldInfo object
         new_field.field_id = id;
         new_field.id = id;
         new_field.mode = 'mod';
+
+        // read the FieldInfo object to retrieve and register the data
         new_field.from_json(data);
         return new_field;
-    }
-
-    from_json(data) {
-        this.title = data.title;
-        this.type = data.type;
-        if (data.required) {
-            this.required = data.required;
-            if (data.default) {
-                this.default = data.default;
-            }
-        }
-        if (data.repeatable) {
-            this.repeatable = data.repeatable;
-        }
     }
 }
 
@@ -398,7 +523,7 @@ class TypedInput extends InputField {
         } else { // when implementing form
             div.appendChild(input);
             let value = Field.include_value(this);
-            
+
             if (this.type == 'checkbox') {
                 input.querySelector('input').name = this.name;
                 if (value) {
@@ -456,7 +581,7 @@ class TypedInput extends InputField {
         // Add or remove the fields to set minimum and maximum value when input is numeric
         // Also add or remove default field depending on whether it's a textarea
         let has_range = Object.keys(this.values).indexOf('minimum') > -1;
-        
+
         let min_id = `${this.id}-min`;
         let max_id = `${this.id}-max`;
 
@@ -482,10 +607,10 @@ class TypedInput extends InputField {
         if (switches_div != undefined) {
             let switches = switches_div.querySelectorAll('input[role="switch"]');
             if (format == 'checkbox') {
-                switches.forEach((sw) => {sw.setAttribute('disabled', '')});
+                switches.forEach((sw) => { sw.setAttribute('disabled', '') });
             } else {
                 switches.forEach((sw) => sw.removeAttribute('disabled'));
-            }    
+            }
         }
 
         // add or remove range based on type
@@ -562,7 +687,7 @@ class TypedInput extends InputField {
 
     create_form() {
         this.setup_form();
-        let text_options = ["text", "textarea", "date", "email", "time", "url", "integer", "float", "checkbox"];
+        let text_options = ["text", "textarea", "date", "email", "time", "datetime-local", "url", "integer", "float", "checkbox"];
         this.form_field.add_select("Input type", `${this.id}-format`, text_options, this.type);
         this.manage_format(this.type);
         this.form_field.form.querySelector(".form-select").addEventListener('change', () => {
@@ -599,7 +724,7 @@ class TypedInput extends InputField {
             // if we don't have any
             return '';
         }
-        
+
     }
 
 }
@@ -780,7 +905,7 @@ class CheckboxInput extends MultipleInput {
         this.values.ui = 'checkbox';
     }
     dropdown_alt = 'checkbox';
-    
+
     static ex_input() {
         let columns = Field.quick('div', 'row');
         let example_input = new CheckboxInput('example');
