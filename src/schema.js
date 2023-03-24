@@ -63,7 +63,7 @@ class ComplexField {
         this.field_ids = Object.keys(data.properties);
         this.status = data.status; // only relevant for Schema class
         this.data_status = this.set_data_status();
-        
+
         this.field_ids.forEach((field_id) => {
             let new_field = InputField.choose_class(this.initial_name, this.data_status, [field_id, data.properties[field_id]]);
             new_field.create_form();
@@ -85,7 +85,7 @@ class ComplexField {
      */
     display_options() {
         this.data_status = this.set_data_status(); // to make sure it's correct (but maybe this is redundant)
-        
+
         // create a div to fill in with the different field examples
         let formTemp = Field.quick("div", "formContainer");
         formTemp.id = this.data_status + '-templates';
@@ -93,7 +93,7 @@ class ComplexField {
         // create the modal and add the div
         let form_choice_modal = new Modal(this.modal_id, "What form element would you like to add?");
         form_choice_modal.create_modal([formTemp], 'lg');
-        
+
         // when the modal is first shown, render all the initial fields
         let this_modal = document.getElementById(this.modal_id);
         this_modal.addEventListener('show.bs.modal', () => {
@@ -127,30 +127,30 @@ class ComplexField {
         // obtain the MovingViewer of the field and create a new button for it (to add things under it)
         let moving_viewer = form_object.view(this);
         moving_viewer.below = this.create_button();
-        
+
         // add both the MovingViewer and its button after the clicked button
         below.parentElement.insertBefore(moving_viewer.div, below);
         below.parentElement.insertBefore(moving_viewer.below, below);
 
         // disable/re-enable the buttons of the existing viewers
         let viewers = below.parentElement.querySelectorAll('.viewer');
-        
+
         // if this new field is in the first place
         if (this.new_field_idx === 0) {
             // disable its up-button
             moving_viewer.up.setAttribute('disabled', '');
-            
+
             // re-enable the up-button of the field that was first before, if relevant
             if (viewers.length > 1) {
                 viewers[1].querySelector('.up').removeAttribute('disabled');
             }
         }
-        
+
         // if this new field is in the last place
         if (this.new_field_idx === this.field_ids.length - 1) {
             // disable its down-button
             moving_viewer.down.setAttribute('disabled', '');
-            
+
             // re-enable the down-button of the field that was last before, if relevant
             if (viewers.length > 1) {
                 viewers[viewers.length - 2].querySelector('.down').removeAttribute('disabled');
@@ -187,7 +187,7 @@ class ComplexField {
         // Identify the form with MovingViewers and the MovingViewer itself
         let form = this.form_div;
         let viewer = form.querySelector('#' + form_object.id);
-        
+
         // Update the title of the MovingViewer
         viewer.querySelector('h5').innerHTML = form_object.required ? form_object.title + '*' : form_object.title;
         let rep_icon = Field.quick('i', 'bi bi-front px-2');
@@ -196,7 +196,7 @@ class ComplexField {
         } else if (viewer.querySelector('h5 .bi-front') != null) {
             viewer.querySelector('h5').removeChild(rep_icon);
         }
-        
+
         // Replace the contents of the MovingViewer
         let form_field = viewer.querySelector('.card-body');
         let new_input = form_object.viewer_input();
@@ -233,7 +233,7 @@ class ComplexField {
     toggle_saving() {
         // Identify the form with moving viewers
         let form = this.form_div;
-        
+
         // Check if any field is a duplicate
         const has_duplicates = Object.values(this.fields).some((field) => field.is_duplicate);
 
@@ -272,7 +272,7 @@ class ComplexField {
         div.appendChild(button);
         return div;
     }
-    
+
     /**
      * Reset the contents of this schema: no fields, initial name
      */
@@ -280,7 +280,7 @@ class ComplexField {
         this.field_ids = [];
         this.fields = {};
         this.new_field_idx = 0;
-        
+
         // if relevant, reset the name
         // if this is the initial schema and a new draft has been created
         if (this.constructor.name == 'Schema' && this.status == 'draft') {
@@ -304,7 +304,7 @@ class ComplexField {
         let div = schema.constructor.name == 'SchemaForm'
             ? Field.quick('form', 'mt-3 needs-validation')
             : Field.quick('div', 'input-view');
-        
+
         // go through each of the fields
         // QUESTION should the code inside the forEach be defined in the InputField classes?
         schema.field_ids.forEach((field_id) => {
@@ -565,7 +565,7 @@ class Schema extends ComplexField {
 
         // define if this is the first draft of a schema and it has never been saved
         let is_new = this.data_status == 'copy' || this.card_id.startsWith('schema-editor');
-        
+
         // create and add an input field for the ID (or 'name')
         form.add_input("Schema ID", this.card_id + '-name', {
             placeholder: "schema-name",
@@ -602,7 +602,7 @@ class Schema extends ComplexField {
                 form.form.classList.remove('was-validated');
             }
         });
-        
+
         // create and add a submission button that publishes the draft
         form.add_action_button("Publish", 'publish', 'warning');
         form.add_submit_action('publish', (e) => {
@@ -676,7 +676,7 @@ class Schema extends ComplexField {
     setup_copy() {
         // get the object-version of the current fields
         this.fields_to_json()
-        
+
         // initialize a new schema and transfer the contents
         this.child = new Schema(this.card_id, this.container, this.urls, "1.0.0", "copy");
         this.child.from_parent(this);
@@ -691,7 +691,7 @@ class Schema extends ComplexField {
     create_navbar() {
         // initialize NavBar
         this.nav_bar = new NavBar(this.card_id, ['justify-content-end', 'nav-pills']);
-        
+
         // add button and tab for viewing the saved form of the schema version
         this.nav_bar.add_item('view', 'View', true);
         let viewer = ComplexField.create_viewer(this);
@@ -709,10 +709,10 @@ class Schema extends ComplexField {
             // fill in the name and titles
             this.form.form.querySelector('[name="schema_name"]').value = this.name; // id
             this.form.form.querySelector('[name="title"]').value = this.title; // label
-            
+
             // add the new form to the 'edit' tab
             this.nav_bar.add_tab_content('edit', this.form.form);
-            
+
             // add and define 'discard' button
             this.nav_bar.add_action_button('Discard', 'danger', () => {
                 // fill the confirmation modal with the hidden form to delete this schema
@@ -753,11 +753,11 @@ class Schema extends ComplexField {
             this.display_options(); // create field-choice modal
             this.nav_bar.add_item('new', 'New (draft) version', false, 1); // create tab
             this.create_editor(); // create form
-            
+
             // fill in name and title
             this.form.form.querySelector('[name="schema_name"]').value = this.name; // id
             this.form.form.querySelector('[name="title"]').value = this.title; // label
-            
+
             this.nav_bar.add_tab_content('new', this.form.form); // add form to tab
         }
     }
@@ -767,7 +767,7 @@ class Schema extends ComplexField {
      */
     view() {
         this.create_navbar(); // create navigation bar and tabs
-        
+
         // create a div, append the navigation bar and tabs, and append it to the container
         this.card = document.createElement('div')
         this.card.id = this.card_id;
@@ -781,7 +781,7 @@ class Schema extends ComplexField {
                 'This schema does not have any fields yet. Go to "edit" mode to add one.');
             this.nav_bar.tab_content.querySelector('.input-view').appendChild(msg);
         }
-        
+
         // show all existing fields
         this.field_ids.forEach((field_id, idx) => {
             this.new_field_idx = idx;
@@ -800,7 +800,7 @@ class Schema extends ComplexField {
     save_draft(action) {
         // update the status
         let status = action == 'publish' ? 'published' : 'draft'
-        
+
         // if this is a new version from an existing published one, increment the versio number
         if (this.data_status == 'new') {
             let incremented_major = parseInt(this.version.split('.')[0]) + 1;
@@ -820,7 +820,7 @@ class Schema extends ComplexField {
 
         // register parent if relevant
         if (this.parent) { form_fields.parent = this.parent; }
-        
+
         // update the form right before submission
         if (this.status == 'draft') { // original form for drafts
             Object.entries(form_fields).forEach((item) => this.form.update_field(item[0], item[1]));
@@ -834,83 +834,130 @@ class Schema extends ComplexField {
 
 /**
  * Class for a schema with all its versions, to render on the page.
- * @property {String} name
- * @property {String} title
- * @property {Array<Object>} versions
- * @property {String[]} statuses
- * @property {UrlsList} urls
- * @property {Object<String,String[]>} summary
+ * @property {String} name Name of the schema (shared by all versions).
+ * @property {String} title User-facing label of the schema (shared by all versions).
+ * @property {Array<Object>} versions List of versions with their name, number and status.
+ * @property {String[]} statuses List of used statuses.
+ * @property {UrlsList} urls Collection of URLs and other info obtained from the server.
+ * @property {Object<String,String[]>} summary List of versions per status.
  */
 class SchemaGroup {
+    /**
+     * URL for the images that generate the badges.
+     * @type {String}
+     * @static
+     */
     static badge_url = 'https://img.shields.io/badge/';
+
+    /**
+     * Mapping between status and color of the badge.
+     * @type {Object<String,String>}
+     * @static
+     */
     static status_colors = {
         'published': 'success',
         'draft': 'orange',
         'archived': 'inactive'
     }
 
+    /**
+     * Create and fill an accordion item and the tabs for the versions of a schema.
+     * @param {String} name Name of the schema.
+     * @param {String} title User-facing label of the schema.
+     * @param {Array<Object>} versions List of versions with their name, number and status.
+     * @param {String} container_id ID of the DOM element on which the schema is shown.
+     * @param {UrlsList} urls Collection of URLs and other information received from the server.
+     */
     constructor(name, title, versions, container_id, urls) {
         this.name = name;
         this.title = title;
         this.versions = versions;
-        // obtain versions from published_ and draft_name with regex
+
+        // create navigation bar and tabs for the full schema (all its versions)
         let nav_bar = new NavBar(this.name, ['nav-tabs']);
         this.statuses = this.versions.map((v) => v.status);
         this.urls = urls;
+
+        // obtain the list of versions existing for each status
         this.summary = {};
         Object.keys(SchemaGroup.status_colors).forEach((st) => {
             this.summary[st] = this.versions
                 .filter((v) => v.status == st)
                 .map((v) => v.version);
         });
-        schemas[name] = this.summary;
+        schemas[name] = this.summary; // add this to the global variable
 
+        // create an accordion item for the full schema and add the tabs
         let acc_item = new AccordionItem(this.name + '-schemas', this.title, container_id);
         acc_item.append(nav_bar.nav_bar);
-
         acc_item.append(nav_bar.tab_content);
         document.getElementById(container_id).appendChild(acc_item.div);
-        this.load_versions(nav_bar);
+
+        // go through each existing version and add its tab + badge
+        this.versions.forEach((version) => this.load_version(version, nav_bar));
     }
 
-    load_versions(nav_bar) {
-        for (let version of this.versions) {
-            let badges = SchemaGroup.add_version(version.version, version.status);
-            let active = this.statuses.indexOf('published') > -1 ? version.status == 'published' : version.status == 'draft';
-            // this does not account for a case with only archived versions and a draft
-            let version_number = version.version.replaceAll('\.', '');
-            nav_bar.add_item(`v${version_number}`, badges, active);
-            let tab_id = `v${version_number}-pane-${this.name}`;
-            let this_version = schemas[this.name][version.status].indexOf(version.version)
-            let schema = new Schema(
-                `${version.name}-${version_number}`, tab_id,
-                this.urls, version.version);
-            schemas[this.name][version.status][this_version] = schema;
-            schema.loaded = false;
-            let reader = new TemplateReader(this.urls.get.replace('status', version.status), schema); // url to get this template
+    /**
+     * Fill in the tab corresponding to a specific version of the schema.
+     * This includes creating a Schema for it and a TemplateReader to retrieve the contents from server-side.
+     * @param {Object} version Information about the version to be loaded.
+     * @param {String} version.number Version number of this version.
+     * @param {String} version.status Status of this version.
+     * @param {String} version.name Name of this schema (=this.name).
+     * @param {NavBar} nav_bar Navigation bar and tabs on which the version will be shown.
+     */
+    load_version(version, nav_bar) {
+        // create the version and status badge for this version
+        let badges = SchemaGroup.create_badges(version.version, version.status);
+        
+        // if there is a published version and it's this one, focus on it, otherwise focus on the draft
+        let active = this.statuses.indexOf('published') > -1 ? version.status == 'published' : version.status == 'draft';
+        // this does not account for a case with only archived versions and a draft
 
-            const accordion = nav_bar.tab_content.parentElement.parentElement;
-            accordion.addEventListener('show.bs.collapse', () => {
-                const tab = accordion.querySelector('#' + tab_id);
-                if (tab.classList.contains('show')) {
-                    if (!schema.loaded) {
-                        reader.retrieve();
-                        schema.loaded = true;
-                    }
-                } else {
-                    nav_bar.nav_bar.querySelector(`button#v${version_number}-tab-${this.name}`)
-                        .addEventListener('show.bs.tab', () => {
-                            if (!schema.loaded) {
-                                reader.retrieve();
-                                schema.loaded = true;
-                            }
-                        });
+        // remove dots from the versio number so it can be used in DOM ids
+        let version_number = version.version.replaceAll('\.', '');
+        
+        // add a tab and content for this specific version
+        nav_bar.add_item(`v${version_number}`, badges, active);
+
+        // create a new Schema for this version
+        let tab_id = `v${version_number}-pane-${this.name}`;
+        let schema = new Schema(`${version.name}-${version_number}`, tab_id, this.urls, version.version);
+        schema.loaded = false;
+        // create an HTTP request for this schema
+        let reader = new TemplateReader(this.urls.get.replace('status', version.status), schema); // url to get this template
+
+        const accordion = nav_bar.tab_content.parentElement.parentElement;
+        // once the accordion is opened
+        accordion.addEventListener('show.bs.collapse', () => {
+            const tab = accordion.querySelector('#' + tab_id);
+            if (tab.classList.contains('show')) {
+                // when the tab of this version is shown, if the schema has not been loaded it yet, load it
+                if (!schema.loaded) {
+                    reader.retrieve();
+                    schema.loaded = true;
                 }
-            });
-        };
+            } else {
+                // if the tab is not the first one, activate it and do the same
+                nav_bar.nav_bar.querySelector(`button#v${version_number}-tab-${this.name}`)
+                    .addEventListener('show.bs.tab', () => {
+                        if (!schema.loaded) {
+                            reader.retrieve();
+                            schema.loaded = true;
+                        }
+                    });
+            }
+        });
     }
 
-    static add_version(version, status) {
+    /**
+     * Create badges for the version number and status of a schema version.
+     * @static
+     * @param {String} version Version number of the schema version.
+     * @param {String} status Status of a schema version.
+     * @returns {HTMLImageElement[]} Version and status badges.
+     */
+    static create_badges(version, status) {
         let version_badge = document.createElement('img');
         version_badge.setAttribute('alt', 'version ' + version);
         version_badge.setAttribute('name', version);
