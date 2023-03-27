@@ -469,13 +469,14 @@ class MovingChoice extends MovingField {
      * @class
      * @param {String} label_text Text for the label of the input (e.g. "Select option").
      * @param {Number} idx Index of this field as it gets created.
-     * @param {String} [value] Value of the input field, or 'false' if it doesn't exist.
+     * @param {String} [value=false] Value of the input field, or 'false' if it doesn't exist.
      */
     constructor(label_text, idx, value = false) {
         super(idx);
         // set up HTMLElement
         this.div = Field.quick("div", "blocked");
         this.div.id = `block-${idx}`;
+        this.value = value;
 
         // set up sub elements
         this.sub_div = Field.quick("div", "form-field");
@@ -483,7 +484,6 @@ class MovingChoice extends MovingField {
         this.input_tag = this.add_input();
         this.rem = this.add_btn('rem', 'trash', () => this.remove());
         
-        this.value = value;
         
         // Bring everything together
         this.assemble();
@@ -750,6 +750,7 @@ class BasicForm {
      * @returns {MovingChoice} Moving input field.
      */
     add_mover(label_text, idx, value = false) {
+        console.log(value)
         let input = new MovingChoice(label_text, idx, value).div;
         
         // if there aren't more than two fields yet, don't allow removal
@@ -769,6 +770,7 @@ class BasicForm {
      */
     add_moving_options(label_text, starting_values = []) {
         let options = starting_values;
+        console.log(options)
         let has_values = options.length > 0;
         // if no options are provided, start with two
         if (!has_values) {
@@ -778,6 +780,8 @@ class BasicForm {
         // go through each option and create a mover
         // with its value if provided
         for (let i in options) {
+            console.log(i)
+            console.log(options[i])
             let input = this.add_mover(label_text, i, has_values ? options[i] : false);
             
             // re-enable removing if there are more than two options

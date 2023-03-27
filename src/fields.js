@@ -520,8 +520,7 @@ class TypedInput extends InputField {
 
         // DIV and input fields for the default value (not always present)
         let default_div = this.form_field.form.querySelector(`#div-${this.id}-default`);
-        let default_input = this.form_field.form.querySelector(`#${this.id}-default`);
-
+        
         // add or remove default based on type
         if (format == 'textarea' || format == 'checkbox') {
             if (default_div != null) {
@@ -535,6 +534,8 @@ class TypedInput extends InputField {
         } else {
             this.add_default_field();
         }
+
+        let default_input = this.form_field.form.querySelector(`#${this.id}-default`);
 
         // disable or enable switches based on type (if they have already been created)
         let switches_div = this.form_field.form.querySelector('div#switches-div');
@@ -612,6 +613,8 @@ class TypedInput extends InputField {
             }
 
             // adapt the type of the default input
+            console.log(this.id)
+            console.log(default_input)
             if (default_input !== null) { default_input.type = format; }
         }
 
@@ -658,7 +661,7 @@ class TypedInput extends InputField {
      */
     add_default_field() {
         // if the field does not exist yet (it may have been removed for textarea and checkbox)
-        if (this.form_field.form.querySelector(`#div-${this.id}-default`) == null) {
+        if (this.form_field.form.querySelector(`#div-${this.id}-default`) == undefined) {
             this.form_field.add_input(
                 'Default value', `${this.id}-default`,
                 {
@@ -800,9 +803,12 @@ class TypedInput extends InputField {
     reset() {
         let form = this.form_field.form;
         // remove the min and max fields if they exist
-        if (document.getElementById(`div-${this.id}-min`) != undefined) {
+        if (form.querySelector(`#div-${this.id}-min`) != undefined) {
             form.removeChild(document.getElementById(`div-${this.id}-min`));
             form.removeChild(document.getElementById(`div-${this.id}-max`));
+        }
+        if (form.querySelector(`#div-${this.id}-default`) != undefined) {
+            form.querySelector(`#${this.id}-default`).type = 'text';
         }
         super.reset();
     }
@@ -1007,6 +1013,7 @@ class MultipleInput extends InputField {
         this.setup_form();
 
         // Add moving input fields to design the options
+        console.log(this.values)
         this.form_field.add_moving_options("Select option", this.values.values);
         
         // Finish form

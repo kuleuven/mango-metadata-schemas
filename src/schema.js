@@ -378,12 +378,14 @@ class ComplexField {
  */
 class DummyObject extends ComplexField {
     schema_name = 'example';
+    
     /**
      * Initialize the DummyObject.
      * @class
      */
     constructor() {
         // Initialize the basics - all we care about is actually the viewer
+        let schema_name = 'example';
         super(schema_name, schema_name);
         delete this.initials;
         this.field_ids = ['text', 'date', 'hair'];
@@ -806,6 +808,8 @@ class Schema extends ComplexField {
             let incremented_major = parseInt(this.version.split('.')[0]) + 1;
             this.version = `${incremented_major}.0.0`;
         }
+        this.name = this.form.form.querySelector('[name="schema_name"]').value;
+        this.title = this.form.form.querySelector('[name="title"]').value;
         this.status = status;
 
         // retrieve Object-version of the fields as this.properties
