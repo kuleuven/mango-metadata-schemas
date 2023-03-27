@@ -1,0 +1,20 @@
+{
+  "name": "mdschema-editor",
+  "version": "1.0.0",
+  "description": "Metadata schema manager ================",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "jsdoc": "jsdoc -d docs/jsdoc/ src/",
+    "docs": "jsdoc2md src/* > docs/api.md"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "jsdoc": "^4.0.2",
+    "jsdoc-to-markdown": "^8.0.0"
+  }
+}
