@@ -1,225 +1,144 @@
 ---
-title: "Metadata schemas"
+title: "Metadata schemas in the ManGO portal"
 format:
-    # html:
-    #     embed-resources: true
-    #     theme: default
+    html:
+        embed-resources: true
+        theme: ../sass/main.scss
+        toc: true
+        title-block-banner: true
+        title-block-banner-color: primary
     # pdf:
     #     language: en-GB
     #     date-format: iso
     gfm: default
     rst: default
-date: 2023-01-13
+date: 2023-03-27
 date-modified: today
 author: Mariana Montes
 number-sections: true
 toc: true
 ---
 
-This article describes how the metadata schemas used in the ManGO portal are stored, from the folder structure that supports the schemas lifecycle to the JSON format that codes the different fields and their characteristics.
+This article describes the ManGO portal functionalities related to metadata schemas: how to design them and how to apply them. Users who might want to design their own schemas independently and load them via JSON, as well as developers interested in implemented this feature outside the portal, are directed to [the technical specifications](metadata-schemas-tech.qmd).
 
-@sec-lifecycle gives a brief overview of the lifecycle of a schema and how that is coded into the folder structure and filename system. @sec-json follows with a technical description of the JSON file that represents each version of a specific schema, followed by @sec-items, in which the different kinds of fields are described. Finally, @sec-full shows an example of the JSON file for a draft version.
+One crucial principle of the metadata schema functionality in the ManGO portal is that schemas that can be used to apply metadata cannot be modified. In other words, for a schema to be used in metadata annotation it must be fixed and stable, while a schema that is undergoing changes cannot reliably be used for annotation. However, during the course of a research project it might be necessary to update a schema, and it would be impractical to create new schemas for every such change. In order to tackle this issue, the ManGO portal implements a lifecycle via versioning and tags. In short, a schema can evolve and its evolutions can be registered as new versions of the same schema. Each version can have one or three status: (1) 'draft', while it is being designed and edited; (2) published, when it is ready to be implemented; and (3) archived, when it should not be used anymore, maybe because a new version has been published.
 
-::: callout-tip
-## Import from JSON
+In this context, the rest of this document will walk you through the process of creating, managing and applying metadata schemas.
+First, @sec-draft will illustrate how to design a new schema from scratch and save a draft. Then, @sec-lifecycle will briefly discuss the stages of a schema in more detail, including how they can be managed in the Metadata Schema Manager. Finally, @sec-application will show how a published schema can be used to annotate metadata.
 
-If you would like to design your own metadata schema for ManGO without using the Metadata Schema Manager, you should focus on @sec-items and create a JSON file that matches the value of `properties` in the main JSON. On upload to ManGO, you will be able to provide the name and title of your schema, and the versioning will be taken care of in the backend.
+# Schema design {#sec-draft}
+
+In order to design a new schema, we need to go to the "Metadata schemas" section via the left sidebar menu. This will first show a selection of projects ("realms") to which your schemas may belong to (@fig-realms). After choosing one, the schema manager per se is shown (see @fig-noschemas): it has a button to create a new schema, under which any existing schemas are listed. Clicking on the button opens up a form on which the schema can be designed. As shown in @fig-schemaeditor, it includes a field to provide a name, one for a user-facing title and a button to add a field.
+
+::: {#fig-start layout="[[1,1], [1]]"}
+
+![Choose a realm.](used-screenshots/01-realms.png){#fig-realms}
+
+![The schemas in your realm.](used-screenshots/02-no-schemas.png){#fig-noschemas}
+
+![An empty schema to start with.](used-screenshots/03-empty-schema.png){#fig-schemaeditor}
+
+A new schema from scratch.
 :::
 
-# Lifecycle and folder structure {#sec-lifecycle}
+The "Schema ID" field is meant for the unique ID or name of a schema and, like the "Schema label", is shared by all the versions of the same schema. Given an ID `book`, the attribute names of all the metadata fields belonging to this schema will be prefixed with `mgs.book.`. This is why some restrictions apply to the format of the ID: it can only contain lowercase letters, numbers, hyphens and underscores. In contrast, the label can be any type of name or title and will be used to represent the schema in user-facing interactions, as will be shown later. In this documentation, we will exemplify with a schema named `book` with the label "Book schema as an example".
 
-In the ManGO infrastructure, schemas belong to "realms", which can be projects, home collections, the public collection... When designing a schema, one must first select a realm; a schema designed within a certain realm can only be used to apply metadata to data of that realm.
+The "Add element" button opens a modal that offers the different kinds of fields that can be added to a schema with examples (@fig-fields):
 
-For each realm, there is a directory "schemas" that contains all the schemas designed within it. Each schema has its own subdirectory, which contains one JSON file for each existing version of the schema. In the example used for illustration in this article, the directory would be called "book", which is also the `schema_name` attribute in the JSON file of each version.
+- Simple fields result in input fields for texts, numbers, dates and similar formats or a single checkbox.
 
-There can be any number of versions of a schema, following [semantic versioning](https://semver.org/)^[Currently, ManGO portal only supports incrementing major versions.], and each version can have one of three states: "draft", "published" or "archived".
+- Single-value multiple fields result in a dropdown or radio buttons and are used when the metadata value must be one of a selection of possible values.
 
-The **draft** status is the first, default state of a schema, although it is possible to publish a schema directly without saving the draft first. It can be edited, viewed and deleted, but it cannot be used to apply metadata.
+- Multiple-value multiple fields result in a dropdown or checkboxes and are used when the metadata value may be many of a selection of possible values. As a result, the same attribute name is repeated with different attribute values.
 
-Once a draft is **published**, it cannot be edited or deleted anymore, but it can be viewed and, more importantly, it can be used to apply metadata. Attempts to edit the a published version of a schema will result in the creation of a new draft with a higher version number. If this draft is then published, the current published version is **archived**.
+- Composite fields are like nested schemas: groups of other kinds of fields that describe the same concept.
 
-::: callout-tip
-## Schema clones
+::: {#fig-fields layout-ncol=2}
 
-The metadata schema manager also allows you to clone (or "copy") a published schema into a draft of a whole new schema with a different name and version 1.0.0.
+![Simple and multiple-choice fields.](used-screenshots/04-fields-1.png){#fig-fields1}
 
+![Composite fields.](used-screenshots/05-fields-2.png){#fig-fields2}
+
+Options to select a type of input field.
 :::
 
-Archived versions cannot be edited, deleted or used. At the moment they cannot be viewed either, but eventually it will be possible to have an "advanced view" in the metadata schema manager that makes archived versions available for viewing. A published version can also be purposefully archived, without having to publish a draft that replaces it.
-You can still have data with metadata based on an archived version of a schema, but if you try to reapply the metadata schema you will only be able to use the current published version, overriding any differences between the version originally used for annotation and the current version.
+<!-- IDEA: have one image per kind of field? -->
 
-@tbl-lifecycle summarizes what can be done with a metadata schema version depending on its stage.
+The blue buttons with the names of the types of fields open new modals with forms that can be used to design an instance of this field (see @fig-editors). All these forms start with two text fields to define an ID and a label for the field and end with a button to add the new field to the schema. In between there are more specific input fields used to refine the characteristics of the field you want to design as well as up to two switch buttons to implement optional properties.
 
-` ` | draft | published | archived
------- | ---- | ----- | ------
-when :| on creation | on publication | by archiving or by publishing new versions
-can be edited | ✔ | ❌| ❌
-can be viewed | ✔ | ✔ | ✔
-can be applied | ❌| ✔ | ❌
-can be deleted | ✔ | ❌| ❌
+::: {#fig-editors layout-ncol=2}
 
-: Summary of metadata schema version states in ManGO. {#tbl-lifecycle}
+![Design a simple field.](used-screenshots/06-add-simple-field.png){#fig-simple}
 
-The name of a file corresponding to a version of a schema follows the following convention: `{schema_name}-v{version}(-{status}).json`, with `status` being one of "draft" or "published". 
+![Design a single-value multiple-choice field.](used-screenshots/10-add-single-value-multiple.png){#fig-radio}
 
-For example, when we first create the "book" schema used for illustration in this document, a file will be created called "book-v1.0.0-draft.json", which will be stored inside the "book" subdirectory of the "schemas" directory. As shown in @sec-json, the version and status are also registered as attributes inside the JSON file. Once we are ready to make it available for annotation, we can publish the version in the metadata schema manager, which will update the status inside the JSON file and rename the file itself as "book-v1.0.0-published.json". If we want to create a new version, this will generate a new file "book-v2.0.0-draft.json", which will have the same name, title and realm as the previous version but a different version number and status. Publishing this new version will change its status and rename the file as "book-v2.0.0-published.json", but it will also archive the first version. This means that the older file will become "book-v1.0.0.json" (without a suffix indicating the status) and change the `status` inside the JSON file to "archived".
+![Design a multiple-value multiple-choice field.](used-screenshots/17-add-multiple-value-multiple.png){#fig-checkbox}
 
-As mentioned above, if we have already annotated data using version 1.0.0 of the "book" schema, that metadata will remain unchanged unless we try to update it. In that case, fields that have not changed between versions will be untouched, whereas fields that were deleted in version 2.0.0 will be permanently deleted, and those that were added will become available.
+![Design a single-value multiple-choice field.](used-screenshots/24-add-composite-field.png){#fig-composite}
 
-# JSON format {#sec-json}
-
-A specific version of a metadata schema will be stored in a json file with a series of key-value pairs.
-
-```json
-{
-    "schema_name" : "book",
-    "version" : "1.0.0",
-    "status" : "draft",
-    "properties" : {...},
-    "title" : "Book schema as an example",
-    "edited_by" : "username",
-    "realm" : "project_collection",
-    "parent" : ""
-}
-```
-
-The `schema_name` attributes indicates the name or ID of the schema, i.e. the namespace of the AVUs assigned via this schema. In this example, all the attribute names generated with this schema will be prefixed with `mgs.book.`, where `mgs` refers to "ManGO schema".
-The `status` attribute refers to the state in the lifecycle as described in @sec-lifecycle, and next to `version` constitutes the main characteristics to distinguish between versions of a schema.
-
-The `title` of a schema is used in the UI of the schema manager and when implementing schemas as a more user-friendly label. The `edited-by` attribute is self-explanatory. As introduced above, `realm` refers to the space (such as a project) to which the schema belongs and in which it can be used. The `parent` attribute is relevant when a schema has been initialized as clone of an existing schema; in that case, it records the name and version of the schema it originated from.
-
-The value of the `properties` element is itself a series of key-value pairs indicating fields of the metadata schema. The key is the ID of the field (how it is defined in the namespace of the schema) and the value is itself a series of key-value pairs describing the field. The format of these objects is documented in @sec-items.
-
-::: callout-tip
-The order of the attributes is not important, but the order of the *fields* inside `properties` will define the order they take when rendering the form used to assing metadata from the schema.
+Forms to design a new field.
 :::
 
-# Schema fields {#sec-items}
+For example, clicking on "Simple field" will open the form in @fig-simple. After the common fields for ID and label, we see a dropdown menu that offers different kinds of simple fields: text, textbox, email, url, integer, float... If "integer" or "float" are chosen, two new fields show up in which you can provide minimum and maximum thresholds for the value of the field. Via the switches at the bottom we can make the field required (when filling the metadata, this field _has_ to be provided) and/or repeatable (when filling the metadata, we can create multiple copies with the same attribute name and different values). If it is required, we can also provide a default value. @fig-simplefull shows the same form as in @fig-simple after filling in some choices. The ID is now `text`, which means that when applying the schema this will create an attribute name `mgs.book.text`. The label is "Book title", so that the form to apply the metadata schema and the table used to inspect the existing metadata will show this label. The field is also required, but has no default value, and of type "text". Once we add it to the schema, the schema editor creates a box for it, as shown in @fig-simpleview. The title --but not the ID-- is shown, followed by an asterisk to indicate that the field is required. Underneath we see the input field as it would look like in the final form with a small clarification of the type of input field it is. On the top right corner fo the box, we also have some options to further manipulate the field and its position in the form. The arrows allow us to move the field up and down, but they are disabled at the moment because there are no other fields. The third button creates a quick copy of the field as an aid to create a similar one. The pencil reopens the editing modal if you want to change anything in the field, and the trash bin can be used to delete the field altogether.
 
-There are three main kinds of fields that can be included in a metadata schema: simple fields, multiple-choice fields and composite fields. Simple fields, described in @sec-simple, include any form of text or numeric input for which a pattern or range may be defined but not, strictly speaking, the possible values. It also includes single (boolean) checkboxes. Multiple-choice fields (@sec-multiple) include any field that provides a specific, limited selection of possible values. Finally, the composite fields, described in @sec-object, are mini-schemas: collections of fields of other kinds related to each other.
+::: {#fig-new-simple layout-ncol=2}
 
-Each field is represented by a key-value pair in the `properties` element of the schema JSON. Before going through the specific characteristics of each kind of field, @sec-attr offers an overview of their common attributes.
+![A filled form for a simple field.](used-screenshots/08-title-simple-field.png){#fig-simplefull}
 
-## General Attributes {#sec-attr}
+![View of a designed simple field.](used-screenshots/09-after-adding-field1.png){#fig-simpleview}
 
-The following attributes are used in at least two different kinds of fields.
+Designing a simple field.
+:::
 
-title
+You can also see that in @fig-simpleview the box representing the `text` field now has two "Add element" buttons: one to add a field right before, and one to add a field right after. On clicking one of these buttons we open again the modal shown in @fig-fields and we can choose yet another type of field to add. @fig-new-radio shows how we can edit a multiple-choice field. As @fig-editors shows, the only differences between the editors for single-value and multiple-value multiple-choice fields are in the title of the modal and the possibility of defining a default value for the former type^[Note that this default value can only be defined during editing, as it does not respond to recent changes in the list of options]. However, the results are also different. If the "As dropdown" switch is activated (as in @fig-radiofull), the input field will look like a dropdown, but the number of options that can be selected from it depend on whether it's a single-value or multiple-value field. If it is not activated, single-value fields will be rendered as radio buttons, whereas multiple-value ones will be rendered as checkboxes. In any case, the middle part works in the same way: we start we two empty fields labeled "Select option" with three buttons to their right: two arrows and a trash bin. The arrows allow us to reorder the options, whereas the trash bin lets us remove one of the fields (but there cannot be fewer than two). The big "Add option" button creates a new input field for a new option, which must be either filled or deleted.
 
-:    All fields in a metadata schema must include the `title` attribute, which provides a human-readable label for both the form used in the application of the schema and when viewing the metadata related to said schema in the ManGO portal.
+@fig-radioview shows how this dropdown with four possible values is rendered along the other field in the schema editor. Again, it is labeled as "Publishing house", although metadata assigned via this field will have the name `mgs.book.publisher`.
 
-type
+::: {#fig-new-radio layout-ncol=2}
 
-:    All fields need a `type` attribute indicating the kind of field they represent. The possible values are discussed in the sections dedicated to each type of field.
+![A filled form for a single-value multiple-choice field.](used-screenshots/15-publisher-svmc-field.png){#fig-radiofull}
 
-required
+![View of a designed single-value multiple-choice field.](used-screenshots/16-after-adding-field2.png){#fig-radioview}
 
-:    Simple fields and single-value multiple-choice fields may contain an optional boolean `required` attribute indicating whether the field is required when assigning metadata from the schema. If this attribute is missing, it is read as "false".
+Designing a single-value multiple-choice field.
+:::
 
-default
+@fig-simpleview and @fig-radioview also show, at the bottom, two buttons: a green one labeled "Save draft" and a yellow one that reads "Publish". These buttons are also present in @fig-start, although in this case the "Publish" button is disabled. This is because it is possible to create a draft that has no fields yet, but not to publish it.
+Once we save a draft, a new accordion item is created for the new schema in the page, with a tab for the draft version. @fig-saved shows this tab after also adding a non-required checkbox field between "Book title" and "Publishing house" and saving the draft. The tab itself shows the version number and status of this version and contains three buttons: one to view the form as it will be shown when applying metadata, one to edit it, which opens a tab that looks just like the editor we were working on, and one to discard the draft. By clicking on "Discard" we see a modal that asks for confirmation: if we accept, all traces of this schema will be removed, because the draft is its only existing version.
 
-:    Simple fields and single-value multiple-choice fields, _if required_, may also contain a `default` attribute providing a default value for the field.
+![New draft.](used-screenshots/22-save-draft1.png){#fig-saved}
 
-In the metadata schema manager, the `title`, id and (if relevant) `default` attributes are provided via text input fields and `required` via a switch button. In contrast, `type` is defined by the choice of field in a modal, except for simple fields, in which there is an additional dropdown to select among its various subtypes.
+While the draft has not been published, we can still edit it: add new fields, change them, reorder them, remove them... It is also possible to change the title or label of the schema itself, but not to change the ID. If we want to add a composite field, @fig-composite shows that the editor starts like the editors of other fields, but then just has an "Add element" button, which behaves exactly like the "Add element" button of a schema: it oppens the modal in @fig-fields, which in turn opens the modal of the chosen field types. @fig-compositefull shows an editor for a composite field to which we have added three simple fields: a required "Name and surname" of type text, an "Age" of type integer with a minimum value of 12 and a maximum value of 99, and a required, repeatable "Email address" of type email. Once we add the composite field to the schema, its editing box shows its components as they will appear in the final form; in order to edit them, we first need to edit the composite field itself.
 
-## Simple fields {#sec-simple}
+::: {#fig-new-composite layout-ncol=2}
 
-The prototypical example of a simple field is a text field, such as the example below. They key "title" indicates that, when assigning metadata via this field, the name will be `msg.book.title`.
+![A filled form for a composite field.](used-screenshots/26-author-composite-field.png){#fig-compositefull}
 
-```json
-"title" : {
-    "type" : "text",
-    "title" : "Book title",
-    "required" : "true"
-}
-```
+![View of a designed composite field.](used-screenshots/27-view-composite.png){#fig-compositeview}
 
-The `type` attribute can have one of several different values, to be selected from a dropdown menu when designing an instance of this field. Next to the basic "text" value, other standard inputs are available that provide minimal validation: "date", "time", "email", or "url".
-For a longer-form, non-restricted text output, the "textarea" value is also an option; in that case, it is not longer possible to provide a default value.
-<!-- The range of possible formats will be expanded in the future. -->
+Designing a composite field.
+:::
 
-For numeric inputs, the possible types are "integer" or "float". Fields with these types also have two optional key-value pairs indicating the range of allowed values:
+# Versioning and lifecycle {#sec-lifecycle}
 
-```json
-"copies_published": {
-    "type": "integer",
-    "title": "Number of copies published",
-    "minimum": "100"
-},
-"market_price": {
-    "type": "float",
-    "title": "Market price (in euros)",
-    "minimum": "0.99",
-    "maximum": "999.99"
-}
-```
+Once we consider that the current state of this draft is ready to be applied, we can publish it. This will update the tab so that the orange badge "draft" is replaced with a green one reading "published", and change the options provided in the top right buttons. @fig-published shows that, next to "View", which shows the form as it will appear when applying the metadata schema, the rest of the buttons have changed. "New (draft) version" and "Copy to new schema" open editors like "Edit" did for the draft schemas. The difference is that saving the draft in the former will create version 2.0.0 of this schema (thus creating a new tab next to this one), whereas the latter will create a whole new schema based on the current one. Archiving a published version of a schema will prevent it from being implemented, but won't delete it.
 
-Finally, it is also possible to create an individual checkbox (with `type` "checkbox"), which takes the value "true" when checked and no value when unchecked.
+![A published version of a schema](used-screenshots/34-view-published.png){#fig-published}
 
-Except for the "checkbox", all the other simple field types can additionally have a `repeatable` attribute. If "true", the field can be copied when assinging the metadata to a collection or data object, in order to generate multiple AVUs with the same attribute name and different values.
 
-In the metadata schema manager, minimum and maximum values for numeric types can be provided via numeric input fields, whereas the `repeatable` attribute is selected via a switch button.
+# Apply metadata with a schema {#sec-application}
 
-## Multiple-choice {#sec-multiple}
+In order to apply a metadata schema, it should be selected from the dropdown in the "Metadata" tab of the data object or collection that must be annotated, as shown in @fig-selectschema. This will open a page with the form shown in @fig-apply, which is a usable version of what we could see in the "View" tab of the published schema. Required fields have an asterisk next to their name, the simple fields have a short description under the input fields and repeatable fields have a button that can be used to duplicate them. 
 
-Multiple-choice fields are indicated by providing the "select" value to the `type` attribute. They are characterized by a restricted selection of possible values for the metadata field they define. These values are indicated as a list in the `values` attribute:
+::: {#fig-annotationform layout-ncol=2}
 
-```json
-"ebook": {
-    "type": "select",
-    "multiple": "false",
-    "ui": "radio",
-    "values": [
-        "Available",
-        "Unavailable"
-        ],
-    "title": "Is there an e-book?",
-    "required": "true"
-}
-```
+![Select a published metadata schema.](used-screenshots/41-apply.png){#fig-selectschema}
 
-The metadata schema manager offers two types of multiple-choice fields: single-value and multiple-value. The former represents radio buttons and classic dropdowns in which the user must choose up to one of the possible options. The latter, in contrast, represents checkboxes and dropdowns in which the user may choose more than one of the possible options. This choice is coded in the `multiple` attribute, which takes the "false" value in the first case and "true" in the second.
+![Empty form to apply a metadata schema](used-screenshots/42-apply-form.png){#fig-apply}
 
-In addition, the `ui` attribute indicates what the field will look like in the form used to apply the schema. Its value can be "dropdown", "checkbox" (if `multiple` is "true") or "radio" (if `multiple` is "false"). This choice is made via a switch button in the metadata schema manager.
+Apply a metadata schema.
+:::
 
-In the metadata schema manager, each value of the list of options must be provided manually and then can be edited, deleted or reordered. It is not yet possible to import a list of values from an external source.
+If a required field is not provided, it won't be possible to save the metadata. Once we do save it, we can see the results in a tab inside the "Metadata" tab of the object. @fig-viewann shows that the user-facing label of the schema, not its name, is used to name the tab, and that the labels of the different fields are used in the table that shows the current annotation. Hovering over the labels will show a small popover with the name that the AVU takes in ManGO, e.g. `mgs.book.text` for the book tite, `mgs.book.author.email` for the email address inside the Author composite field, etc. Moreover, fields for which no values have been provided can still be seen as empty, to indicate that the schema has not been completely implemented.
 
-## Composite field {#sec-object}
-
-Composite fields are miniature schemas nested inside schemas (or other composite fields) and are meant to bring together multiple fields that conceptually come together. They take the `type` "object", which is assigned when the composite field is selected in the metadata schema manager. Like for schemas, they have a `properties` attribute describing the fields it is composed of, following the same criteria.
-
-```json
-"author": {
-    "type": "object",
-    "title": "Author",
-    "properties": {
-        "name": {
-            "type": "text",
-            "title": "Name and Surname",
-            "required": "true"
-        },
-        "age": {
-            "type": "integer",
-            "title": "Age",
-            "minimum": "12",
-            "maximum": "99"
-        },
-        "email": {
-            "type": "email",
-            "title": "Email address",
-            "required": "true",
-            "repeatable": "true"
-        }
-    }
-}
-```
-
-Composite fields cannot be required: this is a property of their components. Currently, they cannot be repeatable either, but that might change in the future.
-
-In practical terms, composite fields generate a nested namespace for the AVUs they contain. As an example, the fields shown in @sec-simple would be coded with the names `msg.book.title`, `msg.book.copies_published` and `msg.book.market_price`, and the one shown in @sec-multiple as `msg.book.ebook`. In contrast, the composite field shown above results in AVUs with attribute names `msg.book.author.name`, `msg.book.author.age` and `msg.book.author.email`.
-
-# Full example {#sec-full}
-
-This section contains the full example of a JSON file that represents a schema draft.
-
-{{< include _basic.md >}}
+![All metadata fields are shown, with or without values.](used-screenshots/45-view-annotation.png){#fig-viewann}

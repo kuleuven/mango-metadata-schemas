@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: httprequests.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: httprequests.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/**
+ * Information about a schema from the backend.
+ * 
+ * @typedef {Object} SchemaInfo
+ * @property {String} name - Name of the schema.
+ * @property {Object} schema_info - Information about the schema.
+ * @property {Boolean} schema_info.archived - Whether all existing versions are archived.
+ * @property {Boolean} schema_info.published - Whether there is a published version.
+ * @property {Boolean} schema_info.draft - Whether there is a draft version.
+ * @property {Number} schema_info.draft_count - The number of existing draft versions (max = 1).
+ * @property {Number} schema_info.published_count - The number of existing published versions (max = 1).
+ * @property {Number} schema_info.total_count - The number of existing versions.
+ * @property {String} schema_info.published_name - The filename of the published version.
+ * @property {String} schema_info.draft_name - The filename of the draft version.
+ * @property {String} schema_info.latest_version - The version number (in semantic versioning) of the latest version.
+ * @property {Array&lt;String>} schema_info.versions_sorted - The existing version numbers.
+ * @property {String} schema_info.realm - Realm to which the schema belongs.
+ * @property {String} schema_info.title - User-facing label of the schema.
+ * @property {Number} schema_info.timestamp - ???
+ * @property {String} url - URL template to retrieve the contents of a version of the schema.
+ * 
+ */
+
+/**
+ * JSON representation of a schema.
+ * 
+ * @typedef {Object} SchemaContents
+ * @property {String} schema_name - Name of the schema.
+ * @property {String} version - Version number of the schema version.
+ * @property {String} status - Status of the schema version ('draft', 'published' or 'archived).
+ * @property {String} title - User-facing label of the schema.
+ * @property {String} edited_by - User that has last edited the schema.
+ * @property {String} realm - Realm to which the schema belongs.
+ * @property {String} parent - If relevant, name and version number of the schema from which this schema emerged.
+ * @property {Object} properties - Collection of fields that constitute the schema.
+ */
+
+/**
+ * Abstract class to handle GET requests
+ * @extends XMLHttpRequest
+ * @property {String} url - The URL to be called.
+ */
+class MangoRequest extends XMLHttpRequest {
+    /**
+     * Instantiate a request.
+     * @class
+     * @param {string} url The URL for the XMLHttpRequest.
+     */
+    constructor(url) {
+        super();
+        this.url = url;
+    }
+    
+    /**
+     * Get the contents of the response.
+     * @returns {object} The parsed contents of the response.
+     */
+    get json() {
+        return JSON.parse(this.responseText);
+    }
+
+    /**
+     * Send the GET request.
+     */
+    retrieve() {
+        this.open("GET", this.url);
+        this.send();
+    }
+}
+
+/**
+ * Class representing a request for a list of schemas.
+ * @extends MangoRequest
+ * 
+ */
+class TemplatesRequest extends MangoRequest {
+    /**
+     * Get a list of schemas and deploy them on the screen.
+     * @class
+     * @param {UrlsList} urls Key-value pairs with necessary URLs and other backend information.
+     * @param {String} container_id ID of the DOM elements that the accordions will be attached to.
+     * @see SchemaGroup
+     */
+    constructor(urls, container_id) {
+        super(urls.list);
+        this.parse_response(container_id, urls);
+    }
+
+    /**
+     * Read the list of schemas and generate the required accordions and badges.
+     * @param {String} container_id ID of the DOM elements that the accordions will be attached to.
+     * @param {UrlsList} urls Key-value pairs with the necessary urls and other backend information.
+     * @see SchemaGroup
+     */
+    parse_response(container_id, urls) {
+        this.addEventListener('load', () => {
+            /**
+             * @type {Array&lt;SchemaInfo>}
+             */
+            let grouped_templates = this.json;
+            for (let template of grouped_templates) {
+                // don't do anything if there are only archived versions
+                if (!(template.schema_info.draft | template.schema_info.published)) {
+                    continue;
+                }
+                let schema_name = template.name;
+                // pattern to retrieve the name, version and status from the filename
+                let re = /(?&lt;name>.*)-v(?&lt;version>\d\.\d\.\d)-(?&lt;status>|published|draft).json/
+                let this_template = template.schema_info;
+                
+                // create a list of objects with the information of each version
+                let versions = []
+                if (this_template.published_count > 0) {
+                    versions.push(this_template.published_name.match(re).groups)
+                }
+                if (this_template.draft_count > 0) {
+                    versions.push(this_template.draft_name.match(re).groups)
+                }
+                let title = this_template.title;
+                
+                // provide the information to generate the accordions and badges
+                // this will create the schemas, which will load on demand
+                new SchemaGroup(schema_name, title, versions, container_id,
+                    {'get' : template.url, ...urls})
+            }
+            // if there are existing schemas
+            // adapt the pattern for schema names so that existing names cannot be used
+            if (grouped_templates.length > 0) {
+                let existing_names = grouped_templates.map((x) => x.name).join('\\b|\\b');
+
+                schema_pattern = `^((?!\\b${existing_names}\\b)${schema_pattern})+$`;
+                document.querySelectorAll('input[name="schema_name"]')
+                    .forEach((input) => input.setAttribute('pattern', schema_pattern));    
+            }
+            
+            // if a 'latest/current schema' is provided, focus on its accordion
+            const current_schema = urls.schema_name;
+            if (current_schema &amp;&amp; Object.keys(schemas).indexOf(current_schema) > -1) {
+                new bootstrap.Collapse(`#${current_schema}-schemas`).show();
+                let trigger = document.querySelector(`#nav-tab-${current_schema} button`);
+                bootstrap.Tab.getOrCreateInstance(trigger).show();
+                const current_version = urls.schema_version;
+                const version_data = grouped_templates.filter((x) => x.name == current_schema)[0].schema_info;
+                // if the version of that schema still exists, focus on that tab
+                if (current_version &amp;&amp; version_data.versions_sorted.indexOf(current_version) > -1) {
+                    let simple_version = current_version.replaceAll('.', '');
+                    let version_trigger = document.querySelector(`button#v${simple_version}-tab-${current_schema}`);
+                    bootstrap.Tab.getOrCreateInstance(version_trigger).show();
+                }
+            }
+        });
+    }
+
+}
+
+/**
+ * Class representing a request for a schema (to manage).
+ */
+class TemplateReader extends MangoRequest {
+    /**
+     * Get the existing data for a schema version and render it. Called lazily the first time that the tab is opened.
+     * @class
+     * @param {String} url URL from which to obtain the schema version.
+     * @param {Schema} schema Initialized Schema to fill in with existing data.
+     */
+    constructor(url, schema) {
+        super(url);
+        this.parse_response(schema);
+    }
+
+    /**
+     * Provide the contents of the JSON file to the schema and render into the page.
+     * @param {Schema} schema Initialized Schema to fill in with existing data.
+     */
+    parse_response(schema) {
+        this.addEventListener('load', () => {
+            /**
+             * @type {SchemaContents}
+             */
+            let json = this.json;
+            schema.from_json(json);
+            schema.view();
+        })
+    }
+}
+
+/**
+ * Class representing a request for a schema for annotation.
+ * @extends MangoRequest
+ */
+class AnnotationRequest extends MangoRequest {
+    /**
+     * Get an existing schema and metadata associated with it to edit the metadata of a collection or data-object.
+     * @class
+     * @param {String} schema_url URL from which to retrieve the metadata schema.
+     * @param {Object&lt;String,String[]>} annotated_data Key-value pairs with existing metadata related to the schema.
+     * @param {String} prefix Prefix for the metadata attribute names, e.g. `mgs.book`
+     */
+    constructor(schema_url, annotated_data, prefix) {
+        super(schema_url);
+        this.parse_response(annotated_data, prefix);
+    }
+
+    /**
+     * Read the JSON of a schema, generate a form for implementation and fill it with existing metadata.
+     * @param {Object&lt;String,String[]>} annotated_data Key-value pairs with existing metadata related to the schema.
+     * @param {String} prefix Prefix for the metadata attribute names, e.g. `mgs.book`
+     */
+    parse_response(annotated_data, prefix) {
+        this.addEventListener('load', () => {
+            /**
+             * @type {SchemaContents}
+             */
+            let json = this.json;
+            // generate the form
+            let schema = new SchemaForm(json, container_id, prefix);
+            // fill the form with existing metadata
+            schema.add_annotation(annotated_data);
+        })
+    }
+}
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="AccordionItem.html">AccordionItem</a></li><li><a href="AnnotationRequest.html">AnnotationRequest</a></li><li><a href="BasicForm.html">BasicForm</a></li><li><a href="CheckboxInput.html">CheckboxInput</a></li><li><a href="ComplexField.html">ComplexField</a></li><li><a href="DummyObject.html">DummyObject</a></li><li><a href="Field.html">Field</a></li><li><a href="InputField.html">InputField</a></li><li><a href="MangoRequest.html">MangoRequest</a></li><li><a href="Modal.html">Modal</a></li><li><a href="MovingChoice.html">MovingChoice</a></li><li><a href="MovingField.html">MovingField</a></li><li><a href="MovingViewer.html">MovingViewer</a></li><li><a href="MultipleInput.html">MultipleInput</a></li><li><a href="NavBar.html">NavBar</a></li><li><a href="ObjectEditor.html">ObjectEditor</a></li><li><a href="ObjectInput.html">ObjectInput</a></li><li><a href="Schema.html">Schema</a></li><li><a href="SchemaDraftForm.html">SchemaDraftForm</a></li><li><a href="SchemaForm.html">SchemaForm</a></li><li><a href="SchemaGroup.html">SchemaGroup</a></li><li><a href="SelectInput.html">SelectInput</a></li><li><a href="TemplateReader.html">TemplateReader</a></li><li><a href="TemplatesRequest.html">TemplatesRequest</a></li><li><a href="TypedInput.html">TypedInput</a></li></ul><h3>Global</h3><ul><li><a href="global.html#container">container</a></li><li><a href="global.html#container_id">container_id</a></li><li><a href="global.html#schema_pattern">schema_pattern</a></li><li><a href="global.html#schemas">schemas</a></li><li><a href="global.html#starting_schema">starting_schema</a></li><li><a href="global.html#url_tag">url_tag</a></li><li><a href="global.html#urls">urls</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 4.0.2</a> on Mon Mar 27 2023 11:51:42 GMT+0200 (Central European Summer Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
