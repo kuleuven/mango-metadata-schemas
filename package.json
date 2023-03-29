@@ -16,5 +16,8 @@
   "devDependencies": {
     "jsdoc": "^4.0.2",
     "jsdoc-to-markdown": "^8.0.0"
+  },
+  "dependencies": {
+    "bootstrap": "^5.2.3"
   }
 }

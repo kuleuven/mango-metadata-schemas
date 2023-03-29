@@ -1,0 +1,16 @@
+// Custom.scss
+// Option A: Include all of Bootstrap
+
+/*-- scss:defaults --*/
+// Include any default variable overrides here (though functions won't be available)
+// $body-color: darkslateblue;
+// $body-bg: mediumpurple;
+// kuleuven-bootstrap will come here
+@import "../node_modules/kuleuven-bootstrap5/scss/kuleuven/_variables";
+// @import "../node_modules/kuleuven-bootstrap5/scss/kuleuven/styles.css";
+
+@import "../node_modules/bootstrap/scss/bootstrap";
+
+// Then add additional custom code here
+/*-- scss:rules --*/
+
