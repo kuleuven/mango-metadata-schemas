@@ -54,7 +54,6 @@ class Field {
             inner_input.appendChild(new_option);
         }
         // if this will be used for annotation
-        console.log(active)
         if (active) {
             inner_input.name = field.name;
             if (field.required) {
@@ -63,7 +62,6 @@ class Field {
         }
         
         let value = Field.include_value(field);
-        console.log(value)
         if (value != undefined) {
             inner_input.querySelector(`option[value="${value}"]`)
                 .setAttribute('selected', '');
