@@ -21,22 +21,20 @@ toc: true
 
 This article describes the ManGO portal functionalities related to metadata schemas: how to design them and how to apply them. Users who might want to design their own schemas independently and load them via JSON, as well as developers interested in implemented this feature outside the portal, are directed to [the technical specifications](metadata-schemas-tech.qmd).
 
-One crucial principle of the metadata schema functionality in the ManGO portal is that schemas that can be used to apply metadata cannot be modified. In other words, for a schema to be used in metadata annotation it must be fixed and stable, while a schema that is undergoing changes cannot reliably be used for annotation. However, during the course of a research project it might be necessary to update a schema, and it would be impractical to create new schemas for every such change. In order to tackle this issue, the ManGO portal implements a lifecycle via versioning and tags. In short, a schema can evolve and its evolutions can be registered as new versions of the same schema. Each version can have one or three status: (1) 'draft', while it is being designed and edited; (2) published, when it is ready to be implemented; and (3) archived, when it should not be used anymore, maybe because a new version has been published.
+One crucial principle of the metadata schema functionality in the ManGO portal is that schemas that can be used to apply metadata cannot be modified. In other words, for a schema to be used in metadata annotation it must be fixed and stable; a schema that is undergoing changes cannot reliably be used for annotation. However, during the course of a research project it might be necessary to update a schema, and it would be impractical to create whole new schemas with different names for every such change. In order to tackle this issue, the ManGO portal implements a lifecycle via versioning and tags. In short, a schema can evolve and its evolutions can be registered as new versions of the same schema. Each version can have one of three statuses: (1) 'draft', while it is being designed and edited; (2) 'published', when it is ready to be implemented; and (3) 'archived', when it should not be used anymore, maybe because a new version has been published.
 
 In this context, the rest of this document will walk you through the process of creating, managing and applying metadata schemas.
-First, @sec-draft will illustrate how to design a new schema from scratch and save a draft. Then, @sec-lifecycle will briefly discuss the stages of a schema in more detail, including how they can be managed in the Metadata Schema Manager. Finally, @sec-application will show how a published schema can be used to annotate metadata.
+First, @sec-draft will illustrate how to design a new schema from scratch and save a draft. Then, @sec-lifecycle will briefly discuss the stages of a schema in more detail, including how they can be managed in the Metadata Schema Manager (the "Metadata schemas" tab in the ManGO portal). Finally, @sec-application will show how a published schema can be used to annotate metadata.
 
 # Schema design {#sec-draft}
 
-In order to design a new schema, we need to go to the "Metadata schemas" section via the left sidebar menu. This will first show a selection of projects ("realms") to which your schemas may belong to (@fig-realms). After choosing one, the schema manager per se is shown (see @fig-noschemas): it has a button to create a new schema, under which any existing schemas are listed. Clicking on the button opens up a form on which the schema can be designed. As shown in @fig-schemaeditor, it includes a field to provide a name, one for a user-facing title and a button to add a field.
+In order to design a new schema, we need to go to the "Metadata schemas" section via the left sidebar menu. This will first show a selection of projects ("realms") to which your schemas may belong. After choosing one, the schema manager per se is shown (see @fig-start): it has a button to create a new schema, under which any existing schemas are listed. Clicking on the button opens up a form on which the schema can be designed. As shown in @fig-schemaeditor, it includes a field to provide a name, one for a user-facing title and a button to add a field.
 
-::: {#fig-start layout="[[1,1], [1]]"}
+::: {#fig-start layout-ncol=2}
 
-![Choose a realm.](used-screenshots/01-realms.png){#fig-realms}
+![Choose a realm.](used-screenshots/001-schema-start.png){#fig-start fig-alt="Accordion with a list of realms, one of which is enframed in a blue square with a cursor icon on top. Underneath and connected via an arrow, an empty metadata schema manager that just has the title and a button that reads 'new schema'."}
 
-![The schemas in your realm.](used-screenshots/02-no-schemas.png){#fig-noschemas}
-
-![An empty schema to start with.](used-screenshots/03-empty-schema.png){#fig-schemaeditor}
+![An empty schema to start with.](used-screenshots/03-empty-schema.png){#fig-schemaeditor fig-alt="Initial form for an empty schema under the 'New schema' button, with fields to insert the schema ID and label, a button to add a new element and buttons to submit the form."}
 
 A new schema from scratch.
 :::
@@ -53,82 +51,96 @@ The "Add element" button opens a modal that offers the different kinds of fields
 
 - Composite fields are like nested schemas: groups of other kinds of fields that describe the same concept.
 
-::: {#fig-fields layout-ncol=2}
-
-![Simple and multiple-choice fields.](used-screenshots/04-fields-1.png){#fig-fields1}
-
-![Composite fields.](used-screenshots/05-fields-2.png){#fig-fields2}
-
-Options to select a type of input field.
-:::
-
-<!-- IDEA: have one image per kind of field? -->
+![Options to select a type of input field.](used-screenshots/002-fields-long.png){#fig-fields fig-alt="Four cards with examples of the different kinds of fields and buttons that open editors to instantiate each field."}
 
 The blue buttons with the names of the types of fields open new modals with forms that can be used to design an instance of this field (see @fig-editors). All these forms start with two text fields to define an ID and a label for the field and end with a button to add the new field to the schema. In between there are more specific input fields used to refine the characteristics of the field you want to design as well as up to two switch buttons to implement optional properties.
 
 ::: {#fig-editors layout-ncol=2}
 
-![Design a simple field.](used-screenshots/06-add-simple-field.png){#fig-simple}
+![Design a simple field.](used-screenshots/06-add-simple-field.png){#fig-simple fig-alt="Form to create a simple field."}
 
-![Design a single-value multiple-choice field.](used-screenshots/10-add-single-value-multiple.png){#fig-radio}
+![Design a single-value multiple-choice field.](used-screenshots/10-add-single-value-multiple.png){#fig-radio fig-alt="Form to create a single-value multiple-choice field."}
 
-![Design a multiple-value multiple-choice field.](used-screenshots/17-add-multiple-value-multiple.png){#fig-checkbox}
+![Design a multiple-value multiple-choice field.](used-screenshots/17-add-multiple-value-multiple.png){#fig-checkbox fig-alt="Form to create a multiple-value multiple-choice field."}
 
-![Design a single-value multiple-choice field.](used-screenshots/24-add-composite-field.png){#fig-composite}
+![Design a single-value multiple-choice field.](used-screenshots/24-add-composite-field.png){#fig-composite fig-alt="Form to create a composite field, which looks like an empty schema."}
 
 Forms to design a new field.
 :::
 
-For example, clicking on "Simple field" will open the form in @fig-simple. After the common fields for ID and label, we see a dropdown menu that offers different kinds of simple fields: text, textbox, email, url, integer, float... If "integer" or "float" are chosen, two new fields show up in which you can provide minimum and maximum thresholds for the value of the field. Via the switches at the bottom we can make the field required (when filling the metadata, this field _has_ to be provided) and/or repeatable (when filling the metadata, we can create multiple copies with the same attribute name and different values). If it is required, we can also provide a default value. @fig-simplefull shows the same form as in @fig-simple after filling in some choices. The ID is now `text`, which means that when applying the schema this will create an attribute name `mgs.book.text`. The label is "Book title", so that the form to apply the metadata schema and the table used to inspect the existing metadata will show this label. The field is also required, but has no default value, and of type "text". Once we add it to the schema, the schema editor creates a box for it, as shown in @fig-simpleview. The title --but not the ID-- is shown, followed by an asterisk to indicate that the field is required. Underneath we see the input field as it would look like in the final form with a small clarification of the type of input field it is. On the top right corner fo the box, we also have some options to further manipulate the field and its position in the form. The arrows allow us to move the field up and down, but they are disabled at the moment because there are no other fields. The third button creates a quick copy of the field as an aid to create a similar one. The pencil reopens the editing modal if you want to change anything in the field, and the trash bin can be used to delete the field altogether.
+For example, clicking on "Simple field" will open the form in @fig-simple. After the common fields for ID and label, we see a dropdown menu that offers different kinds of simple fields: text, textbox, email, url, integer, float, date, time, datetime... If "integer" or "float" are chosen, two new fields show up to provide minimum and maximum thresholds for the value of the field. Via the switches at the bottom the field can be made required (that is, when filling the metadata, this field _has_ to be provided) and/or repeatable (when filling the metadata, we can create multiple copies with the same attribute name and different values). If it is required, we can also provide a default value.
+
+@fig-simplefull shows the same form as in @fig-simple after filling in some choices. The ID is now `title`, which means that when applying the schema this will create an attribute name `mgs.book.title`. The label is "Book title", so that the form to apply the metadata schema and the table used to inspect the existing metadata will show this label. The field is also required, but has no default value, and of type "text".
+
+Once we add this new field to the schema, a box for it is added to the schema editor, as shown in @fig-simpleview. The title --but not the ID-- is shown, followed by an asterisk to indicate that the field is required. Underneath we see the input field as it would look like in the final form with a small clarification of the type of input field it is. On the top right corner fo the box some options are provided to further manipulate the field and its position in the form. The arrows allow us to move the field up and down, but they are disabled at the moment because there are no other fields. The third button creates a quick copy of the field as an aid to create a similar one. The pencil reopens the editing modal if you want to change anything in the field, and the trash bin can be used to delete the field altogether.
 
 ::: {#fig-new-simple layout-ncol=2}
 
-![A filled form for a simple field.](used-screenshots/08-title-simple-field.png){#fig-simplefull}
+![A filled form for a simple field.](used-screenshots/08-title-simple-field.png){#fig-simplefull fig-alt="Filled form to create a new simple field."}
 
-![View of a designed simple field.](used-screenshots/09-after-adding-field1.png){#fig-simpleview}
+![View of a designed simple field.](used-screenshots/09-after-adding-field1.png){#fig-simpleview fig-alt="View of an editing form for a schema to which the book title field has been added."}
 
 Designing a simple field.
 :::
 
-You can also see that in @fig-simpleview the box representing the `text` field now has two "Add element" buttons: one to add a field right before, and one to add a field right after. On clicking one of these buttons we open again the modal shown in @fig-fields and we can choose yet another type of field to add. @fig-new-radio shows how we can edit a multiple-choice field. As @fig-editors shows, the only differences between the editors for single-value and multiple-value multiple-choice fields are in the title of the modal and the possibility of defining a default value for the former type^[Note that this default value can only be defined during editing, as it does not respond to recent changes in the list of options]. However, the results are also different. If the "As dropdown" switch is activated (as in @fig-radiofull), the input field will look like a dropdown, but the number of options that can be selected from it depend on whether it's a single-value or multiple-value field. If it is not activated, single-value fields will be rendered as radio buttons, whereas multiple-value ones will be rendered as checkboxes. In any case, the middle part works in the same way: we start we two empty fields labeled "Select option" with three buttons to their right: two arrows and a trash bin. The arrows allow us to reorder the options, whereas the trash bin lets us remove one of the fields (but there cannot be fewer than two). The big "Add option" button creates a new input field for a new option, which must be either filled or deleted.
+You can also see that in @fig-simpleview the box representing the new field now has two "Add element" buttons: one to add a field right before, and one to add a field right after. On clicking one of these buttons we open again the modal shown in @fig-fields and we can choose again the type of field we want to add.
 
-@fig-radioview shows how this dropdown with four possible values is rendered along the other field in the schema editor. Again, it is labeled as "Publishing house", although metadata assigned via this field will have the name `mgs.book.publisher`.
+@fig-new-radio shows how we can edit a multiple-choice field. As seen in @fig-editors, the only differences between the editors for single-value and multiple-value multiple-choice fields are in the title of the modal and the possibility of defining a default value for the former type^[Note that this default value can only be defined during editing, as it does not respond to recent changes in the list of options]. However, the results are also different. If the "As dropdown" switch is activated (as shown in @fig-radiofull), the input field will look like a dropdown, but the number of options that can be selected from it depend on whether it's a single-value or multiple-value field. If it is not activated, single-value fields will be rendered as radio buttons, whereas multiple-value ones will be rendered as checkboxes. In any case, the middle part of the editors works in the same way in @fig-radio and @fig-checkbox: we start we two empty fields labeled "Select option" with three buttons to their right: two arrows and a trash bin. The arrows allow us to reorder the options, whereas the trash bin lets us remove one of the fields (but there cannot be fewer than two). The big "Add option" button creates a new input field for a new option, which must be either filled or deleted.
+
+@fig-radioview shows how the dropdown created in @fig-radiofull is rendered along the other field in the schema editor. Again, it is labeled as "Publishing house", although metadata assigned via this field will have the name `mgs.book.publisher`.
 
 ::: {#fig-new-radio layout-ncol=2}
 
-![A filled form for a single-value multiple-choice field.](used-screenshots/15-publisher-svmc-field.png){#fig-radiofull}
+![A filled form for a single-value multiple-choice field.](used-screenshots/15-publisher-svmc-field.png){#fig-radiofull fig-alt="Filled form to design a single-value multiple-choice field."}
 
-![View of a designed single-value multiple-choice field.](used-screenshots/16-after-adding-field2.png){#fig-radioview}
+![View of a designed single-value multiple-choice field.](used-screenshots/16-after-adding-field2.png){#fig-radioview fig-alt="View of an editing form for a schema to which a field with a dropdown has been added."}
 
 Designing a single-value multiple-choice field.
 :::
 
 @fig-simpleview and @fig-radioview also show, at the bottom, two buttons: a green one labeled "Save draft" and a yellow one that reads "Publish". These buttons are also present in @fig-start, although in this case the "Publish" button is disabled. This is because it is possible to create a draft that has no fields yet, but not to publish it.
-Once we save a draft, a new accordion item is created for the new schema in the page, with a tab for the draft version. @fig-saved shows this tab after also adding a non-required checkbox field between "Book title" and "Publishing house" and saving the draft. The tab itself shows the version number and status of this version and contains three buttons: one to view the form as it will be shown when applying metadata, one to edit it, which opens a tab that looks just like the editor we were working on, and one to discard the draft. By clicking on "Discard" we see a modal that asks for confirmation: if we accept, all traces of this schema will be removed, because the draft is its only existing version.
+Once we save a draft, a new accordion item is created for the new schema in the page, with a tab for the draft version. @fig-saved shows this tab after also adding a non-required checkbox field between "Book title" and "Publishing house" and saving the draft. The tab itself shows the version number and status of this version and contains three buttons: one to view the form as it will be shown when applying metadata, one to edit it, which opens a tab that looks just like the editor we were working on, and one to discard the draft. By clicking on "Discard" a modal pops up to ask for confirmation: if we accept, all traces of this schema will be removed, because the draft is its only existing version.
 
-![New draft.](used-screenshots/22-save-draft1.png){#fig-saved}
+![New draft.](used-screenshots/22-save-draft1.png){#fig-saved fig-alt="View of the draft of a schema as only tab in the accordion item of that schema."}
 
-While the draft has not been published, we can still edit it: add new fields, change them, reorder them, remove them... It is also possible to change the title or label of the schema itself, but not to change the ID. If we want to add a composite field, @fig-composite shows that the editor starts like the editors of other fields, but then just has an "Add element" button, which behaves exactly like the "Add element" button of a schema: it oppens the modal in @fig-fields, which in turn opens the modal of the chosen field types. @fig-compositefull shows an editor for a composite field to which we have added three simple fields: a required "Name and surname" of type text, an "Age" of type integer with a minimum value of 12 and a maximum value of 99, and a required, repeatable "Email address" of type email. Once we add the composite field to the schema, its editing box shows its components as they will appear in the final form; in order to edit them, we first need to edit the composite field itself.
+While the draft has not been published, we can still edit it: add new fields, change them, reorder them, remove them... It is also possible to change the title or label of the schema itself, but not to change the ID. If we want to add a composite field, @fig-composite shows that the editor starts like the editors of other fields, but then just has an "Add element" button, which behaves exactly like the "Add element" button of a schema: it oppens the modal in @fig-fields, which in turn opens the modal of the chosen field type. @fig-compositefull shows an editor for a composite field to which we have added three simple fields: a required "Name and surname" of type text, an "Age" of type integer with a minimum value of 12 and a maximum value of 99, and a required, repeatable "Email address" of type email. Once we add the composite field to the schema, its editing box (@fig-compositeview) shows its components as they will appear in the final form; in order to edit them, we first need to edit the composite field itself.
 
 ::: {#fig-new-composite layout-ncol=2}
 
-![A filled form for a composite field.](used-screenshots/26-author-composite-field.png){#fig-compositefull}
+![A filled form for a composite field.](used-screenshots/26-author-composite-field.png){#fig-compositefull fig-alt="Filled form to edit a composite field, which looks like an editor for a schema, after adding three subfields."}
 
-![View of a designed composite field.](used-screenshots/27-view-composite.png){#fig-compositeview}
+![View of a designed composite field.](used-screenshots/27-view-composite.png){#fig-compositeview fig-alt="View of the box corresponding to a composite field after adding it to a draft schema."}
 
 Designing a composite field.
 :::
 
 # Versioning and lifecycle {#sec-lifecycle}
 
-Once we consider that the current state of this draft is ready to be applied, we can publish it. This will update the tab so that the orange badge "draft" is replaced with a green one reading "published", and change the options provided in the top right buttons. @fig-published shows that, next to "View", which shows the form as it will appear when applying the metadata schema, the rest of the buttons have changed. "New (draft) version" and "Copy to new schema" open editors like "Edit" did for the draft schemas. The difference is that saving the draft in the former will create version 2.0.0 of this schema (thus creating a new tab next to this one), whereas the latter will create a whole new schema based on the current one. Archiving a published version of a schema will prevent it from being implemented, but won't delete it.
+Once you are satisfied with your draft is ready to be applied, you can publish it. This will update the tab so that the orange badge "draft" is replaced with a green one labeled "published", and change the options provided in the top right buttons (@fig-published). The "View" tab, which shows the form as it will appear when applying the metadata schema, is the same as for a draft version, but the rest of the buttons have changed.
 
-![A published version of a schema](used-screenshots/34-view-published.png){#fig-published}
+![A published version of a schema.](used-screenshots/34-view-published.png){#fig-published fig-alt="View of a published version of a schema as only tab in the accordion item of a schema."}
 
+"New (draft) version" and "Copy to new schema" open editors like "Edit" did for the draft schemas. The difference between these two editors is that the former creates a new draft for the same schema and the latter starts a whole other schema with the same contents. Saving a new draft will create a new version (in this case 2.0.0) and show it in a second tab next to the published version, as shown in @fig-published2. While a draft version exists, the "New (draft) version" button is absent.
+When creating this draft, the Schema ID and and label are fixed and cannot be edited. In contrast, in the editor in "Copy to new schema" (shown in @fig-clone) these fields are empty and, in fact, it is not possible to reuse the same Schema ID we had before. Use cases for this feature are derived schemas, i.e. schemas that share many fields with another schema but represent a different thing. The name and version of the published schema it originated from is recorded, but nothing is done with this information yet.
+
+::: {#fig-from-published layout-ncol=2}
+
+![A published version of a schema when a draft exists.](used-screenshots/38-view-published2.png){#fig-published2 fig-alt="View of a published version of a schema as first tab in the accordion item, with a draft as the second tab."}
+
+![Draft a new schema from a published version of a schema.](used-screenshots/39-clone-published.png){#fig-clone fig-alt="Editor of a schema to create a copy or clone from a published schema."}
+
+Create new drafts from a published version.
+:::
+
+When this copy is saved, a new schema is created, like when we edit one from scratch in "New schema". This generates a new accordion item with its own "draft" tab containing the version that was just created. Note that it is also possible to publish a version of a schema, even a copy from a published schema, without saving it as a draft first. Inf @fig-clone2 we could decide to view and edit this new schema or the previous one by clicking on their name, which expands the appropriate tabs. If we go to "Book schema as an example", we'll see that the "Copy to new schema" section has been reset to the original contents of the published version of this schema.
+
+![Saved draft of copied schema.](used-screenshots/40-save-clone.png){#fig-clone2 fig-alt="View of the draft tab in the accordion of the new schema copied from a published schema, under the closed accordion item of the previous schema."}
+
+Archiving a published version of a schema will prevent it from being implemented, but won't delete it. In the current version of the Metadata Schema Manager, archived versions are not visible either. However, they still exist, and it is not possible to create a new schema with the same ID.
 
 # Apply metadata with a schema {#sec-application}
 
-In order to apply a metadata schema, it should be selected from the dropdown in the "Metadata" tab of the data object or collection that must be annotated, as shown in @fig-selectschema. This will open a page with the form shown in @fig-apply, which is a usable version of what we could see in the "View" tab of the published schema. Required fields have an asterisk next to their name, the simple fields have a short description under the input fields and repeatable fields have a button that can be used to duplicate them. 
+In order to apply a metadata schema, we first have to move to the "Collections" tab of the ManGO portal and select the collection or data object to which we want to add metadata.In the "Metadata" tab, a dropdown will appear with the selection of published schemas, as shown in @fig-selectschema. Clicking on "Edit" will open a page with the form shown in @fig-apply, which is very similart to what we could see in the "View" tab of the published schema (@fig-published). Required fields have an asterisk next to their name, simple fields have a short description under their input fields and repeatable fields have a button that can be used to duplicate them. 
 
 ::: {#fig-annotationform layout-ncol=2}
 
