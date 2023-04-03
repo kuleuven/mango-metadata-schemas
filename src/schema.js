@@ -615,7 +615,7 @@ class Schema extends ComplexField {
                 form.form.classList.add('was-validated');
             } else {
                 // trigger confirmation message, which also has its hidden fields
-                let second_sentence = this.data_status == 'draft' && schemas[this.name] && schemas[this.name].published.length > 0 ?
+                let second_sentence = this.data_status != 'copy' && schemas[this.name] && schemas[this.name].published.length > 0 ?
                     ` Version ${schemas[this.name].published[0]} will be archived.` :
                     '';
                 let starting_data = {
@@ -801,7 +801,8 @@ class Schema extends ComplexField {
      */
     save_draft(action) {
         // update the status
-        let status = action == 'publish' ? 'published' : 'draft'
+        let status = action == 'publish' ? 'published' : 'draft';
+        console.log(status)
 
         // if this is a new version from an existing published one, increment the versio number
         if (this.data_status == 'new') {
@@ -810,23 +811,22 @@ class Schema extends ComplexField {
         }
         this.name = this.form.form.querySelector('[name="schema_name"]').value;
         this.title = this.form.form.querySelector('[name="title"]').value;
-        this.status = status;
-
+        
         // retrieve Object-version of the fields as this.properties
         this.fields_to_json();
 
         // group updated date to submit
         let form_fields = {
             current_version: this.version,
-            with_status: this.status,
-            raw_schema: btoa(JSON.stringify(this.properties)) // stringify fields (properties)
+            with_status: status,
+            raw_schema: JSON.stringify(this.properties) // stringify fields (properties)
         };
 
         // register parent if relevant
         if (this.parent) { form_fields.parent = this.parent; }
 
         // update the form right before submission
-        if (this.status == 'draft') { // original form for drafts
+        if (status == 'draft') { // original form for drafts
             Object.entries(form_fields).forEach((item) => this.form.update_field(item[0], item[1]));
         } else { // confirmation form (which does not include name and title yet) for published
             form_fields.schema_name = this.name;
@@ -1045,11 +1045,12 @@ class SchemaForm {
         // Retrieve information from the URL and add it to the form as hidden fields
         const url = new URL(window.location.href)
         const url_params = url.searchParams;
-        for (let item of ['item_type', 'object_path', 'schema', 'realm']) {
+        let version_name = `${prefix}.__version__`
+        for (let item of ['item_type', 'object_path', 'schema', 'realm', version_name]) {
             let hidden_input = document.createElement('input')
             hidden_input.type = 'hidden';
             hidden_input.name = item;
-            hidden_input.value = url_params.get(item);
+            hidden_input.value = item == version_name ? this.version : url_params.get(item);
             form_div.appendChild(hidden_input);
         }
 
@@ -1152,7 +1153,8 @@ class SchemaForm {
         let is_checkbox = [...form.querySelectorAll(`[name="${fid}"]`)]
             .filter((x) => x.classList.contains('form-check-input'))
             .length > 0;
-        // if we indeed have multiple-value multiple-choice
+        
+            // if we indeed have multiple-value multiple-choice
         if (is_checkbox) {
             form.querySelectorAll(`[name="${fid}"]`)
                 .forEach((chk) => {
@@ -1161,19 +1163,22 @@ class SchemaForm {
         } else if (existing_values.length == 1) { // if there is only one value for this field
             form.querySelector(`[name="${fid}"]`).value = existing_values[0];
         } else { // if the field has been duplicated
-            let field_id = fid.match(`${this.prefix}.(?<field>.+)`).groups.field;
             // go through each of the values and repeat the input field with its corresponding value
             for (let i = 0; i < existing_values.length; i++) {
-                let viewer = form.querySelectorAll(`div.mini-viewer[name="${field_id}"]`)[i];
+                let input = form.querySelectorAll(`[name="${fid}"]`)[i];
+                let viewer = input.parentElement.parentElement;
                 let sibling = viewer.nextSibling;
                 let value = existing_values[i];
-                if (i == 0) {
-                    viewer.querySelector('input').value = value; // use the existing field if this is the first item
-                } else {
+                console.log(value)
+                input.value = value; // use the existing field if this is the first item
+                if (i < existing_values.length - 1) {
                     // clone the input field and fill it if it's not the first item
-                    let new_viewer = viewer.cloneNode(true);
-                    new_viewer.querySelector('input').value = value;
-                    sibling == undefined ? form.appendChild(new_viewer) : form.insertBefore(new_viewer, sibling);
+                    let clone = viewer.cloneNode(true);
+                    let clone_button = clone.querySelector('button i');
+                    clone_button.classList.remove('bi-front');
+                    clone_button.classList.add('bi-trash');
+                    clone_button.parentElement.addEventListener('click', () => clone.remove());
+                    sibling == undefined ? form.appendChild(clone) : form.insertBefore(clone, sibling);
                 }
             }
         }
