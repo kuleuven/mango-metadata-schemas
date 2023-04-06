@@ -98,11 +98,15 @@ class ComplexField {
         let this_modal = document.getElementById(this.modal_id);
         this_modal.addEventListener('show.bs.modal', () => {
             let formTemp = this_modal.querySelector('div.formContainer');
+            let from_json_load = InputField.from_json_example(`choose-json-${this.name}-${this.data_status}`);
             if (formTemp.childNodes.length == 0) {
                 Object.values(this.initials).forEach((initial) => {
                     initial.schema_status = this.data_status;
                     formTemp.appendChild(initial.render(this));
                 });
+                formTemp.appendChild(from_json_load);
+            } else {
+                formTemp.replaceChild(from_json_load, formTemp.lastChild);
             }
         });
     }

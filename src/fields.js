@@ -104,6 +104,64 @@ class InputField {
     }
 
     /**
+     * Create an example with a button to load new fields from JSON.
+     * @returns {HTMLDivElement} Box with button to activate a modal and load fields from JSON.
+     */
+    static from_json_example(input_id) {
+        const reader = new FileReader();
+        reader.onload = () => { 
+            try {
+                json_example.innerHTML = JSON.stringify(JSON.parse(reader.result), null, "  ");
+            } catch (e) {
+                json_example.innerHTML = '<strong class="text-danger">ERROR</strong> Uploaded JSON is invalid.';
+            }  
+        };
+
+        let json_div = Field.quick("div", "ex my-2");
+        let h3 = Field.quick('button', 'btn btn-outline-primary', '<strong>Load from JSON</strong>');
+        let label = Field.quick('label', 'form-label', 'Choose a file or drag and drop into the field below.');
+        label.setAttribute('for', input_id);
+        let input = Field.quick('input', 'form-control');
+        input.id = input_id;
+        input.type = 'file';
+        input.setAttribute('accept', '.json');
+        input.addEventListener('change', (e) => {    
+            reader.readAsText(e.target.files[0]);
+        });
+
+        json_div.appendChild(h3);
+        json_div.appendChild(document.createElement('br'));
+        json_div.appendChild(label);
+        json_div.appendChild(input);
+        
+        
+        // Example with drag-and-drop
+        let json_example = Field.quick('pre', 'border p-1 bg-light');
+        let example = { field_id : {
+            'title' : 'Informative label',
+            'type' : 'select', 'ui' : 'radio',
+            'values' : ['one', 'two', 'three'],
+            'multiple' : false
+        }};
+        json_example.setAttribute('style', 'width:400px white-space: pre-wrap;margin-top:1em;');
+        json_example.innerHTML = JSON.stringify(example, null, "  ");
+        json_example.addEventListener('dragover', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+        });
+        json_example.addEventListener('drop', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            reader.readAsText(e.dataTransfer.files[0]);
+        });
+        json_div.appendChild(json_example);
+        let from_json = InputField.example_box(json_div);
+        from_json.id = 'from_json_container';
+        return from_json;
+    }
+
+    /**
      * Generate an example of the field for illustration.
      * @returns {HTMLDivElement} An element that contains an optional description, a title and an illustration of what the field looks like in a form.
      */
@@ -323,11 +381,25 @@ class InputField {
         let new_button = Field.quick("button", "btn btn-primary choice-button", this.button_title);
         new_button.setAttribute("data-bs-toggle", "modal");
         new_button.setAttribute("data-bs-target", '#' + modal_id);
+        
+        // append everything to a div
+        let new_form = InputField.example_box(new_button);
+        new_form.appendChild(this.create_example());
 
+        return new_form;
+    }
+
+    /**
+     * Create a box for the options to create new fields.
+     * 
+     * @param {String} button_title Text on the button of the box.
+     * @param {String} modal_id ID of the modal that should be called with the button.
+     * @returns {HTMLDivElement} Element containing a button to activate a modal.
+     */
+    static example_box(button) {
         // append everything to a div
         let new_form = Field.quick("div", "shadow border rounded p-4 mb-3");
-        new_form.appendChild(new_button);
-        new_form.appendChild(this.create_example());
+        new_form.appendChild(button);
 
         return new_form;
     }
