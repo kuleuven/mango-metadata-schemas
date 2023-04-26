@@ -6,11 +6,11 @@
         "title": {
             "type": "text",
             "title": "Book title",
-            "required": "true"
+            "required": true
         },
         "cover_colors": {
             "type": "select",
-            "multiple": "true",
+            "multiple": true,
             "ui": "checkbox",
             "title": "Colors in the cover",
             "values": [
@@ -22,7 +22,7 @@
         },
         "publisher": {
             "type": "select",
-            "multiple": "false",
+            "multiple": false,
             "ui": "dropdown",
             "values": [
                 "Penguin House",
@@ -31,7 +31,7 @@
                 "Nightshade books"
             ],
             "title": "Publishing house",
-            "required": "true"
+            "required": true
         },
         "author": {
             "type": "object",
@@ -40,7 +40,7 @@
                 "name": {
                     "type": "text",
                     "title": "Name and Surname",
-                    "required": "true"
+                    "required": true
                 },
                 "age": {
                     "type": "integer",
@@ -51,25 +51,25 @@
                 "email": {
                     "type": "email",
                     "title": "Email address",
-                    "required": "true",
-                    "repeatable": "true"
+                    "required": true,
+                    "repeatable": true
                 }
             }
         },
         "ebook": {
             "type": "select",
-            "multiple": "false",
+            "multiple": false,
             "ui": "radio",
             "values": [
                 "Available",
                 "Unavailable"
             ],
             "title": "Is there an e-book?",
-            "required": "true"
+            "required": true
         },
         "genre": {
             "type": "select",
-            "multiple": "true",
+            "multiple": true,
             "ui": "dropdown",
             "values": [
                 "Speculative fiction",
@@ -84,8 +84,8 @@
         "publishing_date": {
             "type": "date",
             "title": "Publishing date",
-            "required": "true",
-            "repeatable": "true"
+            "required": true,
+            "repeatable": true
         },
         "copies_published": {
             "type": "integer",

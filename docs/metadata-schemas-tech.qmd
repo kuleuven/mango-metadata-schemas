@@ -10,11 +10,10 @@ format:
     # pdf:
     #     language: en-GB
     #     date-format: iso
-    gfm: default
     rst: default
-date: 2023-01-13
-date-modified: today
-author: Mariana Montes
+# date: 2023-01-13
+# date-modified: today
+# author: Mariana Montes
 number-sections: true
 ---
 
@@ -154,7 +153,7 @@ The prototypical example of a simple field is a text field, such as the example 
 "title" : {
     "type" : "text",
     "title" : "Book title",
-    "required" : "true"
+    "required" : true
 }
 ```
 
@@ -191,14 +190,14 @@ Multiple-choice fields are indicated by providing the "select" value to the `typ
 ```json
 "ebook": {
     "type": "select",
-    "multiple": "false",
+    "multiple": false,
     "ui": "radio",
     "values": [
         "Available",
         "Unavailable"
         ],
     "title": "Is there an e-book?",
-    "required": "true"
+    "required": true
 }
 ```
 
@@ -220,7 +219,7 @@ Composite fields are miniature schemas nested inside schemas (or other composite
         "name": {
             "type": "text",
             "title": "Name and Surname",
-            "required": "true"
+            "required": true
         },
         "age": {
             "type": "integer",
@@ -231,8 +230,8 @@ Composite fields are miniature schemas nested inside schemas (or other composite
         "email": {
             "type": "email",
             "title": "Email address",
-            "required": "true",
-            "repeatable": "true"
+            "required": true,
+            "repeatable": true
         }
     }
 }
