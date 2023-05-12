@@ -40,7 +40,7 @@ class Field {
         }
         // if there are values, use them, otherwise go for the basic examples
         values = values ? values : Field.example_values;
-        
+
         // if this will be used for annotation
         if (active && !field.required) {
             let empty_option = document.createElement("option");
@@ -58,11 +58,12 @@ class Field {
             inner_input.name = field.name;
             if (field.required) {
                 inner_input.setAttribute('required', '');
-            }   
+            }
         }
-        
+
         let value = Field.include_value(field);
-        if (value != undefined) {
+        if (value != undefined && inner_input.querySelector(`option[value="${value}"]`)) {
+            // check that the value still exists!
             inner_input.querySelector(`option[value="${value}"]`)
                 .setAttribute('selected', '');
         }
@@ -88,11 +89,11 @@ class Field {
             new_input.type = multiple ? "checkbox" : "radio";
             new_input.value = i;
             new_input.id = `check-${i}`;
-            
+
             if (active) {
                 new_input.name = field.name;
             }
-            
+
             if (value) {
                 let this_is_the_value = multiple ? value.indexOf(i) > -1 : value == i;
                 if (this_is_the_value) { new_input.setAttribute('checked', ''); }
@@ -227,7 +228,7 @@ class MovingViewer extends MovingField {
         super(form.id);
         this.title = form.required ? form.title + '*' : form.title;
         this.repeatable = form.repeatable;
-        
+
         // div element
         this.div = Field.quick("div", "card border-primary viewer");
         this.div.id = form.id;
@@ -269,14 +270,14 @@ class MovingViewer extends MovingField {
     duplicate(form) {
         // copy of the clone
         const clone = new form.constructor(this.schema.initial_name, form.schema_status);
-        
+
         // keep track of how many copies have been made, for temp-ID purposes
         if (form.copies) {
             form.copies += 1;
         } else {
             form.copies = 1;
         }
-        
+
         // Transfer values of the original field to the copy
         clone.id = `${form.id}-copy${form.copies}`;
         clone.title = form.title;
@@ -350,13 +351,13 @@ class MovingViewer extends MovingField {
         // first, move the field and its button
         this.div.parentElement.insertBefore(sibling, this.div);
         this.div.parentElement.insertBefore(sibling_button, this.div);
-        
+
         // if the other div went to the first place
         if (form_index == 0) {
             sibling.querySelector(".up").setAttribute("disabled", "");
             this.up.removeAttribute("disabled");
         }
-        
+
         // if this div became last
         if ((form_index + 2) == this.schema.field_ids.length) {
             sibling.querySelector(".down").removeAttribute("disabled");
@@ -376,13 +377,13 @@ class MovingViewer extends MovingField {
     move_up() {
         let form_index = this.schema.field_ids.indexOf(this.idx); // index of the field among other fields
         let sibling = this.div.previousSibling.previousSibling;
-        
+
         // move the div and its button upwards
         this.div.parentElement.insertBefore(this.div, sibling);
         this.div.parentElement.insertBefore(this.below, sibling);
-        
+
         // if this div went to first place
-        if (form_index == 1) {            
+        if (form_index == 1) {
             this.up.setAttribute("disabled", "");
             sibling.querySelector(".up").removeAttribute("disabled");
         }
@@ -408,11 +409,11 @@ class MovingViewer extends MovingField {
         if (this.parent_modal) {
             this.parent_modal.toggle();
         }
-        
+
         // Ask for confirmation
         Modal.ask_confirmation('Deleted fields cannot be recovered.', () => {
             let form_index = this.schema.field_ids.indexOf(this.idx); // index of the field among other fields
-            
+
             if (this.schema.field_ids.length > 1) {
                 // if this is the last field
                 if (this.idx == this.schema.field_ids.length - 1) {
@@ -421,20 +422,20 @@ class MovingViewer extends MovingField {
                 // if this is the first field
                 if (this.idx == 0) {
                     this.below.nextSibling.querySelector(".up").setAttribute("disabled", "");
-                }    
+                }
             }
 
             // remove the box and buttons
             this.below.remove();
             this.div.remove();
-            
+
             // remove the field from the schema
             this.schema.field_ids.splice(form_index, 1);
             delete this.schema.fields[this.idx];
-            
+
             // update the schema editor
             this.schema.toggle_saving();
-            
+
             // if the field belongs to a composite field, show its editing modal
             if (this.parent_modal) {
                 if (!document.querySelector(`.modal#${this.schema.card_id}`).classList.contains('show')) {
@@ -483,7 +484,7 @@ class MovingChoice extends MovingField {
         this.label = Field.labeller(label_text, `mover-${idx}`);
         this.input_tag = this.add_input();
         this.rem = this.add_btn('rem', 'trash', () => this.remove());
-        
+
         // Bring everything together
         this.assemble();
     }
@@ -509,7 +510,7 @@ class MovingChoice extends MovingField {
         input_tag.id = `mover-${this.idx}`;
         input_tag.name = `mover-${this.idx}`;
         input_tag.setAttribute('required', ''); // it must be required (or removed if it won't be filled)
-        
+
         // if a value exists, fill it in
         if (this.value) {
             input_tag.value = this.value;
@@ -526,14 +527,14 @@ class MovingChoice extends MovingField {
         let sibling = this.div.nextSibling; // choice under this one
         // move the sibling up = move this down
         this.div.parentElement.insertBefore(sibling, this.div);
-        
+
         // class "blocked" is the class of this kind of divs
         // if the other div went to first place
         if (sibling.previousSibling.className !== "blocked") {
             sibling.querySelector(".up").setAttribute("disabled", "");
             this.up.removeAttribute("disabled");
         }
-        
+
         // if this dev went to the last place
         if (this.div.nextSibling.className !== "blocked") {
             sibling.querySelector(".down").removeAttribute("disabled");
@@ -548,17 +549,17 @@ class MovingChoice extends MovingField {
      */
     move_up() {
         let sibling = this.div.previousSibling; // choice on top of this one
-        
+
         // move this upwards
         this.div.parentElement.insertBefore(this.div, sibling);
-        
+
         // class "blocked" is the class of this kind of divs
         // if this div went to first place
         if (this.div.previousSibling.className !== "blocked") {
             this.up.setAttribute("disabled", "");
             sibling.querySelector(".up").removeAttribute("disabled");
         }
-        
+
         // if we were in the last place
         if (sibling.nextSibling.className !== "blocked") {
             this.down.removeAttribute("disabled");
@@ -627,7 +628,7 @@ class BasicForm {
         this.form = Field.quick("form", "m-3 needs-validation");
         this.form.id = `form-${id}`;
         this.form.setAttribute('novalidate', '')
-        
+
         // if this form edits a multiple-choice field, we have to keep track of the moving input fields
         // this array registers the index of an input field when it has been added (but it doesn't care if it has been removed)
         // when a new input field must be added, we make sure that the index is larger than any previous index
@@ -636,7 +637,7 @@ class BasicForm {
         // create and append the divider
         this.divider = document.createElement('hr');
         this.form.appendChild(this.divider);
-        
+
         // create and append the row for the submission buttons
         this.rowsub = Field.quick('div', 'row justify-content-between');
         this.rowsub.id = 'submitters';
@@ -670,11 +671,11 @@ class BasicForm {
         if (required) {
             input_tag.setAttribute("required", "");
         }
-        
+
         if (value) {
             input_tag.value = value;
         }
-        
+
         let label = Field.labeller(label_text, input_id)
 
         let validator = Field.quick('div', 'invalid-feedback', validation_message);
@@ -735,7 +736,7 @@ class BasicForm {
         let input_div = Field.quick('div', 'mb-3 form-container');
         input_div.appendChild(Field.labeller(label_text, select_id));
         input_div.appendChild(select);
-        
+
         // append the input to the form, right before the divider
         this.form.insertBefore(input_div, this.divider);
     }
@@ -750,7 +751,7 @@ class BasicForm {
      */
     add_mover(label_text, idx, value = false) {
         let input = new MovingChoice(label_text, idx, value).div;
-        
+
         // if there aren't more than two fields yet, don't allow removal
         if (idx < 2) {
             input.querySelector(".rem").setAttribute("disabled", "");
@@ -778,7 +779,7 @@ class BasicForm {
         // with its value if provided
         for (let i in options) {
             let input = this.add_mover(label_text, i, has_values ? options[i] : false);
-            
+
             // re-enable removing if there are more than two options
             if (options.length > 2) {
                 input.querySelector('.rem').removeAttribute('disabled');
@@ -810,13 +811,13 @@ class BasicForm {
 
             // add a new mover with a higher index
             let new_input = this.add_mover(label_text, current_max + 1);
-            
+
             // disable its 'down' button
             new_input.querySelector(".down").setAttribute("disabled", "");
 
             // add it to the form
             this.form.insertBefore(new_input, plus.parentNode);
-            
+
             // re-enable the 'down' button of the field before it
             new_input.previousSibling.querySelector(".down").removeAttribute("disabled");
 
@@ -843,11 +844,11 @@ class BasicForm {
      */
     add_switches(id, switchnames = ['required', 'repeatable'],
         { required = false, repeatable = false, dropdown = false } = {}) {
-        
+
         // create the div for the switches
         this.switches = Field.quick("div", "col-3 mt-2");
         this.switches.id = 'switches-div';
-        
+
         // set up the switches
         let subdiv = Field.quick("div", "form-check form-switch form-check-inline");
 
@@ -939,18 +940,18 @@ class SchemaDraftForm extends BasicForm {
     constructor(schema) {
         // initialize a BasicForm
         super(`${schema.card_id}-${schema.data_status}`);
-        
+
         // add action and method attributes for submission
         this.form.setAttribute('action', schema.urls.new);
         this.form.setAttribute('method', 'POST');
-        
+
         // hidden inputs to add for submission
         const inputs = {
-            'realm' : realm, // realm that the schema belongs to
-            'current_version' : schema.version, // version number
-            'raw_schema' : '', // encoded and stringified collection of fields
-            'with_status' : schema.status, // status
-            'parent' : schema.parent ? schema.parent : '' // parent, if it exists
+            'realm': realm, // realm that the schema belongs to
+            'current_version': schema.version, // version number
+            'raw_schema': '', // encoded and stringified collection of fields
+            'with_status': schema.status, // status
+            'parent': schema.parent ? schema.parent : '' // parent, if it exists
         }
         for (let i of Object.entries(inputs)) {
             this.add_hidden_field(i[0], i[1]);
@@ -1093,10 +1094,10 @@ class Modal {
         // capture the modal
         let conf_modal = document.querySelector('div.modal#confirmation-dialog');
         let modal = bootstrap.Modal.getOrCreateInstance(conf_modal);
-        
+
         // apply the provided text
         conf_modal.querySelector('p#confirmation-text').innerHTML = body;
-        
+
         // capture action button and assign action
         let action_btn = conf_modal.querySelector('button#action')
         action_btn.type = 'button';
@@ -1104,7 +1105,7 @@ class Modal {
             action();
             modal.hide();
         });
-        
+
         // capture dismiss button and attach action
         conf_modal.querySelector('button[data-bs-dismiss="modal"]')
             .addEventListener('click', () => {
@@ -1117,7 +1118,7 @@ class Modal {
         // show the modal
         modal.show();
     }
-    
+
     /**
      * Fill in the existing confirmation modal and its form and show it to obtain a simple yes/no answer
      * to a confirmation question (e.g. Are you sure you want to discard this draft?).
@@ -1134,10 +1135,10 @@ class Modal {
         let conf_modal = document.querySelector('div.modal#confirmation-dialog');
         conf_modal.querySelector('button#action').type = 'submit';
         let modal = bootstrap.Modal.getOrCreateInstance(conf_modal);
-        
+
         // fill in the explanatory text
         conf_modal.querySelector('p#confirmation-text').innerHTML = body;
-        
+
         // capture and fill in the form with hidden fields
         let form = conf_modal.querySelector('form');
         form.setAttribute('method', 'POST');
@@ -1200,7 +1201,7 @@ class AccordionItem {
         this.new = is_new;
         this.create();
     }
-    
+
     /**
      * Assemble the parts of the accordion
      */
@@ -1312,10 +1313,10 @@ class NavBar {
         // create item and button
         let li = Field.quick('li', 'nav-item');
         let button = document.createElement('button');
-        
+
         // provide the 'active' class if relevant
         button.className = active ? 'nav-link active' : 'nav-link';
-        
+
         // fill the contents of the button
         if (typeof button_text == 'string') {
             button.innerHTML = button_text
@@ -1329,7 +1330,7 @@ class NavBar {
         button.role = 'tab';
         button.setAttribute('aria-controls', `${item_id}-pane-${this.id}`);
         li.appendChild(button);
-        
+
         // add the button to the navbar
         if (position != -1 && this.nav_bar.children.length > position) {
             let sibling = this.nav_bar.children[position];
@@ -1352,7 +1353,7 @@ class NavBar {
         tab.role = 'tabpanel';
         tab.setAttribute('aria-labelledby', `${item_id}-tab-${this.id}`);
         tab.tabIndex = '0';
-        
+
         // Assign appropriate position
         if (position != -1 && this.tab_content.children.length > position) {
             let sibling = this.tab_content.children[position];
@@ -1383,13 +1384,13 @@ class NavBar {
         let id = text.toLowerCase().replaceAll(' ', '-');
         btn.id = `${id}-${this.id}`;
         btn.type = 'button';
-        
+
         // Assign the action
         btn.addEventListener('click', (e) => {
             e.preventDefault();
             action();
         });
-        
+
         // Add to the navigation bar
         this.nav_bar.appendChild(btn);
     }
