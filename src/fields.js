@@ -518,6 +518,13 @@ class InputField {
     // capture modal for manipulation
     let modal_dom = document.getElementById(modal_id);
     this.modal = bootstrap.Modal.getOrCreateInstance(modal_dom);
+    if (schema.constructor.name == "ObjectEditor") {
+      modal_dom.addEventListener("hidden.bs.modal", () => {
+        bootstrap.Modal.getOrCreateInstance(
+          document.getElementById(schema.card_id)
+        ).show();
+      });
+    }
 
     // define behavior on form submission
     this.form_field.add_submit_action(
@@ -537,15 +544,6 @@ class InputField {
 
           // close the modal
           this.modal.toggle();
-
-          // if the field is part of the composite field, re-activate the composite field's editing modal
-          if (schema.constructor.name == "ObjectEditor") {
-            console.log(schema.card_id);
-            let parent_modal_dom = document.getElementById(`${schema.card_id}`);
-            let parent_modal =
-              bootstrap.Modal.getOrCreateInstance(parent_modal_dom);
-            parent_modal.toggle();
-          }
 
           // recreate the updated (probably cleaned) form
           modal_dom.querySelector(".modal-body").appendChild(form);
@@ -634,7 +632,6 @@ class InputField {
    * @returns {InputField} Updated version of the input field.
    */
   register_fields(schema) {
-    console.log(schema);
     // retrieve data from the form
     let data = new FormData(this.form_field.form);
     let old_id = this.id;
@@ -661,7 +658,6 @@ class InputField {
         // this will have to change to adapt to creating filled-schemas (attached to new ids)
         // clone.editor = this.editor;
         clone.create_editor();
-        console.log(clone.editor);
         clone.editor.field_ids = [...this.editor.field_ids];
         this.editor.field_ids.forEach((fid) => {
           let field = this.editor.fields[fid];
@@ -686,7 +682,6 @@ class InputField {
       } else {
         schema.add_field(clone);
       }
-      console.log(schema);
 
       return clone;
     }
