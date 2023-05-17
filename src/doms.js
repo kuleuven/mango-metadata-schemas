@@ -238,6 +238,8 @@ class MovingViewer extends MovingField {
     super(form.id);
     this.title = form.required ? form.title + "*" : form.title;
     this.repeatable = form.repeatable;
+    this.help_text =
+      form.constructor.name == "ObjectInput" && form.help ? form.help : "";
 
     // div element
     this.div = Field.quick("div", "card border-primary viewer");
@@ -349,6 +351,11 @@ class MovingViewer extends MovingField {
 
     let body = Field.quick("div", "card-body");
     body.appendChild(this.body);
+    if (this.help_text) {
+      let description = Field.quick("p", "form-text", this.help_text);
+      description.id = "help-composite";
+      body.insertBefore(description, this.body);
+    }
 
     this.div.appendChild(header);
     this.div.appendChild(body);
@@ -696,14 +703,20 @@ class BasicForm {
       validation_message = "This field is compulsory",
       pattern = ".*",
       required = true,
+      as_textarea = false,
     } = {}
   ) {
     // Create the input tag
-    let input_tag = Field.quick("input", "form-control");
+    let input_tag = Field.quick(
+      as_textarea ? "textarea" : "input",
+      "form-control"
+    );
     input_tag.id = input_id;
     input_tag.name = input_id;
-    input_tag.type = "text";
-    input_tag.pattern = pattern;
+    if (!as_textarea) {
+      input_tag.type = "text";
+      input_tag.pattern = pattern;
+    }
     input_tag.placeholder = placeholder;
 
     if (required) {
@@ -727,7 +740,7 @@ class BasicForm {
     if (description) {
       let input_desc = Field.quick("div", "form-text", description);
       input_desc.id = "help-" + input_id;
-      input_tag.setAttribute("aria-describedby", "help-", input_id);
+      input_tag.setAttribute("aria-describedby", `help-${input_id}`);
       input_div.appendChild(input_desc);
     }
 
