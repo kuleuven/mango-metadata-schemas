@@ -253,7 +253,11 @@ class ComplexField {
           help_div.remove();
         }
       } else if (form_object.help) {
-        let description = Field.quick("p", "form-text", form_object.help);
+        let description = Field.quick(
+          "p",
+          "form-text mt-0 mb-1",
+          form_object.help
+        );
         description.id = "help-composite";
         form_field.insertBefore(description, new_input);
       }
@@ -439,7 +443,7 @@ class ComplexField {
       if (subfield.constructor.name == "ObjectInput" && subfield.help) {
         let help_text = Field.quick(
           "p",
-          "form-text border-bottom border-secondary",
+          "form-text mt-0 mb-1 border-bottom border-secondary",
           subfield.help
         );
         small_div.appendChild(help_text);

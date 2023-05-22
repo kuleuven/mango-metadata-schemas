@@ -54,7 +54,6 @@ class InputField {
     this.repeatable = false;
     this.values = {};
     this.help = "";
-    this.help_is_custom = false;
 
     // Schema information
     this.schema_name = schema_name;
@@ -83,10 +82,7 @@ class InputField {
       if (this.default) json.default = this.default;
     }
     if (this.repeatable) json.repeatable = this.repeatable;
-    if (this.help) {
-      json.help = this.help;
-      json.help_is_custom = this.help_is_custom;
-    }
+    if (this.help) json.help = this.help;
 
     return json;
   }
@@ -109,9 +105,6 @@ class InputField {
     }
     if (data.help) {
       this.help = data.help;
-      if (data.help_is_custom) {
-        this.help_is_custom = data.help_is_custom;
-      }
     }
   }
 
@@ -379,8 +372,7 @@ class InputField {
     });
     let help = this.form_field.form.querySelector(`textarea#${this.id}-help`);
     help.addEventListener("change", () => {
-      this.help_is_custom = help.value.length > 0;
-      this.help_is_custom ? (this.help = help.value) : this.update_help();
+      this.update_help();
     });
   }
 
@@ -673,15 +665,15 @@ class InputField {
     // retrieve data from the form
     let data = new FormData(this.form_field.form);
     let old_id = this.id;
-    let new_id = data.get(`${this.id}-id`);
+    let new_id = data.get(`${this.id}-id`).trim();
     // capture the 'default' value if relevant
     if (this.required) {
-      this.default = data.get(`${this.id}-default`);
+      this.default = data.get(`${this.id}-default`).trim();
     }
 
     // if we are updating an existing field without changing the ID
     if (old_id == new_id) {
-      this.title = data.get(`${this.id}-label`);
+      this.title = data.get(`${this.id}-label`).trim();
       this.recover_fields(this.id, data); // update the field
       console.log(this.help);
       schema.update_field(this); // update the schema
@@ -690,11 +682,12 @@ class InputField {
       // if we are changing IDs or creating a new field altogether
       // create a new field with the same type
 
-      let clone = this.clone(schema, new_id, data.get(`${this.id}-label`));
-      clone.help = data.get(`${this.id}-help`);
-      clone.help_is_custom = this.help_is_custom;
-      console.log(clone.help);
-      console.log(clone.help_is_custom);
+      let clone = this.clone(
+        schema,
+        new_id,
+        data.get(`${this.id}-label`).trim()
+      );
+      clone.help = data.get(`${this.id}-help`).trim();
       clone.recover_fields(this.id, data);
 
       if (this.constructor.name == "ObjectInput") {
@@ -775,7 +768,6 @@ class InputField {
     this.repeatable = false;
     this.default = undefined;
     this.form_field.reset();
-    this.help_is_custom = false;
     this.update_help();
   }
 
@@ -1090,18 +1082,15 @@ class TypedInput extends InputField {
   }
 
   update_help() {
-    if (!this.help_is_custom) {
-      let par_text =
-        (this.temp_values.type == "integer") |
-        (this.temp_values.type == "float")
-          ? `${this.temp_values.type} ${this.print_range()}`
-          : this.temp_values.type;
-      this.help = `Input type: ${par_text}`;
-      if (this.form_field) {
-        let help_field = this.form_field.form.querySelector(`#${this.id}-help`);
-        if (help_field != undefined) {
-          help_field.value = this.help;
-        }
+    let par_text =
+      (this.temp_values.type == "integer") | (this.temp_values.type == "float")
+        ? `${this.temp_values.type} ${this.print_range()}`
+        : this.temp_values.type;
+    this.help = `Input type: ${par_text}`;
+    if (this.form_field) {
+      let help_field = this.form_field.form.querySelector(`#${this.id}-help`);
+      if (help_field != undefined) {
+        help_field.value = this.help;
       }
     }
   }
@@ -1147,7 +1136,7 @@ class TypedInput extends InputField {
     let div = document.createElement("div");
 
     // set up input field description as subtitle or as input-description
-    let subtitle = Field.quick("div", "form-text", this.help);
+    let subtitle = Field.quick("div", "form-text mt-0 mb-1", this.help);
     subtitle.id = "help-" + this.id;
 
     // define input shape
@@ -1259,12 +1248,12 @@ class TypedInput extends InputField {
    */
   recover_fields(id, data) {
     // capture type
-    this.type = data.get(`${id}-format`);
+    this.type = data.get(`${id}-format`).trim();
 
     // capture minimum and maximum values if relevant
     if ((this.type === "integer") | (this.type == "float")) {
-      this.values.minimum = data.get(`${id}-min`);
-      this.values.maximum = data.get(`${id}-max`);
+      this.values.minimum = data.get(`${id}-min`).trim();
+      this.values.maximum = data.get(`${id}-max`).trim();
     }
 
     // define the description of the field for the viewer and editor
@@ -1454,10 +1443,8 @@ class ObjectInput extends InputField {
 
     if (this.required) json.required = this.required;
     if (this.repeatable) json.repeatable = this.repeatable; // temporarily not implemented
-    if (this.help) {
-      json.help = this.help;
-      json.help_is_custom = this.help_is_custom;
-    }
+    if (this.help) json.help = this.help;
+
     return json;
   }
 
@@ -1657,14 +1644,13 @@ class MultipleInput extends InputField {
         ? Field.dropdown(this, active) // create a dropdown
         : Field.checkbox_radio(this, active); // otherwise a checkbox or radio
     if (this.help) {
-      let subtitle = Field.quick("div", "form-text", this.help);
+      let subtitle = Field.quick("div", "form-text mt-0 mb-1", this.help);
       subtitle.id = "help-" + this.id;
       div.appendChild(subtitle);
       if (this.values.ui == "dropdown") {
         form_shape.setAttribute("aria-describedby", subtitle.id);
       } else {
         form_shape.querySelectorAll("div.form-check").forEach((subdiv) => {
-          console.log(subdiv);
           subdiv
             .querySelector(".form-check-input")
             .setAttribute("aria-describedby", subtitle.id);
@@ -1702,13 +1688,13 @@ class MultipleInput extends InputField {
     for (let pair of data.entries()) {
       // add the value of moving input fields only
       if (pair[0].startsWith("mover")) {
-        this.values.values.push(pair[1]);
+        this.values.values.push(pair[1].trim());
       }
     }
     let default_field = this.form_field.form.querySelector(`#${id}-default`);
     if (default_field !== null) {
       let selected = default_field.querySelector("option[selected]");
-      let selected_value = selected == null ? null : selected.value;
+      let selected_value = selected == null ? null : selected.value.trim();
       default_field.querySelectorAll("option").forEach((x) => x.remove());
       for (let i of this.values.values) {
         let new_option = document.createElement("option");

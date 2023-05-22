@@ -352,9 +352,10 @@ class MovingViewer extends MovingField {
     let body = Field.quick("div", "card-body");
     body.appendChild(this.body);
     if (this.help_text) {
-      let description = Field.quick("p", "form-text", this.help_text);
+      let description = Field.quick("p", "form-text mt-0 mb-1", this.help_text);
       description.id = "help-composite";
       body.insertBefore(description, this.body);
+      console.log(description);
     }
 
     this.div.appendChild(header);
@@ -738,7 +739,7 @@ class BasicForm {
     input_div.appendChild(input_tag);
 
     if (description) {
-      let input_desc = Field.quick("div", "form-text", description);
+      let input_desc = Field.quick("div", "form-text mt-0 mb-1", description);
       input_desc.id = "help-" + input_id;
       input_tag.setAttribute("aria-describedby", `help-${input_id}`);
       input_div.appendChild(input_desc);
