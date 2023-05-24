@@ -377,7 +377,6 @@ class InputField {
     let help = this.form_field.form.querySelector(`textarea#${this.id}-help`);
     help.addEventListener("change", () => {
       this.help_is_custom = true;
-      console.log("updating help");
       this.update_help();
     });
   }
@@ -787,7 +786,6 @@ class InputField {
     this.default = undefined;
     this.help_is_custom = false;
     this.form_field.reset();
-    console.log("updating help");
     this.update_help();
   }
 
@@ -1151,8 +1149,6 @@ class TypedInput extends InputField {
       default_input.parentElement.querySelector(".invalid-feedback").innerHTML =
         validator;
     }
-    console.log("updating help");
-
     this.update_help();
   }
 
@@ -1192,7 +1188,6 @@ class TypedInput extends InputField {
         }
       }
     }
-    console.log(this.help);
   }
 
   /**
@@ -1320,6 +1315,9 @@ class TypedInput extends InputField {
         (this.type == "float") | (this.type == "integer")
           ? "number"
           : this.type;
+      if (this.type == "float") {
+        input.setAttribute("step", "any");
+      }
       input.setAttribute("aria-describedby", subtitle.id);
       // only these types can be required and have a default value
       if (this.required && this.default !== undefined) {
