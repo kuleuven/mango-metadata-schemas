@@ -1,17 +1,18 @@
 ```json
 {
     "schema_name": "book",
-    "version" : "1.0.0",
-    "status" : "draft",
+    "version": "1.0.0",
+    "status": "draft",
     "properties": {
         "title": {
             "type": "text",
             "title": "Book title",
-            "required": "true"
+            "required": true,
+            "help": "Title of the book"
         },
         "cover_colors": {
             "type": "select",
-            "multiple": "true",
+            "multiple": true,
             "ui": "checkbox",
             "title": "Colors in the cover",
             "values": [
@@ -19,11 +20,12 @@
                 "blue",
                 "green",
                 "yellow"
-            ]
+            ],
+            "help": "Colors in the cover"
         },
         "publisher": {
             "type": "select",
-            "multiple": "false",
+            "multiple": false,
             "ui": "dropdown",
             "values": [
                 "Penguin House",
@@ -32,45 +34,50 @@
                 "Nightshade books"
             ],
             "title": "Publishing house",
-            "required": "true"
+            "required": true,
+            "help": "Company that published the book."
         },
         "author": {
             "type": "object",
             "title": "Author",
+            "help": "The person who wrote the book",
             "properties": {
                 "name": {
                     "type": "text",
                     "title": "Name and Surname",
-                    "required": "true"
+                    "required": true,
+                    "help": "Input type: text"
                 },
                 "age": {
                     "type": "integer",
                     "title": "Age",
                     "minimum": "12",
-                    "maximum": "99"
+                    "maximum": "99",
+                    "help": "Input type: integer between 12 and 99"
                 },
                 "email": {
                     "type": "email",
                     "title": "Email address",
-                    "required": "true",
-                    "repeatable": "true"
+                    "required": true,
+                    "repeatable": true,
+                    "help": "Input type: email"
                 }
             }
         },
         "ebook": {
             "type": "select",
-            "multiple": "false",
+            "multiple": false,
             "ui": "radio",
             "values": [
                 "Available",
                 "Unavailable"
             ],
             "title": "Is there an e-book?",
-            "required": "true"
+            "required": true
         },
         "genre": {
             "type": "select",
-            "multiple": "true",
+            "multiple": true,
             "ui": "dropdown",
             "values": [
                 "Speculative fiction",
@@ -85,8 +92,8 @@
         "publishing_date": {
             "type": "date",
             "title": "Publishing date",
-            "required": "true",
-            "repeatable": "true"
+            "required": true,
+            "repeatable": true
         },
         "copies_published": {
             "type": "integer",
@@ -109,8 +116,8 @@
         }
     },
     "title": "Book schema as an example",
-    "edited_by" : "username",
-    "realm" : "project_collection",
-    "parent" : ""
+    "edited_by": "username",
+    "realm": "project_collection",
+    "parent": ""
 }
 ```

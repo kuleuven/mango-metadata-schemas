@@ -143,6 +143,10 @@ default
 
 :    Simple fields and single-value multiple-choice fields, _if required is true_, may also contain a `default` attribute providing a default value for the field.
 
+help
+
+:    Any type of field can have a `help` attribute providing a description for the field, which is rendered between the `title` and the field itself in the form. This text is meant to describe the metadata attribute, i.e. as an explanation to the user.
+
 In the metadata schema manager, the `title`, id and (if relevant) `default` attributes are provided via text input fields and `required` via a switch button. In contrast, `type` is defined by the choice of field in the metadata schema manager, except for simple fields, in which there is an additional dropdown to select among its various subtypes.
 
 ## Simple fields {#sec-simple}
@@ -153,7 +157,8 @@ The prototypical example of a simple field is a text field, such as the example 
 "title" : {
     "type" : "text",
     "title" : "Book title",
-    "required" : true
+    "required" : true,
+    "help": "The title of the book"
 }
 ```
 
@@ -219,19 +224,22 @@ Composite fields are miniature schemas nested inside schemas (or other composite
         "name": {
             "type": "text",
             "title": "Name and Surname",
-            "required": true
+            "required": true,
+            "help": "Input type: text"
         },
         "age": {
             "type": "integer",
             "title": "Age",
             "minimum": "12",
-            "maximum": "99"
+            "maximum": "99",
+            "help": "Input type: integer between 12 and 99"
         },
         "email": {
             "type": "email",
             "title": "Email address",
             "required": true,
-            "repeatable": true
+            "repeatable": true,
+            "help": "Input type: email"
         }
     }
 }
