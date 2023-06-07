@@ -1,3 +1,6 @@
 /node_modules
 package-lock.json
 docs/img/
+/venv/
+*__pycache__
+/demo/mock_icat/

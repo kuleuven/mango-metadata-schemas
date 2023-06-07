@@ -1,0 +1,17 @@
+bleach==6.0.0
+blinker==1.6.2
+cache==1.0.3
+click==8.1.3
+csrf==0.1b1
+dominate==2.8.0
+Flask==2.3.2
+Flask-Bootstrap==3.3.7.1
+itsdangerous==2.1.2
+Jinja2==3.1.2
+MarkupSafe==2.1.3
+Pillow==9.5.0
+semver==3.0.0
+slugify==0.0.1
+visitor==0.1.3
+Werkzeug==2.3.4
+multidict==6.0.4

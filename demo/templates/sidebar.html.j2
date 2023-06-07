@@ -1,0 +1,28 @@
+<div style="height:fit-content"
+     class="col-3 col-sm-3 flex-grow-sm-1 flex-shrink-1 flex-grow-0 sticky-top pb-sm-0 pb-3">
+    <div class="bg-light border rounded-3 p-1 h-100 sticky-top">
+        <!-- <h6 class="d-none d-sm-block text-muted">Sticky Sidebar</h6> -->
+        <ul class="nav nav-pills flex-sm-column flex-row mb-auto justify-content-between text-truncate">
+            {% for _, navbar_entry in navbar_entries.items() %}
+                <li title="{{ navbar_entry.description }}">
+                    <a href="{{ url_for(navbar_entry.blueprint ~ '.' ~ navbar_entry.index) }}"
+                       class="nav-link px-2 text-truncate"><i class="bi bi-{{ navbar_entry.bootstrap_icon }} fs-4"></i> {{ navbar_entry.title }}</a>
+                </li>
+            {% endfor %}
+            <li title="Browse the items in your personal trash can">
+            <a href="{{ url_for('browse_bp.collection_browse') + '/' + g.irods_session.zone + '/trash/home/' + g.irods_session.username }}"
+               class="nav-link px-2 text-truncate"><i class="bi bi-trash fs-4"></i>
+            <span class="d-none d-sm-inline">Trash</span> </a>
+    </li>
+    {% if "mango_portal_admin" in g.irods_session.roles %}
+        <hr />
+        <li>
+            <a href="{{ url_for('admin_admin_bp.index') }}"
+               class="nav-link px-2 text-truncate">
+                <span class="d-none d-sm-inline">Admin</span> <i class="bi bi-wrench-adjustable fs-4"></i>
+            </a>
+        </li>
+    {% endif %}
+</ul>
+</div>
+</div>

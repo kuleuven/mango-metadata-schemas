@@ -182,6 +182,9 @@ For numeric inputs, the possible types are "integer" or "float". Fields with the
 }
 ```
 
+Most of the text formats ("text", "email", "url", "integer" and "float") can also have a `placeholder` attribute, i.e. an example of a desired value that is shown inside the input field when it is empty.
+In addition, "text", "email" and "url" types can have a `pattern` attribute containing a regular expression to be used as additional restriction.
+
 Finally, it is also possible to create an individual checkbox (with `type` "checkbox"), which takes the value "true" when checked and no value when unchecked.
 
 Except for the "checkbox", all the other simple field types can additionally have a `repeatable` attribute. If "true", the field can be copied when assinging the metadata to a collection or data object, in order to generate multiple AVUs with the same attribute name and different values.

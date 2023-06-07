@@ -1,0 +1,139 @@
+{% extends "base.html.j2" %}
+{% import "dialogs.html.j2" as dialogs %}
+{% macro show_schema_metadata(name, info, schema_info, schema_metadata, level = 0, unit = None) %}
+    {% if info['type'] == 'object' %}
+        <div class="border border-1 border-secondary rounded p-3 my-1">
+            <h4 title="{{ name }}">{{ info['label'] }}</h4>
+            {% set subfields = schema_metadata[name] %}
+            {% if subfields|length == 0 %}
+                <hr />
+                <p class="fw-light">(Empty)</p>
+            {% else %}
+                {% set instances = subfields.keys() %}
+                {% for unit_value in instances %}
+                    <hr />
+                    {% for sub_name in info['properties'] %}
+                        {% if schema_info[sub_name]['level'] == level + 1 %}
+                            {{ show_schema_metadata(sub_name, schema_info[sub_name], schema_info, subfields[unit_value], level + 1, unit_value) }}
+                        {% endif %}
+                    {% endfor %}
+                {% endfor %}
+            {% endif %}
+        </div>
+    {% else %}
+        {% set items = schema_metadata.getall(name, []) %}
+        <h5 title="{{ name }}">{{ info['label'] }}</h5>
+        {% if items|length == 0 %}
+            <p class="fw-light">(Empty)</p>
+        {% elif items|length == 1 %}
+            <p>{{ items[0].value | bleach_clean(tags=['br']) | safe }}</p>
+        {% else %}
+            <p>{{ items | map(attribute='value') | join(', ') | safe }}</p>
+        {% endif %}
+    {% endif %}
+{% endmacro %}
+{% macro metadata_block(object_id, object_path, grouped_metadata, schemas, schema_labels, readonly_prefixes=(""), item_type="collection", read_only=False, current_user_rights=[], realm="", flattened_schemas={}) %}
+    {% if grouped_metadata|length == 0 %}
+        <div class="alert alert-warning">
+            No metadata here! Select a schema from the dropdown below to start applying metadata to this item.
+        </div>
+    {% else %}
+        <!-- nav top bar -->
+        <ul class="nav nav-pills mb-3 mt-3" id="schema-tab" role="tablist">
+            {% for schema in grouped_metadata %}
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link {% if loop.index == 1 %}active{% endif %}"
+                            id="pills-{{ schema }}-tab"
+                            data-bs-toggle="pill"
+                            data-bs-target="#pills-{{ schema }}"
+                            type="button"
+                            role="tab"
+                            aria-controls="pills-{{ schema }}"
+                            {% if loop.index == 1 %}aria-selected="true"{% else %}aria-selected="false"{% endif %}>
+                        {{ schemas[schema]["title"] if schemas[schema] else schema }}
+                    </button>
+                </li>
+            {% endfor %}
+        </ul>
+        <!-- content-->
+        <div class="tab-content" id="pills-tabContent-schema">
+            {% for schema in grouped_metadata %}
+                <div class="tab-pane fade {% if loop.index == 1 %}show active{% endif %}"
+                     id="pills-{{ schema }}"
+                     role="tabpanel"
+                     aria-labelledby="pills-{{ schema }}-tab">
+                    <p class="text-end fst-italic">
+                        Schema version: {{ grouped_metadata[schema].get("mgs."~ schema ~".__version__") .value }}
+                    </p>
+                    {% for name, info in schema_labels[schema].items() %}
+                        {% if info['level'] == 0 %}
+                            {{ show_schema_metadata(name, info, schema_labels[schema], grouped_metadata[schema]) }}
+                        {% endif %}
+                    {% endfor %}
+                    <div class="row mt-4 border-top pt-3">
+                        <form class="col"
+                              method="get"
+                              action="{{ url_for("metadata_schema_form_bp.edit_schema_metadata_for_item") }}">
+                            <input type="hidden" name="item_type" value="{{ item_type }}" />
+                            <input type="hidden" name="id" value="{{ object_id }}" />
+                            <input type="hidden" name="object_path" value="{{ object_path }}" />
+                            <input name="schema" type="hidden" value="{{ schema }}" />
+                            <input type="hidden" name="realm" value="{{ realm }}" />
+                            <input type="hidden" name="status" value="published" />
+                            <button type="submit" class="btn btn-primary">Edit</button>
+                        </form>
+                        <div class="col">
+                            <button type="button"
+                                    class="btn btn-danger float-end"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#delete_schema_data_{{ schema }}">
+                                Delete metadata for schema "{{ schemas[schema]['title'] if schemas[schema] else schema }}"
+                            </button>
+                            {{ dialogs.confirm_delete_dialog('delete_schema_data_' ~ schema, url_for('metadata_schema_form_bp.delete_schema_metadata_for_item') , title='Are you sure you want to delete all metadata', mode="custom", readonly_fields = [{'name' : 'item_path', 'value': object_path,  'label': 'Item'}, {'name' : 'schema_identifier', 'value': schema, 'label': 'Schema'}], hidden_fields=[{'name':'redirect_hash', 'value': '#metadata'}, {'name': 'item_type', 'value': item_type}], modal_class='modal-lg') }}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+    <div class="h4 pt-4 mt-4 mb-2 border-top border-success">Edit/add metadata via schema</div>
+    <form class="row g-3 col-md-6 mt-4"
+          method="get"
+          action="{{ url_for("metadata_schema_form_bp.edit_schema_metadata_for_item") }}">
+        <input type="hidden" name="item_type" value="{{ item_type }}" />
+        {# <input type="hidden" name="id" value="{{ object_id }}" /> #}
+        <input type="hidden" name="object_path" value="{{ object_path }}" />
+        <input type="hidden" name="realm" value="{{ realm }}" />
+        <input type="hidden" name="status" value="published" />
+        <div class="input-group mb-3">
+            <select name="schema" class="form-select">
+                {% for schema in schemas %}<option value="{{ schema }}">{{ schemas[schema]["title"] }}</option>{% endfor %}
+            </select>
+            <button type="submit" class="btn btn-primary">Edit</button>
+        </div>
+    </form>
+{% endmacro %}
+{% block body %}
+    <main>
+        <h2>Schema metadata of an object</h2>
+    </br>
+    <h3 class="mb-4">
+        <i class="bi bi-file-earmark fs4"></i>  {{ data_object.name }}
+    </h3>
+    <div>
+        <img height="100px"
+             width="100px"
+             src="{{ url_for('static', filename='gray.png') }}"
+             alt="Gray circle with a shadow." />
+    </div>
+</br>
+<div id="object-metadata">
+    {% set current_user_rights = ["own"] %}
+    {% set readonly_prefixes = "" %}
+    {{ metadata_block(data_object.id, data_object.path.lstrip("/") ,
+    grouped_metadata, schemas, schema_labels,
+    readonly_prefixes=readonly_prefixes,
+    item_type="data_object", current_user_rights=current_user_rights, realm=realm) }}
+</div>
+</main>
+{% endblock body %}

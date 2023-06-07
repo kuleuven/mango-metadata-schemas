@@ -25,9 +25,36 @@ On the other hand, some of the code meant for the manager can also be used for t
 
 <!-- I'm not sure whether the specifics of the manager vs annotator should all be introduced here or in different files -->
 
+## Demo
+
+If you want to run the demo, clone the repository, (create and activate a virtual environment with **at least Python 3.10**), install the required Python modules and run the Flask App:
+
+```sh
+git clone git@gitea.icts.kuleuven.be:foz/mdschema-editor.git
+cd mdschema-editor
+python -m venv venv
+. venv/bin/activate
+pip install -r requirements.txt
+cd demo
+flask run
+```
+
+The demo will be available in <http://127.0.0.1:5000>.
+
+Once you have done this once, the following times you only need to activate the virtual environment and run flask:
+
+```sh
+# from mdschema-editor
+. venv/bin/activate
+cd demo
+flask run
+```
+
+## In your own application
+
 Most of the Javascript files contained in this repository define classes used for the schema management and application. However, two of these files define global variables and kicks off whatever needs to happen: ["manager.js"](src/manager.js) for the schema maanager and ["annotator.js"](src/annotator.js) for the metadata application form. Each of them hooks to one or two specific HTML elements, described in @sec-html. The variables defined in each of these scripts are documented in the scripts themselves.
 
-The HTML page that calls these scripts needs to call ["doms"](src/doms.js), ["fields"](src/fields.js), ["schema"](src/schema.js) and ["httprequests"](src/httprequests.js), followed by either "manager" or "annotator":
+The HTML page that calls these scripts needs to call ["doms"](src/doms.js), ["fields"](src/fields.js), ["schema"](src/schema.js) and ["httprequests"](src/httprequests.js), followed by either ["manager"](src/manager.js) or ["annotator"](src/annotator.js):
 
 ```html
 <script src="doms.js"></script>

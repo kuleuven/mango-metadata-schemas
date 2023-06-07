@@ -16,52 +16,38 @@ from flask import (
 
 import os
 import json
+import base64
 
-from flask_wtf import FlaskForm
-from wtforms import (
-    StringField,
-    EmailField,
-    DateField,
-    URLField,
-    SelectField,
-    SubmitField,
-    RadioField,
-    BooleanField,
-    FormField,
-    IntegerField,
-    validators,
-    Form,
-    TimeField,
-    HiddenField,
-    SelectMultipleField,
-    TextAreaField,
-    FloatField,
-)
-import wtforms.widgets
 from werkzeug.datastructures import MultiDict
 
-from irods.meta import iRODSMeta, AVUOperation
+# from irods.meta import iRODSMeta, AVUOperation
 
-from irods.models import Column, Collection, DataObject, DataObjectMeta, CollectionMeta
-from irods.column import Criterion
+# from irods.models import Column, Collection, DataObject, DataObjectMeta, CollectionMeta
+# from irods.column import Criterion
 
-from irods.query import Query
+# from irods.query import Query
 
 
 from slugify import slugify
 
-from csrf import csrf
+# from csrf import csrf
 
 from pprint import pprint
 
-import lib.util
-from lib.util import flatten_josse_schema, flatten_schema
+
 from .editor import get_metadata_schema_dir
 
-from kernel.metadata_schema import get_schema_manager, FileSystemSchemaManager
+from . import (
+    get_schema_manager,
+    FileSystemSchemaManager,
+)  # ??? HOW TO IMPORT IT
 import logging
 
-import signals
+from .demo_classes import (
+    DemoAVU,
+    demo_collection,
+    demo_data_object,
+)
 
 
 metadata_schema_form_bp = Blueprint(
@@ -69,6 +55,30 @@ metadata_schema_form_bp = Blueprint(
     __name__,
     template_folder="templates/metadata_schema",
 )
+
+
+def flatten_schema(object_tuple, level=0, prefix="", result_dict={}, **kwargs):
+    (_key, _dict) = object_tuple
+    for p_key, _property in _dict["properties"].items():
+        result_dict[f"{prefix}.{p_key}"] = {
+            "label": _property["title"],
+            "type": _property["type"],
+            "level": level,
+        }
+
+        if _property["type"] == "object":
+            result_dict[f"{prefix}.{p_key}"]["properties"] = [
+                f"{prefix}.{p_key}.{x}" for x in _property["properties"].keys()
+            ]
+            result_dict = flatten_schema(
+                (p_key, _property),
+                level=(level + 1),
+                prefix=f"{prefix}.{p_key}",
+                result_dict=result_dict,
+            )
+
+    return result_dict
+
 
 def get_schema_prefix_from_filename(filename):
     """
@@ -86,6 +96,7 @@ def get_schema_prefix(schema_identifier=False, schema_filename=False):
         return f"{current_app.config['MANGO_SCHEMA_PREFIX']}.{schema_identifier}"
     if schema_filename:
         return f"{current_app.config['MANGO_SCHEMA_PREFIX']}.{get_schema_prefix_from_filename(schema_filename)}"
+
 
 def add_to_dict(metadata_items, multidict, unit_level=1):
     name_length = 2 + unit_level
@@ -128,9 +139,8 @@ def add_to_dict(metadata_items, multidict, unit_level=1):
         multidict.add(composite_name, subdict.to_dict(flat=False))
 
 
-@metadata_schema_form_bp.route("/metadata-schema/edit2", methods=["POST", "GET"])
-@csrf.exempt
-def edit_schema_metadata_for_item2():
+@metadata_schema_form_bp.route("/metadata-schema/edit", methods=["POST", "GET"])
+def edit_schema_metadata_for_item():
     """ """
     _parameters = request.values.to_dict()
 
@@ -138,11 +148,14 @@ def edit_schema_metadata_for_item2():
     object_path = _parameters["object_path"]
     if not object_path.startswith("/"):
         object_path = "/" + object_path
+    schema = _parameters["schema"]
     realm = _parameters["realm"]
     prefix = get_schema_prefix(schema_identifier=schema)
 
     schema_manager: FileSystemSchemaManager = get_schema_manager(
-        zone=g.irods_session.zone, realm=realm
+        # zone=g.irods_session.zone,
+        zone=current_app.config["ZONE_NAME"],
+        realm=realm,
     )
     logging.info(f"Using metadata schema {schema}")
 
@@ -152,56 +165,33 @@ def edit_schema_metadata_for_item2():
     flat_form_dict = {}
     if schema_as_json:
         form_dict = json.loads(schema_as_json)
-
-    # json_template_dir = get_metadata_schema_dir(g.irods_session)
-
-    # with open(f"{json_template_dir}/{template_name}") as template_file:
-    #     form_dict = json.load(template_file)
-
-    # needed for getting and setting specific values, for example multivalued fields like the checkboxes
-    if schema_as_json:
         flat_form_dict = flatten_schema(
             ("", form_dict), level=0, prefix=prefix, result_dict={}
         )
 
     catalog_item = (
-        g.irods_session.data_objects.get(object_path)
+        # g.irods_session.data_objects.get(object_path)
+        demo_data_object
         if item_type == "data_object"
-        else g.irods_session.collections.get(object_path)
+        # else g.irods_session.collections.get(object_path)
+        else demo_collection
     )
     setattr(catalog_item, "item_type", item_type)
 
     form_values = MultiDict()
-    # form_values.extend(_parameters)
-    # _parameters = {'mg.schema1.key1' : 'value1', 'mg.schema2.key2' : 'value2'} # for testing
-    # for _key, _value in _parameters.items():
-    #     pprint(f"Key is: {_key}")
 
-    #     form_values.add(_key, _value)
     form_values.add("redirect_route", request.referrer + "#metadata")
-    add_to_dict(catalog_item.metadata.items(), form_values)
-    # for meta_data_item in catalog_item.metadata.items():
-    #     if meta_data_item.name.startswith(prefix):
-    #         form_values.add(
-    #             meta_data_item.name, meta_data_item.value.replace("<br/>", "\n")
-    #         )
+    # add_to_dict(catalog_item.metadata.items(), form_values)
+    add_to_dict(catalog_item.metadata, form_values)
 
     values_json = json.dumps(form_values.to_dict(flat=False))
 
     if request.method == "GET":
-        # schema_form_class = josse_walk_schema_object((prefix, form_dict), prefix=prefix)
-        # setattr(schema_form_class, "id", HiddenField())
-        # setattr(schema_form_class, "schema", HiddenField())
-        # setattr(schema_form_class, "object_path", HiddenField())
-        # setattr(schema_form_class, "item_type", HiddenField())
-        # setattr(schema_form_class, "redirect_hash", HiddenField())
-        # setattr(schema_form_class, "submit", SubmitField(label="Save"))
-        # schema_form = schema_form_class(form_values)
         return render_template(
-            "schema_form_edit2.html.j2",
+            "schema_form_edit.html.j2",
             schema=schema,
             realm=realm,
-            schema_values=lib.util.btoa(values_json),
+            schema_values=base64.b64encode(bytes(values_json, "utf-8")).decode("utf-8"),
             prefix=prefix,
             item=catalog_item,
         )
@@ -212,10 +202,12 @@ def edit_schema_metadata_for_item2():
         # remove all relevant attributes for this schema
         # remove operations:
         avu_operation_list = []
-        for meta_data_item in catalog_item.metadata.items():
+        # for meta_data_item in catalog_item.metadata.items():
+        for meta_data_item in catalog_item.metadata:
             if meta_data_item.name.startswith(prefix):
                 avu_operation_list.append(
-                    AVUOperation(operation="remove", avu=meta_data_item)
+                    # AVUOperation(operation="remove", avu=meta_data_item)
+                    ("remove", meta_data_item)
                 )
         for _key, _value in request.values.items(multi=True):
             if _key.startswith(prefix) and _value:
@@ -235,43 +227,46 @@ def edit_schema_metadata_for_item2():
                     pprint(_key.split("__"))
                     _key, _unit = _key.split("__")
                     avu_operation_list.append(
-                        AVUOperation(
-                            operation="add", avu=iRODSMeta(_key, _value, _unit)
-                        )
+                        # AVUOperation(operation="add", avu=iRODSMeta(_key, _value, _unit))
+                        ("add", DemoAVU(_key, _value, _unit))
                     )
                 else:
                     avu_operation_list.append(
-                        AVUOperation(operation="add", avu=iRODSMeta(_key, _value))
+                        # AVUOperation(operation="add", avu=iRODSMeta(_key, _value))
+                        ("add", DemoAVU(_key, _value))
                     )
 
         # catalog_item.metadata.apply_atomic_operations(*avu_operation_list)
+        catalog_item.apply_operations(avu_operation_list)
         # workaround for a bug in 4.2.11: only 'own' can execute atomic operations
-        lib.util.execute_atomic_operations(
-            g.irods_session, catalog_item, avu_operation_list
-        )
+        # lib.util.execute_atomic_operations(
+        #     g.irods_session, catalog_item, avu_operation_list
+        # )
 
-        if item_type == "collection":
-            signals.collection_changed.send(
-                current_app._get_current_object(),
-                irods_session=g.irods_session,
-                collection_path=object_path,
-            )
-        if item_type == "data_object":
-            signals.data_object_changed.send(
-                current_app._get_current_object(),
-                irods_session=g.irods_session,
-                data_object_path=object_path,
-            )
+        # if item_type == "collection":
+        #     signals.collection_changed.send(
+        #         current_app._get_current_object(),
+        #         irods_session=g.irods_session,
+        #         collection_path=object_path,
+        #     )
+        # if item_type == "data_object":
+        #     signals.data_object_changed.send(
+        #         current_app._get_current_object(),
+        #         irods_session=g.irods_session,
+        #         data_object_path=object_path,
+        #     )
 
         # signals.data_object_changed(current_app._get_current_object(), data_object_path=data_object_path)
-        if item_type == "collection":
-            referral = url_for(
-                "browse_bp.collection_browse", collection=catalog_item.path
-            )
-        else:
-            referral = url_for(
-                "browse_bp.view_object", data_object_path=catalog_item.path
-            )
+
+        # if item_type == "collection":
+        #     referral = url_for(
+        #         "browse_bp.collection_browse", collection=catalog_item.path
+        #     )
+        # else:
+        #     referral = url_for(
+        #         "browse_bp.view_object", data_object_path=catalog_item.path
+        #     )
+        referral = url_for("metadata_schema_view_bp.view_schema_metadata_for_item")
 
         if "redirect_route" in request.values:
             return redirect(request.values["redirect_route"])
@@ -291,49 +286,54 @@ def delete_schema_metadata_for_item():
     item_type = form_parameters["item_type"]
 
     catalog_item = (
-        g.irods_session.data_objects.get(item_path)
+        # g.irods_session.data_objects.get(item_path)
+        demo_data_object
         if item_type == "data_object"
-        else g.irods_session.collections.get(item_path)
+        # else g.irods_session.collections.get(item_path)
+        else demo_collection
     )
     prefix = get_schema_prefix(schema_identifier=schema_identifier)
 
     avu_operation_list = []
-    for meta_data_item in catalog_item.metadata.items():
+    # for meta_data_item in catalog_item.metadata.items():
+    for meta_data_item in catalog_item.metadata:
         if meta_data_item.name.startswith(prefix):
             avu_operation_list.append(
-                AVUOperation(operation="remove", avu=meta_data_item)
+                # AVUOperation(operation="remove", avu=meta_data_item)
+                ("remove", meta_data_item)
             )
 
     # catalog_item.metadata.apply_atomic_operations(*avu_operation_list)
+    catalog_item.apply_operations(avu_operation_list)
     # workaround for a bug in 4.2.11
-    lib.util.execute_atomic_operations(
-        g.irods_session, catalog_item, avu_operation_list
-    )
+    # lib.util.execute_atomic_operations(
+    #     g.irods_session, catalog_item, avu_operation_list
+    # )
 
-    if item_type == "collection":
-        signals.collection_changed.send(
-            current_app._get_current_object(), collection_path=item_path
-        )
-    if item_type == "data_object":
-        signals.data_object_changed.send(
-            current_app._get_current_object(), data_object_path=item_path
-        )
+    # if item_type == "collection":
+    #     signals.collection_changed.send(
+    #         current_app._get_current_object(), collection_path=item_path
+    #     )
+    # if item_type == "data_object":
+    #     signals.data_object_changed.send(
+    #         current_app._get_current_object(), data_object_path=item_path
+    #     )
 
-    if item_type == "collection":
-        referral = url_for(
-            "browse_bp.collection_browse",
-            irods_session=g.irods_session,
-            collection=catalog_item.path,
-        )
-    else:
-        referral = url_for(
-            "browse_bp.view_object",
-            irods_session=g.irods_session,
-            data_object_path=catalog_item.path,
-        )
+    # if item_type == "collection":
+    #     referral = url_for(
+    #         "browse_bp.collection_browse",
+    #         irods_session=g.irods_session,
+    #         collection=catalog_item.path,
+    #     )
+    # else:
+    #     referral = url_for(
+    #         "browse_bp.view_object",
+    #         irods_session=g.irods_session,
+    #         data_object_path=catalog_item.path,
+    #     )
 
     if "redirect_route" in request.values:
         return redirect(request.values["redirect_route"])
-    if "redirect_hash" in request.values:
-        return redirect(referral.split("#")[0] + request.values["redirect_hash"])
+    # if "redirect_hash" in request.values:
+    #     return redirect(referral.split("#")[0] + request.values["redirect_hash"])
     return redirect(request.referrer)
