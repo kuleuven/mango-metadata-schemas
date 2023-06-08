@@ -1,15 +1,16 @@
 ---
 title: "Metadata schemas"
 format:
-    html:
-        embed-resources: true
-        theme: ../sass/main.scss
-        toc: true
-        title-block-banner: true
-        title-block-banner-color: primary
+    # html:
+    #     embed-resources: true
+    #     theme: ../sass/main.scss
+    #     toc: true
+    #     title-block-banner: true
+    #     title-block-banner-color: primary
     # pdf:
     #     language: en-GB
     #     date-format: iso
+    gfm: default
     rst: default
 # date: 2023-01-13
 # date-modified: today

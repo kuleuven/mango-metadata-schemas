@@ -10,6 +10,7 @@ format:
     # pdf:
     #     language: en-GB
     #     date-format: iso
+    gfm: default
     rst: default
 date: 2023-03-27
 date-modified: today
