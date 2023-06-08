@@ -26,7 +26,7 @@ class ComplexField {
     this.modal_id = `choice-${name}-${data_status}`;
     this.initial_name = name;
     this.data_status = data_status;
-    this.field_id_regex = "[a-z0-9_-]+";
+    this.field_id_regex = "[a-zA-Z0-9_-]+";
 
     // empty fields to start with
     this.initials = {
@@ -1454,7 +1454,8 @@ class SchemaForm {
     // extract fields that are not in composite fields and register them
     let non_objects = keys.filter(
       (fid) =>
-        typeof annotated_data[fid][0] != "object" && this.names.indexOf(fid) > 0
+        typeof annotated_data[fid][0] != "object" &&
+        this.names.indexOf(fid) > -1
     );
     non_objects.forEach((fid) => this.register_non_object(fid, annotated_data));
 
@@ -1513,8 +1514,6 @@ class SchemaForm {
           child.getAttribute("data-composite-unit") == String(unit)
       )[0];
 
-      console.log(object);
-      console.log(this.fields);
       // Extract the fields that are not inside nested composite fields and register them
       let not_nested = Object.keys(object).filter(
         (fid) => typeof object[fid][0] != "object" && fid != "__unit__"
