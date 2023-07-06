@@ -4,11 +4,11 @@
  * @property {String} initial_name Placeholder name for DOM element IDs.
  * @property {String} title User-facing label of the schema (or composite field).
  * @property {String} data_status Derived status used for IDs of DOM elements, e.g. 'new', 'copy', 'draft'...
- * @property {Object<String,InputField>} initials Collection of empty fields to start creating.
- * @property {TypedInput} initials.typed Initial simple field.
- * @property {SelectInput} initials.select Initial single-value multiple-choice field.
- * @property {CheckboxInput} initials.checkbox Initial multiple-value multiple-choice field.
- * @property {ObjectInput} initials.object Initial composite field.
+ * @property {Object<String,InputField>} placeholders Collection of empty fields to start creating.
+ * @property {TypedInput} placeholders.typed Placeholder simple field.
+ * @property {SelectInput} placeholders.select Placeholder single-value multiple-choice field.
+ * @property {CheckboxInput} placeholders.checkbox Placeholder multiple-value multiple-choice field.
+ * @property {ObjectInput} placeholders.object Placeholder composite field.
  * @property {String[]} field_ids Ordered names of the fields.
  * @property {Object<String,InputField>} fields Collection of fields that belong to the schema.
  * @property {Object<String,FieldInfo>} properties Object-version of the information of the fields, to store in a JSON.
@@ -28,8 +28,8 @@ class ComplexField {
     this.data_status = data_status;
     this.field_id_regex = "[a-zA-Z0-9_-]+";
 
-    // empty fields to start with
-    this.initials = {
+    // Placeholder fields to start with
+    this.placeholders = {
       typed: new TypedInput(name, this.field_id_regex, this.data_status),
       select: new SelectInput(name, this.field_id_regex, this.data_status),
       checkbox: new CheckboxInput(name, this.field_id_regex, this.data_status),
@@ -49,8 +49,8 @@ class ComplexField {
         this.fields[field_id].update_id_regex(this.field_id_regex);
       }
     });
-    Object.keys(this.initials).forEach((key) => {
-      this.initials[key].update_id_regex(this.field_id_regex);
+    Object.keys(this.placeholders).forEach((key) => {
+      this.placeholders[key].update_id_regex(this.field_id_regex);
     });
   }
 
@@ -138,15 +138,15 @@ class ComplexField {
     );
     form_choice_modal.create_modal([formTemp], "lg");
 
-    // when the modal is first shown, render all the initial fields
+    // when the modal is first shown, render all the placeholder fields
     let this_modal = document.getElementById(this.modal_id);
     this_modal.addEventListener("show.bs.modal", () => {
       let formTemp = this_modal.querySelector("div.formContainer");
       let from_json_load = InputField.from_json_example(this);
       if (formTemp.childNodes.length == 0) {
-        Object.values(this.initials).forEach((initial) => {
-          initial.schema_status = this.data_status;
-          formTemp.appendChild(initial.render(this));
+        Object.values(this.placeholders).forEach((placeholder) => {
+          placeholder.schema_status = this.data_status;
+          formTemp.appendChild(placeholder.render(this));
         });
         formTemp.appendChild(from_json_load);
       } else {
@@ -468,7 +468,7 @@ class DummyObject extends ComplexField {
     // Initialize the basics - all we care about is actually the viewer
     let schema_name = "example";
     super(schema_name, schema_name);
-    delete this.initials;
+    delete this.placeholders;
     this.field_ids = ["text", "date", "hair"];
 
     // Create a simple field of type 'text' for illustration
@@ -515,7 +515,7 @@ class ObjectEditor extends ComplexField {
     if (parent.form_field) {
       this.form_id = parent.form_field.form.id;
     }
-    delete this.initials.object; // disable nested composite fields
+    delete this.placeholders.object; // disable nested composite fields
   }
 
   /**
@@ -720,8 +720,8 @@ class Schema extends ComplexField {
         // trigger confirmation message, which also has its hidden fields
         let second_sentence =
           this.data_status != "copy" &&
-          schemas[this.name] &&
-          schemas[this.name].published.length > 0
+            schemas[this.name] &&
+            schemas[this.name].published.length > 0
             ? ` Version ${schemas[this.name].published[0]} will be archived.`
             : "";
         let starting_data = {
@@ -751,7 +751,7 @@ class Schema extends ComplexField {
       name_input.setAttribute("readonly", ""); // name cannot be changed if a version has been saved
       if (
         schemas[this.name].published.length +
-          schemas[this.name].archived.length >
+        schemas[this.name].archived.length >
         0
       ) {
         title_input.setAttribute("readonly", ""); // title cannot be changed if there is a published or archived version in history
@@ -837,11 +837,11 @@ class Schema extends ComplexField {
     full_link.addEventListener(
       "click",
       (e) =>
-        (e.target.href = `data:text/json;charset=utf-8,${JSON.stringify(
-          this.saved_json,
-          null,
-          "  "
-        )}`)
+      (e.target.href = `data:text/json;charset=utf-8,${JSON.stringify(
+        this.saved_json,
+        null,
+        "  "
+      )}`)
     );
     for_download_full.appendChild(full_link);
 
@@ -866,11 +866,11 @@ class Schema extends ComplexField {
     fields_link.addEventListener(
       "click",
       (e) =>
-        (e.target.href = `data:text/json;charset=utf-8,${JSON.stringify(
-          to_download,
-          null,
-          "  "
-        )}`)
+      (e.target.href = `data:text/json;charset=utf-8,${JSON.stringify(
+        to_download,
+        null,
+        "  "
+      )}`)
     );
     for_download_full.appendChild(fields_link);
 
