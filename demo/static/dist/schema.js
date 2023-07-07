@@ -5,10 +5,10 @@
  * @property {String} title User-facing label of the schema (or composite field).
  * @property {String} data_status Derived status used for IDs of DOM elements, e.g. 'new', 'copy', 'draft'...
  * @property {Object<String,InputField>} placeholders Collection of empty fields to start creating.
- * @property {TypedInput} placeholders.typed Placeholder simple field.
- * @property {SelectInput} placeholders.select Placeholder single-value multiple-choice field.
- * @property {CheckboxInput} placeholders.checkbox Placeholder multiple-value multiple-choice field.
- * @property {ObjectInput} placeholders.object Placeholder composite field.
+ * @property {TypedInput} placeholders.typed Placeholder for a simple field.
+ * @property {SelectInput} placeholders.select Placeholder for a single-value multiple-choice field.
+ * @property {CheckboxInput} placeholders.checkbox Placeholder for a multiple-value multiple-choice field.
+ * @property {ObjectInput} placeholders.object Placeholder for a composite field.
  * @property {String[]} field_ids Ordered names of the fields.
  * @property {Object<String,InputField>} fields Collection of fields that belong to the schema.
  * @property {Object<String,FieldInfo>} properties Object-version of the information of the fields, to store in a JSON.
