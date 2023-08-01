@@ -26,7 +26,7 @@ class ComplexField {
     this.modal_id = `choice-${name}-${data_status}`;
     this.initial_name = name;
     this.data_status = data_status;
-    this.field_id_regex = "[a-zA-Z0-9_-]+";
+    this.field_id_regex = "[a-zA-Z0-9_\\-]+";
 
     // Placeholder fields to start with
     this.placeholders = {
@@ -43,7 +43,7 @@ class ComplexField {
   }
 
   update_field_id_regex() {
-    this.field_id_regex = `^((?!^${this.field_ids.join("$|^")}$)[a-z0-9_-]+)+$`;
+    this.field_id_regex = `^((?!^${this.field_ids.join("$|^")}$)[a-z0-9_\\-]+)+$`;
     this.field_ids.forEach((field_id) => {
       if (field_id in this.fields) {
         this.fields[field_id].update_id_regex(this.field_id_regex);
@@ -1261,7 +1261,7 @@ class SchemaGroup {
     schema.loaded = false;
     // create an HTTP request for this schema
     let reader = new TemplateReader(
-      this.urls.get.replace("status", version.status),
+      this.urls.get.replace("version", version.version),
       schema
     ); // url to get this template
 
@@ -1496,7 +1496,7 @@ class SchemaForm {
     first_viewer
       .querySelectorAll("[name]")
       .forEach(
-        (subfield) => (subfield.name = `${subfield.name}__${first_unit}`)
+        (subfield) => (subfield.name = `${subfield.name.split('__')[0]}__${first_unit}`)
       );
     if (existing_values.length > 1) {
       for (let i = 0; i < existing_values.length - 1; i++) {
@@ -1512,7 +1512,7 @@ class SchemaForm {
           child.classList.contains("mini-viewer") &&
           child.getAttribute("data-field-name") == raw_name &&
           child.getAttribute("data-composite-unit") == String(unit)
-      )[0];
+      )[0].querySelector("div.input-view");
 
       // Extract the fields that are not inside nested composite fields and register them
       let not_nested = Object.keys(object).filter(
@@ -1526,7 +1526,6 @@ class SchemaForm {
       let nested = Object.keys(object).filter(
         (fid) => typeof object[fid][0] == "object"
       );
-
       // Go through each nested composite field and register its subfields, with an accumulated prefix
       nested.forEach((fid) => this.register_object(fid, object, obj, viewer));
     });
@@ -1655,19 +1654,21 @@ class SchemaForm {
         split_unit.push(String(largest_suffix + 1));
         let new_unit = split_unit.join(".");
         clone.setAttribute("data-composite-unit", new_unit);
-        clone
-          .querySelectorAll("[name]")
-          .forEach(
-            (subfield) => (subfield.name = `${subfield.name}__${new_unit}`)
-          );
-        clone.querySelectorAll("[data-composite-unit]").forEach((subfield) => {
-          let current_subunit = subfield.getAttribute("data-composite-unit");
-          let new_subunit = current_subunit.replace(
-            new RegExp(`^${current_unit}`),
-            new_unit
-          );
-          subfield.setAttribute("data-composite-unit", new_subunit);
-        });
+        function update_children_names(composite_field, subform, new_unit) {
+          const direct_children = [...subform.querySelector("div.input-view").childNodes];
+          direct_children.forEach((child) => {
+            const field_data = composite_field.editor.fields[child.getAttribute("data-field-name")];
+            if (field_data.type != "object") {
+              child.querySelector("input").name = `${field_data.name}__${new_unit}`;
+            } else {
+              const sub_unit = new_unit + ".1";
+              child.setAttribute("data-composite-unit", sub_unit);
+              update_children_names(field_data, child, sub_unit);
+            }
+          });
+        }
+        update_children_names(field, clone, new_unit);
+
         let inner_repeatables = [...clone.childNodes]
           .filter((subfield) => subfield.classList.contains("mini-viewer"))
           .filter((subfield) => subfield.querySelector("button i.bi-front"));

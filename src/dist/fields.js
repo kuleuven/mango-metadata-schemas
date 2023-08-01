@@ -1270,6 +1270,10 @@ class TypedInput extends InputField {
       if (divider.nextSibling != placeholder_div) {
         this.form_field.form.insertBefore(placeholder_div, divider.nextSibling);
       }
+    } else {
+      this.form_field.form.querySelector(
+        `#div-${this.id}-placeholder input`
+      ).value = "";
     }
   }
 
