@@ -43,7 +43,9 @@ class ComplexField {
   }
 
   update_field_id_regex() {
-    this.field_id_regex = `^((?!^${this.field_ids.join("$|^")}$)[a-z0-9_\\-]+)+$`;
+    this.field_id_regex = `^((?!^${this.field_ids.join(
+      "$|^"
+    )}$)[a-z0-9_\\-]+)+$`;
     this.field_ids.forEach((field_id) => {
       if (field_id in this.fields) {
         this.fields[field_id].update_id_regex(this.field_id_regex);
@@ -583,6 +585,7 @@ class Schema extends ComplexField {
     this.version = version;
     this.container = container_id;
     this.urls = urls;
+    this.nav_bar_btn_ids = {};
   }
 
   /**
@@ -678,6 +681,10 @@ class Schema extends ComplexField {
     });
     const name_input = form.form.querySelector(`#${this.card_id}-name`);
     name_input.name = "schema_name";
+    name_input.addEventListener("change", () => {
+      this.temp_name = name_input.value;
+      this.autosave();
+    });
 
     // create and add an input field for the user-facing label/title
     form.add_input("Schema label", this.card_id + "-label", {
@@ -689,7 +696,22 @@ class Schema extends ComplexField {
     });
     const title_input = form.form.querySelector(`#${this.card_id}-label`);
     title_input.name = "title";
+    title_input.addEventListener("change", () => {
+      console.log(title_input.value);
+      this.temp_title = title_input.value;
+      this.autosave();
+    });
 
+    if (
+      this.card_id.startsWith("schema-editor") &&
+      new_schema_ls in localStorage
+    ) {
+      let ls_data = JSON.parse(localStorage.getItem(new_schema_ls));
+      name_input.value = this.temp_name = ls_data.name;
+      if ("title" in ls_data && ls_data.title !== undefined) {
+        title_input.value = this.temp_title = ls_data.title;
+      }
+    }
     // create and add the first button to add fields
     let button = this.create_button();
     form.form.insertBefore(button, form.divider);
@@ -720,8 +742,8 @@ class Schema extends ComplexField {
         // trigger confirmation message, which also has its hidden fields
         let second_sentence =
           this.data_status != "copy" &&
-            schemas[this.name] &&
-            schemas[this.name].published.length > 0
+          schemas[this.name] &&
+          schemas[this.name].published.length > 0
             ? ` Version ${schemas[this.name].published[0]} will be archived.`
             : "";
         let starting_data = {
@@ -751,7 +773,7 @@ class Schema extends ComplexField {
       name_input.setAttribute("readonly", ""); // name cannot be changed if a version has been saved
       if (
         schemas[this.name].published.length +
-        schemas[this.name].archived.length >
+          schemas[this.name].archived.length >
         0
       ) {
         title_input.setAttribute("readonly", ""); // title cannot be changed if there is a published or archived version in history
@@ -837,11 +859,11 @@ class Schema extends ComplexField {
     full_link.addEventListener(
       "click",
       (e) =>
-      (e.target.href = `data:text/json;charset=utf-8,${JSON.stringify(
-        this.saved_json,
-        null,
-        "  "
-      )}`)
+        (e.target.href = `data:text/json;charset=utf-8,${JSON.stringify(
+          this.saved_json,
+          null,
+          "  "
+        )}`)
     );
     for_download_full.appendChild(full_link);
 
@@ -866,11 +888,11 @@ class Schema extends ComplexField {
     fields_link.addEventListener(
       "click",
       (e) =>
-      (e.target.href = `data:text/json;charset=utf-8,${JSON.stringify(
-        to_download,
-        null,
-        "  "
-      )}`)
+        (e.target.href = `data:text/json;charset=utf-8,${JSON.stringify(
+          to_download,
+          null,
+          "  "
+        )}`)
     );
     for_download_full.appendChild(fields_link);
 
@@ -996,7 +1018,10 @@ class Schema extends ComplexField {
 
     if (this.status == "draft") {
       // add button and tab for editing the schema
-      this.nav_bar.add_item("edit", "Edit");
+      this.nav_bar_btn_ids["edit_draft"] = this.nav_bar.add_item(
+        "edit",
+        "Edit"
+      );
 
       // create the modal to show the options for new fields
       this.display_options();
@@ -1005,7 +1030,8 @@ class Schema extends ComplexField {
       this.create_editor();
       // fill in the name and titles
       this.form.form.querySelector('[name="schema_name"]').value = this.name; // id
-      this.form.form.querySelector('[name="title"]').value = this.title; // label
+      this.form.form.querySelector('[name="title"]').value = this.temp_title =
+        this.title; // label
 
       // add the new form to the 'edit' tab
       this.nav_bar.add_tab_content("edit", this.form.form);
@@ -1014,26 +1040,34 @@ class Schema extends ComplexField {
       this.prepare_json_download();
 
       // add and define 'discard' button
-      this.nav_bar.add_action_button("Discard", "danger", () => {
-        // fill the confirmation modal with the hidden form to delete this schema
-        Modal.submit_confirmation(
-          "A deleted draft cannot be recovered.",
-          this.urls.delete,
-          {
-            realm: realm,
-            schema_name: this.name,
-            with_status: "draft",
-          }
-        );
-      });
+      this.nav_bar_btn_ids["delete_draft"] = this.nav_bar.add_action_button(
+        "Discard",
+        "danger",
+        () => {
+          // fill the confirmation modal with the hidden form to delete this schema
+          Modal.submit_confirmation(
+            "A deleted draft cannot be recovered.",
+            this.urls.delete,
+            {
+              realm: realm,
+              schema_name: this.name,
+              with_status: "draft",
+            }
+          );
+        }
+      );
     } else if (this.status == "published") {
       // create modal and form for a new draft
+      // checks also for the existence of a draft version
       this.draft_from_publish();
 
       // initalize a new schema as child/clone and create its modal and form
       this.setup_copy();
       this.child.display_options(); // create field-choice modal
-      this.nav_bar.add_item("child", "Copy to new schema"); // add to tabs
+      this.nav_bar_btn_ids["create_new_schema_draft"] = this.nav_bar.add_item(
+        "child",
+        "Copy to new schema"
+      ); // add to tabs
       this.child.create_editor(); // create form
       this.nav_bar.add_tab_content("child", this.child.form.form); // add form to tab
 
@@ -1041,18 +1075,22 @@ class Schema extends ComplexField {
       this.prepare_json_download();
 
       // add and define the 'archive' button
-      this.nav_bar.add_action_button("Archive", "danger", () => {
-        // Fill the confirmation modal with the hidden fields to archive this schema version
-        Modal.submit_confirmation(
-          "Archived schemas cannot be implemented.",
-          this.urls.archive,
-          {
-            realm: realm,
-            schema_name: this.name,
-            with_status: "published",
-          }
-        );
-      });
+      this.nav_bar_btn_ids["archive_schema"] = this.nav_bar.add_action_button(
+        "Archive",
+        "danger",
+        () => {
+          // Fill the confirmation modal with the hidden fields to archive this schema version
+          Modal.submit_confirmation(
+            "Archived schemas cannot be implemented.",
+            this.urls.archive,
+            {
+              realm: realm,
+              schema_name: this.name,
+              with_status: "published",
+            }
+          );
+        }
+      );
     }
   }
 
@@ -1063,7 +1101,12 @@ class Schema extends ComplexField {
     // only if there are no existing drafts
     if (schemas[this.name].draft.length == 0) {
       this.display_options(); // create field-choice modal
-      this.nav_bar.add_item("new", "New (draft) version", false, 1); // create tab
+      this.nav_bar_btn_ids["create_draft"] = this.nav_bar.add_item(
+        "new",
+        "New (draft) version",
+        false,
+        1
+      ); // create tab
       this.create_editor(); // create form
 
       // fill in name and title
@@ -1086,6 +1129,17 @@ class Schema extends ComplexField {
     this.card.appendChild(this.nav_bar.nav_bar);
     this.card.appendChild(this.nav_bar.tab_content);
     document.getElementById(this.container).appendChild(this.card);
+
+    Object.keys(this.nav_bar_btn_ids).forEach((permission) => {
+      let use_permissions = schema_infos[this.name].current_user_permissions
+        ? schema_infos[this.name].current_user_permissions
+        : realm_permissions;
+      if (!checkAllPermissions(use_permissions, [permission])) {
+        document
+          .getElementById(this.nav_bar_btn_ids[permission])
+          .setAttribute("disabled", "disabled");
+      }
+    });
 
     // show a message if there are no fields
     if (this.field_ids.length == 0) {
@@ -1151,6 +1205,43 @@ class Schema extends ComplexField {
       form_fields.title = this.title;
       Modal.fill_confirmation_form(form_fields);
     }
+    this.reset_ls();
+  }
+
+  add_field(form_object) {
+    super.add_field(form_object);
+    this.autosave();
+  }
+
+  update_field(form_object) {
+    super.update_field(form_object);
+    this.autosave();
+  }
+
+  autosave() {
+    this.fields_to_json();
+    const to_save = {
+      title: this.temp_title ? this.temp_title : this.title,
+      properties: this.properties,
+      last_modified: Date.now(),
+    };
+    if (new_schema_ls) {
+      to_save.name = this.temp_name ? this.temp_name : this.name;
+    }
+    localStorage.setItem(
+      this.card_id.startsWith("schema-editor")
+        ? new_schema_ls
+        : `mgs_${this.name}`,
+      JSON.stringify(to_save)
+    );
+  }
+
+  reset_ls() {
+    localStorage.removeItem(
+      this.card_id.startsWith("schema-editor")
+        ? new_schema_ls
+        : `mgs_${this.name}`
+    );
   }
 }
 
@@ -1191,10 +1282,11 @@ class SchemaGroup {
    * @param {String} container_id ID of the DOM element on which the schema is shown.
    * @param {UrlsList} urls Collection of URLs and other information received from the server.
    */
-  constructor(name, title, versions, container_id, urls) {
+  constructor(name, title, versions, container_id, urls, timestamp) {
     this.name = name;
     this.title = title;
     this.versions = versions;
+    this.latest_saved = timestamp;
 
     // create navigation bar and tabs for the full schema (all its versions)
     let nav_bar = new NavBar(this.name, ["nav-tabs"]);
@@ -1259,13 +1351,33 @@ class SchemaGroup {
       version.version
     );
     schema.loaded = false;
+    const accordion = nav_bar.tab_content.parentElement.parentElement;
+
+    if (version.status == "draft" && `mgs_${this.name}` in localStorage) {
+      let schema_from_ls = JSON.parse(localStorage.getItem(`mgs_${this.name}`));
+      console.log(schema_from_ls);
+      console.log(schema_from_ls.last_modified);
+      console.log(this.latest_saved);
+      if (schema_from_ls.last_modified > this.latest_saved) {
+        console.log(schema_from_ls.properties);
+        schema.from_json({
+          schema_name: this.name,
+          title: this.title,
+          properties: schema_from_ls.properties,
+          status: version.status,
+          version: version.version,
+        });
+        console.log(schema.fields);
+        schema.view();
+        schema.loaded = true;
+      }
+    }
     // create an HTTP request for this schema
     let reader = new TemplateReader(
       `${this.urls.get}?version=${version.version}`,
       schema
     ); // url to get this template
 
-    const accordion = nav_bar.tab_content.parentElement.parentElement;
     // once the accordion is opened
     accordion.addEventListener("show.bs.collapse", () => {
       const tab = accordion.querySelector("#" + tab_id);
@@ -1496,7 +1608,8 @@ class SchemaForm {
     first_viewer
       .querySelectorAll("[name]")
       .forEach(
-        (subfield) => (subfield.name = `${subfield.name.split('__')[0]}__${first_unit}`)
+        (subfield) =>
+          (subfield.name = `${subfield.name.split("__")[0]}__${first_unit}`)
       );
     if (existing_values.length > 1) {
       for (let i = 0; i < existing_values.length - 1; i++) {
@@ -1507,12 +1620,14 @@ class SchemaForm {
     }
     existing_values.forEach((object) => {
       let unit = object.__unit__[0];
-      let viewer = [...form.childNodes].filter(
-        (child) =>
-          child.classList.contains("mini-viewer") &&
-          child.getAttribute("data-field-name") == raw_name &&
-          child.getAttribute("data-composite-unit") == String(unit)
-      )[0].querySelector("div.input-view");
+      let viewer = [...form.childNodes]
+        .filter(
+          (child) =>
+            child.classList.contains("mini-viewer") &&
+            child.getAttribute("data-field-name") == raw_name &&
+            child.getAttribute("data-composite-unit") == String(unit)
+        )[0]
+        .querySelector("div.input-view");
 
       // Extract the fields that are not inside nested composite fields and register them
       let not_nested = Object.keys(object).filter(
@@ -1655,11 +1770,18 @@ class SchemaForm {
         let new_unit = split_unit.join(".");
         clone.setAttribute("data-composite-unit", new_unit);
         function update_children_names(composite_field, subform, new_unit) {
-          const direct_children = [...subform.querySelector("div.input-view").childNodes];
+          const direct_children = [
+            ...subform.querySelector("div.input-view").childNodes,
+          ];
           direct_children.forEach((child) => {
-            const field_data = composite_field.editor.fields[child.getAttribute("data-field-name")];
+            const field_data =
+              composite_field.editor.fields[
+                child.getAttribute("data-field-name")
+              ];
             if (field_data.type != "object") {
-              child.querySelector("input").name = `${field_data.name}__${new_unit}`;
+              child.querySelector(
+                "input"
+              ).name = `${field_data.name}__${new_unit}`;
             } else {
               const sub_unit = new_unit + ".1";
               child.setAttribute("data-composite-unit", sub_unit);
