@@ -60,7 +60,6 @@ let schema_pattern = "[a-z][a-z0-9_\\-]*";
  *
  */
 let starting_schema = new Schema("schema-editor-100", container_id, urls);
-const new_schema_ls = "mgs__new_schema";
 
 // Request the list of schemas and start!
 let templates_request = new TemplatesRequest(urls, container_id);

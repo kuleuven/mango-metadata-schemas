@@ -170,17 +170,6 @@ class TemplatesRequest extends MangoRequest {
           .querySelectorAll('input[name="schema_name"]')
           .forEach((input) => input.setAttribute("pattern", schema_pattern));
       }
-      Object.keys(localStorage)
-        .filter((x) => x.startsWith("mgs_"))
-        .forEach((ls_schema) => {
-          if (
-            ls_schema != new_schema_ls &&
-            existing_names.indexOf(ls_schema.slice(4)) == -1
-          ) {
-            localStorage.removeItem(ls_schema);
-          }
-        });
-
       // if a 'latest/current schema' is provided, focus on its accordion
       const current_schema = urls.schema_name;
       if (current_schema && Object.keys(schemas).indexOf(current_schema) > -1) {
@@ -205,8 +194,8 @@ class TemplatesRequest extends MangoRequest {
           bootstrap.Tab.getOrCreateInstance(version_trigger).show();
         }
       }
-      if (new_schema_ls in localStorage) {
-        new bootstrap.Collapse("#schema-editor-100").show();
+      if (starting_schema.ls_id in localStorage) {
+        new bootstrap.Collapse(`#${starting_schema.card_id}`).show();
       }
     });
   }

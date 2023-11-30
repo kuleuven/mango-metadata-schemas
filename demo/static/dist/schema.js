@@ -75,9 +75,13 @@ class ComplexField {
     // In the case of composite fields, we take the title instead (it doesn't really matter)
     this.name = data.schema_name || data.title;
     this.title = data.title;
-    this.field_ids = Object.keys(data.properties);
     this.status = data.status; // only relevant for Schema class
     this.data_status = this.set_data_status();
+    this.properties_from_json(data);
+  }
+
+  properties_from_json(data) {
+    this.field_ids = Object.keys(data.properties);
     this.update_field_id_regex();
 
     this.field_ids.forEach((field_id) => {
@@ -581,6 +585,7 @@ class Schema extends ComplexField {
   ) {
     super(card_id, data_status);
     this.card_id = card_id;
+    this.ls_id = `_mgs_${this.card_id}`;
     this.name = card_id.match(/^(.*)-\d\d\d$/)[1];
     this.version = version;
     this.container = container_id;
@@ -652,6 +657,17 @@ class Schema extends ComplexField {
     );
     document.getElementById(this.container).appendChild(this.card.div);
     this.card.append(this.form.form);
+    console.log(this.ls_id);
+
+    if (this.ls_id in localStorage) {
+      this.offer_reset_ls();
+      let schema_from_ls = JSON.parse(localStorage.getItem(this.ls_id));
+      this.properties_from_json(schema_from_ls);
+      this.field_ids.forEach((field_id, idx) => {
+        this.new_field_idx = idx;
+        this.view_field(this.fields[field_id]);
+      });
+    }
   }
 
   /**
@@ -702,12 +718,11 @@ class Schema extends ComplexField {
       this.autosave();
     });
 
-    if (
-      this.card_id.startsWith("schema-editor") &&
-      new_schema_ls in localStorage
-    ) {
-      let ls_data = JSON.parse(localStorage.getItem(new_schema_ls));
-      name_input.value = this.temp_name = ls_data.name;
+    if (this.ls_id in localStorage) {
+      let ls_data = JSON.parse(localStorage.getItem(this.ls_id));
+      if (is_new) {
+        name_input.value = this.temp_name = ls_data.name;
+      }
       if ("title" in ls_data && ls_data.title !== undefined) {
         title_input.value = this.temp_title = ls_data.title;
       }
@@ -1141,6 +1156,20 @@ class Schema extends ComplexField {
       }
     });
 
+    if (this.ls_id in localStorage) {
+      let schema_from_ls = JSON.parse(localStorage.getItem(this.ls_id));
+      if (
+        this.latest_saved == undefined ||
+        schema_from_ls.last_modified > this.latest_saved
+      ) {
+        this.temp_title = schema_from_ls.title;
+        this.properties_from_json(schema_from_ls);
+        this.offer_reset_ls();
+      } else if (schema_from_ls.last_modified <= this.latest_saved) {
+        this.reset_ls();
+      }
+    }
+
     // show a message if there are no fields
     if (this.field_ids.length == 0) {
       let msg = Field.quick(
@@ -1225,23 +1254,43 @@ class Schema extends ComplexField {
       properties: this.properties,
       last_modified: Date.now(),
     };
-    if (new_schema_ls) {
+    if (
+      this.data_status == "copy" ||
+      this.card_id.startsWith("schema-editor")
+    ) {
       to_save.name = this.temp_name ? this.temp_name : this.name;
     }
-    localStorage.setItem(
-      this.card_id.startsWith("schema-editor")
-        ? new_schema_ls
-        : `mgs_${this.name}`,
-      JSON.stringify(to_save)
+    localStorage.setItem(this.ls_id, JSON.stringify(to_save));
+  }
+
+  offer_reset_ls() {
+    const is_new =
+      this.data_status == "copy" || this.card_id.startsWith("schema-editor");
+    let msg = Field.quick(
+      "div",
+      "viewer",
+      "You are seeing a temporary version of this draft; click on the buttons at the bottom to save to file."
     );
+    let btn = Field.quick(
+      "button",
+      "btn btn-outline-danger",
+      is_new ? "Reset" : "Revert to saved changes."
+    );
+    btn.addEventListener("click", () => {
+      this.reset_ls();
+      if (!this.card_id.startsWith("schema-editor")) {
+        const new_search = `?schema_name=${this.name}&schema_version=${this.version}`;
+        location.replace(location.origin + location.pathname + new_search);
+      } else {
+        location.reload();
+      }
+    });
+    this.form.form.parentElement.insertBefore(msg, this.form.form);
+    this.form.form.parentElement.insertBefore(btn, this.form.form);
   }
 
   reset_ls() {
-    localStorage.removeItem(
-      this.card_id.startsWith("schema-editor")
-        ? new_schema_ls
-        : `mgs_${this.name}`
-    );
+    localStorage.removeItem(this.ls_id);
   }
 }
 
@@ -1350,28 +1399,10 @@ class SchemaGroup {
       this.urls,
       version.version
     );
+    schema.latest_saved = this.latest_saved;
     schema.loaded = false;
     const accordion = nav_bar.tab_content.parentElement.parentElement;
 
-    if (version.status == "draft" && `mgs_${this.name}` in localStorage) {
-      let schema_from_ls = JSON.parse(localStorage.getItem(`mgs_${this.name}`));
-      console.log(schema_from_ls);
-      console.log(schema_from_ls.last_modified);
-      console.log(this.latest_saved);
-      if (schema_from_ls.last_modified > this.latest_saved) {
-        console.log(schema_from_ls.properties);
-        schema.from_json({
-          schema_name: this.name,
-          title: this.title,
-          properties: schema_from_ls.properties,
-          status: version.status,
-          version: version.version,
-        });
-        console.log(schema.fields);
-        schema.view();
-        schema.loaded = true;
-      }
-    }
     // create an HTTP request for this schema
     let reader = new TemplateReader(
       `${this.urls.get}?version=${version.version}`,
