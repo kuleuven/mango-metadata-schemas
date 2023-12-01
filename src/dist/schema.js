@@ -1298,10 +1298,8 @@ class Schema extends ComplexField {
     ) {
       to_save.name = this.temp_name ? this.temp_name : this.name;
     }
-    console.log(this.ls_id in localStorage);
     if (!(this.ls_id in localStorage)) {
       this.offer_reset_ls();
-      console.log("reset offered");
     }
     localStorage.setItem(this.ls_id, JSON.stringify(to_save));
     if (!this.card_id.startsWith("schema-editor")) {
