@@ -35,6 +35,17 @@ import pprint
 
 MANGO_STORAGE_BASE_PATH = Path("storage")
 
+SCHEMA_CORE_PERMISSIONS = {
+    "read_schema": 1 << 0,
+    "read_archived": 1 << 1,
+    "read_draft": 1 << 2,
+    "edit_draft": 1 << 3,
+    "create_draft": 1 << 4,
+    "delete_draft": 1 << 5,
+    "publish_draft": 1 << 6,
+    "create_new_schema_draft": 1 << 7,
+    "archive_schema": 1 << 8,  # basically disable the schema
+}
 
 class FileSystemSchemaManager:
     def __init__(self, zone: str, realm: str):
@@ -134,6 +145,7 @@ class FileSystemSchemaManager:
             "latest_version": versions_sorted[-1] if total_count > 0 else "",
             "realm": self.realm,
             "title": title,
+            "current_user_permissions": 511,
         }
 
     def list_schemas(self, filters=["published", "draft"]) -> dict:

@@ -109,7 +109,9 @@ def list_meta_data_schemas(realm):
     )
 
     return json.dumps(
-        [
+        {
+            "realm_permissions": 511,
+            "schemas": [
             {
                 "name": schema,
                 "url": url_for(
@@ -121,6 +123,7 @@ def list_meta_data_schemas(realm):
             }
             for (schema, schema_info) in schemas.items()
         ]
+        }
     )
 
 
