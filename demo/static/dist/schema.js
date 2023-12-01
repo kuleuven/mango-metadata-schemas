@@ -1298,19 +1298,26 @@ class Schema extends ComplexField {
     ) {
       to_save.name = this.temp_name ? this.temp_name : this.name;
     }
+    console.log(this.ls_id in localStorage);
+    if (!(this.ls_id in localStorage)) {
+      this.offer_reset_ls();
+      console.log("reset offered");
+    }
     localStorage.setItem(this.ls_id, JSON.stringify(to_save));
-    localStorage.setItem(
-      last_mod_ls,
-      JSON.stringify({
-        ls_id: this.ls_id,
-        timestamp: Date.now(),
-        schema_name: this.name,
-        schema_version: this.version,
-        editing_tab: `#${tab_prefixes[this.data_status]}-tab-${
-          this.nav_bar.id
-        }`,
-      })
-    );
+    if (!this.card_id.startsWith("schema-editor")) {
+      localStorage.setItem(
+        last_mod_ls,
+        JSON.stringify({
+          ls_id: this.ls_id,
+          timestamp: Date.now(),
+          schema_name: this.name,
+          schema_version: this.version,
+          editing_tab: `#${tab_prefixes[this.data_status]}-tab-${
+            this.nav_bar.id
+          }`,
+        })
+      );
+    }
   }
 
   offer_reset_ls() {
@@ -1321,6 +1328,7 @@ class Schema extends ComplexField {
       "div",
       "border border-warning shadow rounded-1 p-2 mt-2"
     );
+    msg_box.id = "autosave-warning";
 
     let msg = Field.quick(
       "span",

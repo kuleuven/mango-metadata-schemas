@@ -176,8 +176,8 @@ class TemplatesRequest extends MangoRequest {
       let localstorage_timestamp;
       if (starting_schema.ls_id in localStorage) {
         starting_schema_timestamp = JSON.parse(
-          localStorage.getItem(starting_schema.ls_id).last_modified
-        );
+          localStorage.getItem(starting_schema.ls_id)
+        ).last_modified;
         new bootstrap.Collapse(`#${starting_schema.card_id}`).show();
       }
       if (last_mod_ls in localStorage) {
