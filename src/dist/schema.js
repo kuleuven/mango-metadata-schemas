@@ -75,9 +75,14 @@ class ComplexField {
     // In the case of composite fields, we take the title instead (it doesn't really matter)
     this.name = data.schema_name || data.title;
     this.title = data.title;
-    this.field_ids = Object.keys(data.properties);
     this.status = data.status; // only relevant for Schema class
     this.data_status = this.set_data_status();
+    this.ls_id = `_mgs_${this.card_id}_${this.data_status}`;
+    this.properties_from_json(data);
+  }
+
+  properties_from_json(data) {
+    this.field_ids = Object.keys(data.properties);
     this.update_field_id_regex();
 
     this.field_ids.forEach((field_id) => {
@@ -128,6 +133,7 @@ class ComplexField {
    */
   display_options() {
     this.data_status = this.set_data_status(); // to make sure it's correct (but maybe this is redundant)
+    this.ls_id = `_mgs_${this.card_id}_${this.data_status}`;
 
     // create a div to fill in with the different field examples
     let formTemp = Field.quick("div", "formContainer");
@@ -451,6 +457,10 @@ class ComplexField {
     small_div.appendChild(input);
     return small_div;
   }
+
+  autosave() {
+    return null;
+  }
 }
 
 /**
@@ -581,6 +591,7 @@ class Schema extends ComplexField {
   ) {
     super(card_id, data_status);
     this.card_id = card_id;
+    this.ls_id = `_mgs_${this.card_id}_${this.data_status}`;
     this.name = card_id.match(/^(.*)-\d\d\d$/)[1];
     this.version = version;
     this.container = container_id;
@@ -637,6 +648,14 @@ class Schema extends ComplexField {
   create_creator() {
     this.status = "draft";
 
+    if (this.ls_id in localStorage) {
+      let schema_from_ls = JSON.parse(localStorage.getItem(this.ls_id));
+      this.properties_from_json(schema_from_ls);
+      // this.field_ids.forEach((field_id, idx) => {
+      //   this.new_field_idx = idx;
+      //   this.view_field(this.fields[field_id]);
+      // });
+    }
     // Create modal that shows the possible fields to add
     this.display_options();
 
@@ -652,6 +671,14 @@ class Schema extends ComplexField {
     );
     document.getElementById(this.container).appendChild(this.card.div);
     this.card.append(this.form.form);
+
+    if (this.ls_id in localStorage) {
+      this.offer_reset_ls();
+      this.field_ids.forEach((field_id, idx) => {
+        this.new_field_idx = idx;
+        this.view_field(this.fields[field_id]);
+      });
+    }
   }
 
   /**
@@ -681,6 +708,10 @@ class Schema extends ComplexField {
     });
     const name_input = form.form.querySelector(`#${this.card_id}-name`);
     name_input.name = "schema_name";
+    name_input.addEventListener("change", () => {
+      this.temp_name = name_input.value;
+      this.autosave();
+    });
 
     // create and add an input field for the user-facing label/title
     form.add_input("Schema label", this.card_id + "-label", {
@@ -692,7 +723,20 @@ class Schema extends ComplexField {
     });
     const title_input = form.form.querySelector(`#${this.card_id}-label`);
     title_input.name = "title";
+    title_input.addEventListener("change", () => {
+      this.temp_title = title_input.value;
+      this.autosave();
+    });
 
+    if (this.ls_id in localStorage) {
+      let ls_data = JSON.parse(localStorage.getItem(this.ls_id));
+      if (is_new) {
+        name_input.value = this.temp_name = ls_data.name;
+      }
+      if ("title" in ls_data && ls_data.title !== undefined) {
+        title_input.value = this.temp_title = ls_data.title;
+      }
+    }
     // create and add the first button to add fields
     let button = this.create_button();
     form.form.insertBefore(button, form.divider);
@@ -782,6 +826,7 @@ class Schema extends ComplexField {
       ids: [...parent.field_ids],
       json: { ...parent.properties },
     };
+    this.nav_bar = parent.nav_bar;
     this.field_id_regex = parent.field_id_regex;
     // go through each existing field and clone it
     Object.entries(parent.properties).forEach((entry) => {
@@ -1000,7 +1045,7 @@ class Schema extends ComplexField {
     if (this.status == "draft") {
       // add button and tab for editing the schema
       this.nav_bar_btn_ids["edit_draft"] = this.nav_bar.add_item(
-        "edit",
+        tab_prefixes[this.status],
         "Edit"
       );
 
@@ -1011,10 +1056,18 @@ class Schema extends ComplexField {
       this.create_editor();
       // fill in the name and titles
       this.form.form.querySelector('[name="schema_name"]').value = this.name; // id
-      this.form.form.querySelector('[name="title"]').value = this.title; // label
+      if (
+        !(
+          this.ls_id in localStorage &&
+          "title" in JSON.parse(localStorage.getItem(this.ls_id))
+        )
+      ) {
+        this.form.form.querySelector('[name="title"]').value = this.temp_title =
+          this.title; // label
+      }
 
       // add the new form to the 'edit' tab
-      this.nav_bar.add_tab_content("edit", this.form.form);
+      this.nav_bar.add_tab_content(tab_prefixes[this.status], this.form.form);
 
       // add a json view
       this.prepare_json_download();
@@ -1045,11 +1098,14 @@ class Schema extends ComplexField {
       this.setup_copy();
       this.child.display_options(); // create field-choice modal
       this.nav_bar_btn_ids["create_new_schema_draft"] = this.nav_bar.add_item(
-        "child",
+        tab_prefixes["copy"],
         "Copy to new schema"
       ); // add to tabs
       this.child.create_editor(); // create form
-      this.nav_bar.add_tab_content("child", this.child.form.form); // add form to tab
+      this.nav_bar.add_tab_content(tab_prefixes["copy"], this.child.form.form); // add form to tab
+      if (this.child.ls_id in localStorage) {
+        this.child.offer_reset_ls();
+      }
 
       // add a json view
       this.prepare_json_download();
@@ -1082,7 +1138,7 @@ class Schema extends ComplexField {
     if (schemas[this.name].draft.length == 0) {
       this.display_options(); // create field-choice modal
       this.nav_bar_btn_ids["create_draft"] = this.nav_bar.add_item(
-        "new",
+        tab_prefixes["new"],
         "New (draft) version",
         false,
         1
@@ -1093,7 +1149,7 @@ class Schema extends ComplexField {
       this.form.form.querySelector('[name="schema_name"]').value = this.name; // id
       this.form.form.querySelector('[name="title"]').value = this.title; // label
 
-      this.nav_bar.add_tab_content("new", this.form.form); // add form to tab
+      this.nav_bar.add_tab_content(tab_prefixes["new"], this.form.form); // add form to tab
     }
   }
 
@@ -1121,6 +1177,20 @@ class Schema extends ComplexField {
       }
     });
 
+    if (this.ls_id in localStorage) {
+      let schema_from_ls = JSON.parse(localStorage.getItem(this.ls_id));
+      if (
+        this.latest_saved == undefined ||
+        schema_from_ls.last_modified > this.latest_saved
+      ) {
+        this.temp_title = schema_from_ls.title;
+        this.properties_from_json(schema_from_ls);
+        this.offer_reset_ls();
+      } else if (schema_from_ls.last_modified <= this.latest_saved) {
+        this.reset_ls();
+      }
+    }
+
     // show a message if there are no fields
     if (this.field_ids.length == 0) {
       let msg = Field.quick(
@@ -1135,11 +1205,28 @@ class Schema extends ComplexField {
     this.field_ids.forEach((field_id, idx) => {
       this.new_field_idx = idx;
       this.view_field(this.fields[field_id]); // show in editor
-      if (this.status == "published") {
+    });
+
+    if (this.status == "published") {
+      this.child.field_ids.forEach((field_id, idx) => {
         this.child.new_field_idx = idx; // show the fields in the clone editor
         this.child.view_field(this.child.fields[field_id]);
+      });
+    }
+
+    if (last_mod_ls in localStorage) {
+      const { schema_name, editing_tab } = JSON.parse(
+        localStorage.getItem(last_mod_ls)
+      );
+      if (
+        schema_name == this.name &&
+        document.querySelector(editing_tab) !== null
+      ) {
+        bootstrap.Tab.getOrCreateInstance(
+          document.querySelector(editing_tab)
+        ).show();
       }
-    });
+    }
   }
 
   /**
@@ -1184,6 +1271,91 @@ class Schema extends ComplexField {
       form_fields.schema_name = this.name;
       form_fields.title = this.title;
       Modal.fill_confirmation_form(form_fields);
+    }
+    this.reset_ls();
+  }
+
+  add_field(form_object) {
+    super.add_field(form_object);
+    this.autosave();
+  }
+
+  update_field(form_object) {
+    super.update_field(form_object);
+    this.autosave();
+  }
+
+  autosave() {
+    this.fields_to_json();
+    const to_save = {
+      title: this.temp_title ? this.temp_title : this.title,
+      properties: this.properties,
+      last_modified: Date.now(),
+    };
+    if (
+      this.data_status == "copy" ||
+      this.card_id.startsWith("schema-editor")
+    ) {
+      to_save.name = this.temp_name ? this.temp_name : this.name;
+    }
+    localStorage.setItem(this.ls_id, JSON.stringify(to_save));
+    localStorage.setItem(
+      last_mod_ls,
+      JSON.stringify({
+        ls_id: this.ls_id,
+        timestamp: Date.now(),
+        schema_name: this.name,
+        schema_version: this.version,
+        editing_tab: `#${tab_prefixes[this.data_status]}-tab-${
+          this.nav_bar.id
+        }`,
+      })
+    );
+  }
+
+  offer_reset_ls() {
+    const is_new =
+      this.data_status == "copy" || this.card_id.startsWith("schema-editor");
+
+    let msg_box = Field.quick(
+      "div",
+      "border border-warning shadow rounded-1 p-2 mt-2"
+    );
+
+    let msg = Field.quick(
+      "span",
+      "text-warning fw-semibold",
+      "You are seeing a temporary version of this draft; click on the buttons at the bottom to save to file. "
+    );
+    msg_box.appendChild(msg);
+
+    let action = is_new ? "reset" : "revert to saved changes";
+    let btn = Field.quick(
+      "span",
+      "text-warning fw-bolder",
+      `Click here to ${action}.`
+    );
+    btn.setAttribute("style", "cursor: pointer;");
+    btn.addEventListener("click", () => {
+      this.reset_ls();
+      if (!this.card_id.startsWith("schema-editor")) {
+        const new_search = `?schema_name=${this.name}&schema_version=${this.version}`;
+        location.replace(location.origin + location.pathname + new_search);
+      } else {
+        location.reload();
+      }
+    });
+    msg_box.appendChild(btn);
+
+    this.form.form.parentElement.insertBefore(msg_box, this.form.form);
+  }
+
+  reset_ls() {
+    localStorage.removeItem(this.ls_id);
+    if (last_mod_ls in localStorage) {
+      const last_modified = JSON.parse(localStorage.getItem(last_mod_ls));
+      last_modified.timestamp = Date.now();
+      localStorage.setItem(last_mod_ls, JSON.stringify(last_modified));
     }
   }
 }
@@ -1293,26 +1465,15 @@ class SchemaGroup {
       this.urls,
       version.version
     );
+    schema.latest_saved = this.latest_saved;
     schema.loaded = false;
     const accordion = nav_bar.tab_content.parentElement.parentElement;
 
-    let use_ls = false;
-    if (version.status == "draft") {
-      let schema_in_ls = `mgs_${this.name}` in localStorage;
-      if (schema_in_ls) {
-        let schema_from_ls = JSON.parse(localStorage.get(`mgs_${this.name}`));
-        use_ls = schema_from_ls.timestamp > this.latest_saved;
-      }
-    }
     // create an HTTP request for this schema
-    if (!use_ls) {
-      let reader = new TemplateReader(
-        `${this.urls.get}?version=${version.version}`,
-        schema
-      ); // url to get this template
-    } else {
-      schema.loaded = true;
-    }
+    let reader = new TemplateReader(
+      `${this.urls.get}?version=${version.version}`,
+      schema
+    ); // url to get this template
 
     // once the accordion is opened
     accordion.addEventListener("show.bs.collapse", () => {
