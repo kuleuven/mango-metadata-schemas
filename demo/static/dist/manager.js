@@ -52,6 +52,16 @@ const schema_infos = {};
 let schema_pattern = "[a-z][a-z0-9_\\-]*";
 
 /**
+ * Name for information of last modified schema in localStorage
+ */
+last_mod_ls = "_mgs__last_modified__";
+tab_prefixes = {
+  draft: "edit",
+  copy: "child",
+  new: "new",
+};
+
+/**
  * Empty schema to start with.
  * @type {Schema}
  *

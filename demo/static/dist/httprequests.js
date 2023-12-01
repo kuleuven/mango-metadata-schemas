@@ -170,32 +170,79 @@ class TemplatesRequest extends MangoRequest {
           .querySelectorAll('input[name="schema_name"]')
           .forEach((input) => input.setAttribute("pattern", schema_pattern));
       }
+
+      // but first, if the starting schema was being edited, focus on that
+      let starting_schema_timestamp;
+      let localstorage_timestamp;
+      if (starting_schema.ls_id in localStorage) {
+        starting_schema_timestamp = JSON.parse(
+          localStorage.getItem(starting_schema.ls_id).last_modified
+        );
+        new bootstrap.Collapse(`#${starting_schema.card_id}`).show();
+      }
+      if (last_mod_ls in localStorage) {
+        const { timestamp, schema_name, schema_version, ls_id } = JSON.parse(
+          localStorage.getItem(last_mod_ls)
+        );
+        if (
+          existing_names.indexOf(schema_name) > -1 &&
+          schema_infos[schema_name].versions_sorted.indexOf(schema_version) > -1
+        ) {
+          if (
+            starting_schema_timestamp == undefined ||
+            timestamp > starting_schema_timestamp
+          ) {
+            localstorage_timestamp = timestamp;
+            new bootstrap.Collapse(`#${schema_name}-schemas`).show();
+            let trigger = document.querySelector(
+              `#nav-tab-${schema_name} button`
+            );
+            bootstrap.Tab.getOrCreateInstance(trigger).show();
+            let version_trigger = document.querySelector(
+              `button#v${schema_version.replaceAll(".", "")}-tab-${schema_name}`
+            );
+            bootstrap.Tab.getOrCreateInstance(version_trigger).show();
+            // focused on the editor automatically if there is temporary data in the editor
+          } else {
+            localstorage_timestamp = starting_schema_timestamp;
+          }
+        } else {
+          localStorage.removeItem(ls_id);
+          localStorage.removeItem(last_mod_ls);
+        }
+      } else {
+        localstorage_timestamp = starting_schema_timestamp;
+      }
       // if a 'latest/current schema' is provided, focus on its accordion
       const current_schema = urls.schema_name;
       if (current_schema && Object.keys(schemas).indexOf(current_schema) > -1) {
-        new bootstrap.Collapse(`#${current_schema}-schemas`).show();
-        let trigger = document.querySelector(
-          `#nav-tab-${current_schema} button`
-        );
-        bootstrap.Tab.getOrCreateInstance(trigger).show();
-        const current_version = urls.schema_version;
-        const version_data = grouped_templates.filter(
-          (x) => x.name == current_schema
-        )[0].schema_info;
-        // if the version of that schema still exists, focus on that tab
+        let current_schema_timestamp = schema_infos[current_schema].timestamp;
+        // if this current schema was updated after the latest changes in localStorage
         if (
-          current_version &&
-          version_data.versions_sorted.indexOf(current_version) > -1
+          localstorage_timestamp == undefined ||
+          current_schema_timestamp > localstorage_timestamp
         ) {
-          let simple_version = current_version.replaceAll(".", "");
-          let version_trigger = document.querySelector(
-            `button#v${simple_version}-tab-${current_schema}`
+          new bootstrap.Collapse(`#${current_schema}-schemas`).show();
+          let trigger = document.querySelector(
+            `#nav-tab-${current_schema} button`
           );
-          bootstrap.Tab.getOrCreateInstance(version_trigger).show();
+          bootstrap.Tab.getOrCreateInstance(trigger).show();
+          const current_version = urls.schema_version;
+          const version_data = grouped_templates.filter(
+            (x) => x.name == current_schema
+          )[0].schema_info;
+          // if the version of that schema still exists, focus on that tab
+          if (
+            current_version &&
+            version_data.versions_sorted.indexOf(current_version) > -1
+          ) {
+            let simple_version = current_version.replaceAll(".", "");
+            let version_trigger = document.querySelector(
+              `button#v${simple_version}-tab-${current_schema}`
+            );
+            bootstrap.Tab.getOrCreateInstance(version_trigger).show();
+          }
         }
-      }
-      if (starting_schema.ls_id in localStorage) {
-        new bootstrap.Collapse(`#${starting_schema.card_id}`).show();
       }
     });
   }
