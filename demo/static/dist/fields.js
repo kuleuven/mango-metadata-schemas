@@ -2181,7 +2181,7 @@ class SelectInput extends MultipleInput {
   }
 
   form_type = "selection";
-  button_title = "Singe-value multiple choice";
+  button_title = "Single-value multiple choice";
   dropdown_alt = "radio";
 
   /**
