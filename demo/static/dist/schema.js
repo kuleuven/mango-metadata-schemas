@@ -267,15 +267,19 @@ class ComplexField {
     let rep_icon = Field.quick("i", "bi bi-front px-2");
     if (form_object.repeatable) {
       viewer.querySelector("h5").appendChild(rep_icon);
-    } else if (viewer.querySelector("h5 .bi-front") != null) {
+    } else if (viewer.querySelector("h5 .bi-front")) {
       viewer.querySelector("h5").removeChild(rep_icon);
     }
 
     // Replace the contents of the MovingViewer
     let form_field = viewer.querySelector(".card-body");
     let new_input = form_object.viewer_input();
-    form_field.replaceChild(new_input, form_field.firstChild);
     if (form_object.constructor.name == "ObjectInput") {
+      form_field.replaceChild(
+        new_input,
+        form_field.querySelector("div.input-view")
+      );
+
       let help_div = form_field.querySelector(".form-text#help-composite");
       if (help_div) {
         if (form_object.help) {
@@ -292,6 +296,8 @@ class ComplexField {
         description.id = "help-composite";
         form_field.insertBefore(description, new_input);
       }
+    } else {
+      form_field.replaceChild(new_input, form_field.firstChild);
     }
   }
 

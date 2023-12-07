@@ -107,10 +107,7 @@ class InputField {
     if (data.repeatable) {
       this.repeatable = data.repeatable;
     }
-    if (data.help) {
-      this.help = data.help;
-      this.help_is_custom = true;
-    }
+    this.help = data.help;
   }
 
   /**
@@ -382,10 +379,19 @@ class InputField {
     });
   }
 
-  update_help() {
-    this.help = "";
+  get default_help() {
+    return "";
   }
 
+  update_help() {
+    if (!this.help_is_custom && this.form_field) {
+      this.help = this.default_help;
+      let help_field = this.form_field.form.querySelector(`#${this.id}-help`);
+      if (help_field != undefined) {
+        help_field.value = this.help;
+      }
+    }
+  }
   /**
    * Add a field to provide a default value, if relevant.
    * @abstract
@@ -613,14 +619,11 @@ class InputField {
       "add",
       (e) => {
         e.preventDefault();
-        console.log(modal_id);
         // BS5 validation check
         if (!form.checkValidity()) {
           e.stopPropagation();
           form.classList.add("was-validated");
-          console.log(form);
         } else {
-          console.log("validation ok");
           // create a new field of the same type with the data in the form
           let clone = this.register_fields(schema);
 
@@ -728,16 +731,17 @@ class InputField {
         this.default = default_value.trim();
       }
     }
-    if (this.help_is_custom) {
-      let help = data.get(`${this.id}-help`);
-      this.help = help.trim();
-    }
+    let help = data.get(`${this.id}-help`);
+    this.help = help.trim();
 
     // if we are updating an existing field without changing the ID
     if (old_id == new_id) {
       this.title = data.get(`${this.id}-label`).trim();
+      console.log("Before recovering", this.id, this);
       this.recover_fields(this.id, data); // update the field
+      console.log("After recovering", this.id, this);
       schema.update_field(this); // update the schema
+      console.log("After updating", this.id, this);
       return this;
     } else {
       // if we are changing IDs or creating a new field altogether
@@ -757,10 +761,8 @@ class InputField {
         clone.editor.field_ids = [...this.editor.field_ids];
         this.editor.field_ids.forEach((fid) => {
           let field = this.editor.fields[fid];
-          console.log(field);
           let new_field = field.clone(clone.editor, field.id, field.title);
           new_field.create_modal(this.editor);
-          console.log(new_field);
           clone.editor.fields[fid] = new_field;
           field.delete_modal();
         });
@@ -994,213 +996,211 @@ class TypedInput extends InputField {
     }
   }
 
+  get_form_div(key) {
+    return this.form_field.form.querySelector(`#div-${this.id}-${key}`);
+  }
+
+  get_form_input(key) {
+    return this.form_field.form.querySelector(`input#${this.id}-${key}`);
+  }
+
+  toggle_placeholder() {
+    if (TypedInput.types_with_placeholder.indexOf(this.temp_values.type) > -1) {
+      this.add_placeholder_field();
+      return this.get_form_input("placeholder");
+    } else if (this.get_form_div("placeholder")) {
+      this.get_form_div("placeholder").remove();
+      return undefined;
+    }
+  }
+
+  toggle_default() {
+    if (
+      this.temp_values.type == "textarea" ||
+      this.temp_values.type == "checkbox"
+    ) {
+      if (this.get_form_div("default")) {
+        this.get_form_div("default").remove();
+      }
+      this.default = undefined;
+    } else {
+      this.add_default_field();
+    }
+    return this.get_form_input("default");
+  }
+
+  toggle_regex() {
+    const placeholder_input = this.get_form_input("placeholder");
+    const default_input = this.get_form_input("default");
+    const regex_div = this.get_form_div("regex");
+    if (TypedInput.types_with_regex.indexOf(this.temp_values.type) > -1) {
+      this.add_regex_field();
+      const regex_input = this.get_form_input("regex");
+      regex_input.addEventListener("change", () => {
+        console;
+        placeholder_input.setAttribute("pattern", regex_input.value);
+        default_input.setAttribute("pattern", regex_input.value);
+        this.temp_values.pattern = regex_input.value;
+        this.update_help();
+      });
+    } else if (regex_div) {
+      regex_div.remove();
+      placeholder_input.removeAttribute("pattern");
+      default_input.removeAttribute("pattern");
+      this.temp_values.pattern = "";
+      this.update_help();
+    }
+  }
+
+  toggle_switches() {
+    // disable or enable switches based on type (if they have already been created)
+    let switches_div = this.form_field.form.querySelector("div#switches-div");
+    if (switches_div) {
+      let switches = switches_div.querySelectorAll('input[role="switch"]');
+      if (this.temp_values.type == "checkbox") {
+        this.required = false;
+        this.repeatable = false;
+        switches.forEach((sw) => {
+          sw.setAttribute("disabled", "");
+          sw.removeAttribute("checked");
+        });
+      } else {
+        switches.forEach((sw) => sw.removeAttribute("disabled"));
+      }
+    }
+  }
+
+  make_numeric() {
+    // if there is no field for minimum and maximum yet
+    // (because the numeric type has just been selected via the dropdown)
+    if (!this.get_form_input("min")) {
+      // add input field for the minimum value
+      this.form_field.add_input("Minimum", `${this.id}-min`, {
+        placeholder: "0",
+        value: this.values.minimum ? this.values.minimum : false, // value if it exists
+        validation_message:
+          "This field is compulsory and the value must be lower than the maximum.",
+        required: false,
+      });
+
+      this.form_field.add_input("Maximum", `${this.id}-max`, {
+        placeholder: "100",
+        value: this.values.maximum ? this.values.maximum : false, // value if it exists
+        validation_message:
+          "This field is compulsory and the value must be higher than the minimum.",
+        required: false,
+      });
+    }
+
+    ["placeholder", "default", "min", "max"].forEach((input_key) => {
+      const input = this.get_form_input(input_key);
+      if (input) {
+        input.type = "number";
+        if (this.temp_values.min && input_key != "min") {
+          input.min = this.temp_values.min;
+        }
+        if (this.temp_values.max && input_key != "max") {
+          input.max = this.temp_values.max;
+        }
+        if (this.temp_values.type == "float") {
+          input.setAttribute("step", "any");
+        }
+      }
+    });
+    // REVIEW THIS FUNCTION AND THE NEXT
+    // adapt minima of maximum and default fields when a new minimum is provided
+    const min_button = this.get_form_input("min");
+    const max_button = this.get_form_input("max");
+    min_button.addEventListener("change", () => {
+      ["placeholder", "default", "max"].forEach((input_key) => {
+        const input = this.get_form_input(input_key);
+        if (input) {
+          input.min = min_button.value;
+        }
+      });
+      this.temp_values.min = min_button.value;
+      this.update_help();
+    });
+    max_button.addEventListener("change", () => {
+      ["placeholder", "default", "min"].forEach((input_key) => {
+        const input = this.get_form_input(input_key);
+        if (input) {
+          input.max = max_button.value;
+        }
+      });
+      this.temp_values.max = max_button.value;
+      this.update_help();
+    });
+  }
+  unmake_numeric() {
+    // Have a minimum or maximum values been defined?
+    const has_range =
+      this.values.minimum != undefined || this.values.maximum != undefined;
+    const placeholder_input = this.get_form_input("placeholder");
+    const default_input = this.get_form_input("default");
+
+    if (this.get_form_div("min")) {
+      this.get_form_div("min").remove();
+      this.get_form_div("max").remove();
+    }
+
+    // if minimum and maximum values had been provided
+    if (has_range) {
+      delete this.values.minimum;
+      delete this.values.maximum;
+    }
+
+    // adapt the type of the default input
+    if (placeholder_input) {
+      placeholder_input.type =
+        this.temp_values.type == "textarea" ? "text" : this.temp_values.type;
+      ["min", "max", "step"].forEach((val) =>
+        placeholder_input.removeAttribute(val)
+      );
+    }
+
+    // adapt the type of the default input
+    if (default_input) {
+      default_input.type = this.temp_values.type;
+      ["min", "max", "step"].forEach((val) =>
+        default_input.removeAttribute(val)
+      );
+    }
+  }
+
+  toggle_numeric() {
+    (this.temp_values.type == "integer") | (this.temp_values.type == "float")
+      ? this.make_numeric()
+      : this.unmake_numeric();
+  }
+
   /**
    * Handle the input fields and values dependent on specific types of simple fields.
    * If a field editor is generated for the first time, include the appropriate fields.
    * If a different type is chosen while editing the field, add/remove the appropriate fields.
    */
   manage_format() {
-    // Have a minimum or maximum values been defined?
-    let has_range =
-      this.values.minimum != undefined || this.values.maximum != undefined;
+    const placeholder_input = this.toggle_placeholder();
+    const default_input = this.toggle_default();
 
-    // ID of the input fields for minimum and maximum (for numbers)
-    let min_id = `${this.id}-min`;
-    let max_id = `${this.id}-max`;
-
-    // DIV and input fields for the placeholder (not always present)
-    let placeholder_div = this.form_field.form.querySelector(
-      `#div-${this.id}-placeholder`
-    );
-
-    // DIV and input fields for the regex pattern (not always present)
-    let regex_div = this.form_field.form.querySelector(`#div-${this.id}-regex`);
-
-    // DIV and input fields for the default value (not always present)
-    let default_div = this.form_field.form.querySelector(
-      `#div-${this.id}-default`
-    );
-
-    // add or remove placeholder
-    if (TypedInput.types_with_placeholder.indexOf(this.temp_values.type) > -1) {
-      this.add_placeholder_field();
-    } else {
-      if (placeholder_div != null) {
-        this.form_field.form.removeChild(placeholder_div);
-      }
-    }
-
-    // add or remove regex pattern
-    if (TypedInput.types_with_regex.indexOf(this.temp_values.type) > -1) {
-      this.add_regex_field();
-    } else {
-      if (regex_div != null) {
-        this.form_field.form.removeChild(regex_div);
-      }
-    }
-
-    // add or remove default based on type
-    if (
-      this.temp_values.type == "textarea" ||
-      this.temp_values.type == "checkbox"
-    ) {
-      if (default_div != null) {
-        this.form_field.form.removeChild(default_div);
-      }
-      this.default = undefined;
-      if (this.temp_values.type == "checkbox") {
-        this.required = false;
-        this.repeatable = false;
-      }
-    } else {
-      this.add_default_field();
-    }
-
-    let placeholder_input = this.form_field.form.querySelector(
-      `#${this.id}-placeholder`
-    );
-    let default_input = this.form_field.form.querySelector(
-      `#${this.id}-default`
-    );
-
-    // disable or enable switches based on type (if they have already been created)
-    let switches_div = this.form_field.form.querySelector("div#switches-div");
-    if (switches_div != undefined) {
-      let switches = switches_div.querySelectorAll('input[role="switch"]');
-      if (this.temp_values.type == "checkbox") {
-        switches.forEach((sw) => {
-          sw.setAttribute("disabled", "");
-        });
-      } else {
-        switches.forEach((sw) => sw.removeAttribute("disabled"));
-      }
-    }
-
+    this.toggle_regex();
+    this.toggle_switches();
+    this.toggle_numeric();
     // add or remove range inputs based on type
-    if (
-      (this.temp_values.type == "integer") |
-      (this.temp_values.type == "float")
-    ) {
-      // adapt the type of the placeholder input field
-      if (placeholder_input !== null) {
-        placeholder_input.type = "number";
-      }
-      // adapt the type of the default input field
-      if (default_input !== null) {
-        default_input.type = "number";
-      }
-
-      // if there is no field for minimum and maximum yet
-      // (because the numeric type has just been selected via the dropdown)
-      if (this.form_field.form.querySelector("#" + min_id) == undefined) {
-        // add input field for the minimum value
-        this.form_field.add_input("Minimum", min_id, {
-          placeholder: "0",
-          value: has_range ? this.values.minimum : false, // value if it exists
-          validation_message:
-            "This field is compulsory and the value must be lower than the maximum.",
-          required: false,
-        });
-
-        this.form_field.add_input("Maximum", max_id, {
-          placeholder: "100",
-          value: has_range ? this.values.maximum : false, // value if it exists
-          validation_message:
-            "This field is compulsory and the value must be higher than the minimum.",
-          required: false,
-        });
-      }
-      // assign the right type to the input fields for minimum and maximum
-      let min_button = this.form_field.form.querySelector("#" + min_id);
-      min_button.type = "number";
-      let max_button = this.form_field.form.querySelector("#" + max_id);
-      max_button.type = "number";
-
-      // allow decimals for float input
-      if (this.temp_values.type == "float") {
-        min_button.setAttribute("step", "any");
-        max_button.setAttribute("step", "any");
-        if (placeholder_input !== null) {
-          placeholder_input.setAttribute("step", "any");
-        }
-        if (default_input !== null) {
-          default_input.setAttribute("step", "any");
-        }
-      }
-
-      // adapt minima of maximum and default fields when a new minimum is provided
-      min_button.addEventListener("change", () => {
-        max_button.min = min_button.value;
-        if (placeholder_input != null) {
-          placeholder_input.min = min_button.value;
-        }
-        if (default_input != null) {
-          default_input.min = min_button.value;
-        }
-        this.temp_values.min = min_button.value;
-        this.update_help();
-      });
-
-      // adapt maxima of minimum and default fields when a new maximum is provided
-      max_button.addEventListener("change", () => {
-        min_button.max = max_button.value;
-        if (placeholder_input != null) {
-          placeholder_input.max = max_button.value;
-        }
-        if (default_input != null) {
-          default_input.max = max_button.value;
-        }
-        this.temp_values.max = max_button.value;
-        this.update_help();
-      });
-    } else {
-      // if the field is not numeric (anymore)
-      // remove the min and max input fields
-
-      if (
-        this.form_field.form.querySelectorAll('.form-container [type="number"]')
-          .length > 0
-      ) {
-        this.form_field.form.removeChild(
-          document.getElementById(`div-${min_id}`)
-        );
-        this.form_field.form.removeChild(
-          document.getElementById(`div-${max_id}`)
-        );
-      }
-
-      // if minimum and maximum values had been provided
-      if (has_range) {
-        delete this.values.minimum;
-        delete this.values.maximum;
-      }
-      // adapt the type of the default input
-      if (placeholder_input !== null) {
-        placeholder_input.type =
-          this.temp_values.type == "textarea" ? "text" : this.temp_values.type;
-      }
-
-      // adapt the type of the default input
-      if (default_input !== null) {
-        default_input.type = this.temp_values.type;
-      }
-    }
 
     // adapt the description of the default input field based on the type
-    if (placeholder_input !== null) {
-      let num_validator =
-        placeholder_input.input == "number" ? this.print_range() : "";
-      let validator = `This field must be of type ${this.temp_values.type}${num_validator}.`;
+    const validator = this.default_help.replace(
+      "Input type: ",
+      "This field must be of type "
+    );
+    if (placeholder_input) {
       placeholder_input.parentElement.querySelector(
         ".invalid-feedback"
       ).innerHTML = validator;
     }
 
     // adapt the description of the default input field based on the type
-    if (default_input !== null) {
-      let num_validator =
-        default_input.input == "number" ? this.print_range() : "";
-      let validator = `This field must be of type ${this.temp_values.type}${num_validator}.`;
+    if (default_input) {
       default_input.parentElement.querySelector(".invalid-feedback").innerHTML =
         validator;
     }
@@ -1225,24 +1225,21 @@ class TypedInput extends InputField {
     if ("pattern" in data) {
       this.values.pattern = data.pattern;
     }
+    if (data.help) {
+      this.help_is_custom = this.help != this.default_help;
+    }
     this.update_help();
   }
 
-  update_help() {
-    if (!this.help_is_custom) {
-      let par_text =
-        (this.temp_values.type == "integer") |
-        (this.temp_values.type == "float")
-          ? `${this.temp_values.type} ${this.print_range()}`
-          : this.temp_values.type;
-      this.help = `Input type: ${par_text}`;
-      if (this.form_field) {
-        let help_field = this.form_field.form.querySelector(`#${this.id}-help`);
-        if (help_field != undefined) {
-          help_field.value = this.help;
-        }
-      }
-    }
+  get default_help() {
+    let par_text =
+      (this.temp_values.type == "integer") | (this.temp_values.type == "float") // if it's a number
+        ? " " + this.print_range() // specify the range
+        : this.temp_values.pattern != undefined && // if it has a pattern
+          this.temp_values.pattern.length > 0
+        ? ` fully matching /${this.temp_values.pattern}/` // specify the pattern
+        : "";
+    return `Input type: ${this.temp_values.type}${par_text}`;
   }
 
   /**
@@ -1522,7 +1519,9 @@ class TypedInput extends InputField {
     }
     if (TypedInput.types_with_regex.indexOf(this.type) > -1) {
       let pattern = data.get(`${id}-regex`);
-      if (pattern) this.values.pattern = pattern.trim();
+      console.log("From form: ", pattern);
+      console.log(this.temp_values.pattern);
+      if (pattern != undefined) this.values.pattern = pattern.trim();
     } else {
       this.values.pattern = "";
     }
@@ -1761,6 +1760,16 @@ class ObjectInput extends InputField {
 
     // copy the data to the `json_source` property so the `editor` can access it
     this.json_source = data;
+    if (data.help) {
+      this.help_is_custom = this.help != this.default_help;
+    }
+    this.update_help(); // again now that we have the fields
+  }
+
+  get default_help() {
+    return `Nested form with ${
+      this.editor ? this.editor.field_ids.length : " "
+    }subfields that go together.`;
   }
 
   /**
@@ -1955,6 +1964,16 @@ class MultipleInput extends InputField {
 
     // Retrive multiple-choice specific attributes
     this.values = { values: data.values, multiple: data.multiple, ui: data.ui };
+    if (data.help) {
+      this.help_is_custom = this.help != this.default_help;
+    }
+    this.update_help();
+  }
+
+  get default_help() {
+    return `Choose ${this.values.multiple ? "at least " : ""}one of ${
+      this.values.values.length
+    } options.`;
   }
 
   /**
