@@ -1807,6 +1807,13 @@ class ObjectInput extends InputField {
     this.editor.card_id = `${this.mode}-${this.id}-${this.schema_name}-${this.schema_status}`;
 
     // Go through each subfield and render it
+    console.log(
+      "Creating modal for",
+      this.id,
+      this.schema_name,
+      this.schema_status
+    );
+    console.trace();
     this.editor.field_ids.forEach((field_id, idx) => {
       this.editor.new_field_idx = idx;
       this.editor.view_field(this.editor.fields[field_id]);
