@@ -195,11 +195,15 @@ class ComplexField {
 
     // obtain the MovingViewer of the field and create a new button for it (to add things under it)
     let moving_viewer = form_object.view(this);
+
     moving_viewer.below = this.create_button();
 
     // add both the MovingViewer and its button after the clicked button
     below.parentElement.insertBefore(moving_viewer.div, below);
     below.parentElement.insertBefore(moving_viewer.below, below);
+    if (form_object.autocomplete_id != undefined) {
+      form_object.activate_autocomplete(true);
+    }
 
     // disable/re-enable the buttons of the existing viewers
     let viewers = below.parentElement.querySelectorAll(".viewer");
@@ -298,6 +302,9 @@ class ComplexField {
       }
     } else {
       form_field.replaceChild(new_input, form_field.firstChild);
+      if (form_object.autocomplete_id != undefined) {
+        form_object.activate_autocomplete();
+      }
     }
   }
 
@@ -458,6 +465,7 @@ class ComplexField {
     // create the contents of the viewer based on the specific kind of field
     let input = subfield.viewer_input(active);
     small_div.appendChild(label);
+
     if (subfield.constructor.name == "ObjectInput" && subfield.help) {
       let help_text = Field.quick(
         "p",
@@ -1177,6 +1185,14 @@ class Schema extends ComplexField {
     this.card.appendChild(this.nav_bar.nav_bar);
     this.card.appendChild(this.nav_bar.tab_content);
     document.getElementById(this.container).appendChild(this.card);
+    const autocomplete_viewers = this.card.querySelectorAll(
+      "input[type='search']"
+    );
+    autocomplete_viewers.forEach((viewer) => {
+      const id_parts = viewer.id.split("-");
+      const field = this.fields[id_parts[id_parts.length - 1]];
+      field.activate_autocomplete();
+    });
 
     Object.keys(this.nav_bar_btn_ids).forEach((permission) => {
       let use_permissions = schema_infos[this.name].current_user_permissions
@@ -1658,6 +1674,15 @@ class SchemaForm {
     });
 
     document.getElementById(this.container).appendChild(form_div);
+    const autocomplete_fields = form_div.querySelectorAll(
+      "input[type='search']"
+    );
+    autocomplete_fields.forEach((viewer) => {
+      const id_parts = viewer.id.split("-");
+      const field = this.fields[id_parts[id_parts.length - 1]];
+      field.activate_autocomplete();
+      field.read_autocomplete();
+    });
     this.form = form_div;
   }
 

@@ -737,11 +737,19 @@ class InputField {
     // if we are updating an existing field without changing the ID
     if (old_id == new_id) {
       this.title = data.get(`${this.id}-label`).trim();
-      console.log("Before recovering", this.id, this);
+      if (this.options_navbar) {
+        const relevant_tab =
+          this.options_navbar.tab_content.querySelector("div.show");
+        this.relevant_id = relevant_tab.id.split("-")[0];
+        if (this.relevant_id == "file") {
+          data.append(
+            "file-options",
+            relevant_tab.querySelector("pre").innerHTML
+          );
+        }
+      }
       this.recover_fields(this.id, data); // update the field
-      console.log("After recovering", this.id, this);
       schema.update_field(this); // update the schema
-      console.log("After updating", this.id, this);
       return this;
     } else {
       // if we are changing IDs or creating a new field altogether
@@ -752,6 +760,19 @@ class InputField {
         new_id,
         data.get(`${this.id}-label`).trim()
       );
+      if (this.options_navbar) {
+        const relevant_tab =
+          this.options_navbar.tab_content.querySelector("div.show");
+        const relevant_id = relevant_tab.id.split("-")[0];
+        if (relevant_id == "file") {
+          data.append(
+            "file-options",
+            relevant_tab.querySelector("pre").innerHTML
+          );
+        }
+        clone.options_navbar = this.options_navbar;
+        clone.relevant_id = relevant_id;
+      }
       clone.recover_fields(this.id, data);
 
       if (this.constructor.name == "ObjectInput") {
@@ -1424,7 +1445,6 @@ class TypedInput extends InputField {
           input.max = this.values.maximum;
         }
       }
-      console.log(this);
       const is_required_msg = this.required ? "This field is required. " : "";
       const condition =
         input.type == "number"
@@ -1952,6 +1972,7 @@ class MultipleInput extends InputField {
   }
 
   repeatable = false;
+  max_before_autocomplete = 10;
 
   /**
    * Parse an object to fill in the properties of the object instance.
@@ -1983,10 +2004,18 @@ class MultipleInput extends InputField {
    */
   viewer_input(active = false) {
     let div = document.createElement("div");
-    let form_shape =
-      this.values.ui == "dropdown" // If UI is 'dropdown'
-        ? Field.dropdown(this, active) // create a dropdown
-        : Field.checkbox_radio(this, active); // otherwise a checkbox or radio
+    let form_shape;
+
+    if (this.values.values.length > this.max_before_autocomplete) {
+      form_shape = Field.autocomplete(this, active);
+      this.autocomplete_id = form_shape.id;
+    } else {
+      form_shape =
+        this.values.uid == "dropdown"
+          ? Field.dropdown(this, active)
+          : Field.checkbox_radio(this, active);
+    }
+
     if (this.help) {
       let subtitle = Field.quick("div", "form-text mt-0 mb-1", this.help);
       subtitle.id = "help-" + this.id;
@@ -2002,19 +2031,79 @@ class MultipleInput extends InputField {
       }
     }
     div.appendChild(form_shape);
-    if (active) {
-      const is_required_msg = this.required ? "This field is required. " : "";
-      const validator_message = Field.quick(
-        "div",
-        "invalid-feedback",
-        `${is_required_msg}Please provide ${
-          this.values.multiple ? "at least " : ""
-        }one of the accepted options.`
-      );
-      div.appendChild(validator_message);
+    if (this.values.values.length <= this.max_before_autocomplete && active) {
+      div.appendChild(this.validator_message);
     }
 
     return div;
+  }
+
+  get validator_message() {
+    const is_required_msg = this.required ? "This field is required. " : "";
+    return Field.quick(
+      "div",
+      "invalid-feedback",
+      `${is_required_msg}Please provide ${
+        this.values.multiple ? "at least " : ""
+      }one of the accepted options.`
+    );
+  }
+
+  activate_autocomplete(editor = false) {
+    const new_selector = `#${this.autocomplete_id}${editor ? "-editor" : ""}`;
+    const autocomplete = new autoComplete({
+      selector: new_selector,
+      placeHolder: this.default != undefined ? this.default : "Search...",
+      data: { src: this.values.values, cache: true },
+      resultsList: {
+        element: (list, data) => {
+          if (!data.results.length) {
+            const msg = Field.quick(
+              "div",
+              "no_result",
+              `<span>No results found</span>`
+            );
+            list.prepend(msg);
+          }
+        },
+        noResults: true,
+      },
+      resultItem: { highlight: true },
+    });
+    document
+      .querySelector(new_selector)
+      .parentElement.appendChild(this.validator_message);
+  }
+
+  read_autocomplete() {
+    const autocomplete_field = document.querySelector(
+      `#${this.autocomplete_id}`
+    );
+    if (this.values.multiple) {
+      const answers_div = Field.quick("div", "my-2");
+      autocomplete_field.parentElement.prepend(answers_div);
+      autocomplete_field.removeAttribute("name");
+      autocomplete_field.addEventListener("selection", (event) => {
+        const [pill, label] = Field.autocomplete_checkbox(
+          event.detail.selection.value,
+          this.name
+        );
+        answers_div.appendChild(pill);
+        answers_div.appendChild(label);
+        autocomplete_field.value = "";
+      });
+    } else {
+      autocomplete_field.addEventListener("selection", (event) => {
+        autocomplete_field.blur();
+        // Prepare User's Selected Value
+        autocomplete_field.value = event.detail.selection.value;
+      });
+    }
+    autocomplete_field.addEventListener("close", (event) => {
+      if (event.detail.matches == 0) {
+        autocomplete_field.value = "";
+      }
+    });
   }
 
   /**
@@ -2025,11 +2114,186 @@ class MultipleInput extends InputField {
     // Setup form
     this.setup_form();
 
-    // Add moving input fields to design the options
-    this.form_field.add_moving_options("Select option", this);
+    const nav_bar_container = Field.quick("div", "shadow p-2 rounded");
+    this.options_navbar = new NavBar(
+      `${this.schema_name}-${this.id}-optionstab`,
+      ["nav-pills", "nav-justified"]
+    );
+    this.add_moving_options();
 
+    const options_as_text =
+      this.values.values.length > 0
+        ? this.values.values.join("\n")
+        : "Option 1\nOption 2";
+
+    this.add_textarea_options(options_as_text);
+    this.add_file_options(options_as_text);
+
+    nav_bar_container.appendChild(this.options_navbar.nav_bar);
+    nav_bar_container.appendChild(this.options_navbar.tab_content);
+    this.options_navbar.nav_bar.childNodes.forEach((nav_item) => {
+      nav_item.querySelector("button").addEventListener("shown.bs.tab", () => {
+        if (
+          this.form_field.form.querySelector(`select#${this.id}-default`) !==
+          undefined
+        ) {
+          this.relevant_id = nav_item.querySelector("button").id.split("-")[0];
+          this.update_default_field();
+        }
+        this.toggle_dropdown_switch();
+      });
+    });
+    this.form_field.add_editor(nav_bar_container);
     // Finish form
     this.end_form();
+    this.toggle_dropdown_switch();
+  }
+
+  add_moving_options() {
+    this.options_navbar.add_item("movers", "Moving options", true);
+
+    const moving_div = Field.quick("div", "mover-container");
+    moving_div.setAttribute("style", "max-height:300px;overflow:auto;");
+    // Add moving input fields to design the options
+    this.form_field.add_moving_options("Select option", this, moving_div);
+    this.options_navbar.add_tab_content("movers", moving_div);
+  }
+
+  add_textarea_options(options_as_text) {
+    this.options_navbar.add_item("textarea", "Manual typing");
+    const textarea_div = this.form_field.add_input(
+      "Select options",
+      `${this.id}-typed`,
+      {
+        description: "Type or paste your options, one per line.",
+        required: false,
+        value: this.values.values.length > 0 ? options_as_text : false,
+        as_textarea: true,
+        placeholder: options_as_text,
+      },
+      false
+    );
+    const textarea = textarea_div.querySelector("textarea");
+    textarea.setAttribute("rows", 6);
+    textarea.setAttribute("name", "typed-options");
+    textarea.addEventListener("change", () => {
+      const fixed_value = textarea.value
+        .split("\n")
+        .map((x) => x.trim())
+        .filter((x) => x.length > 0);
+      textarea.value = fixed_value.join("\n");
+      this.update_default_field();
+      this.toggle_dropdown_switch();
+    });
+    this.options_navbar.add_tab_content("textarea", textarea_div);
+  }
+
+  add_file_options(options_as_text) {
+    this.options_navbar.add_item("file", "Upload text file");
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const options = reader.result
+        .split("\n")
+        .map((x) => x.trim())
+        .filter((x) => x.length > 0);
+      dd_example.innerHTML = options.join("\n");
+      description.innerHTML = `${options.length} options:`;
+      this.update_default_field();
+      this.toggle_dropdown_switch();
+    };
+
+    let file_div = Field.quick("div", "ex my-2");
+    const file_input_id = `${this.schema_name}-${this.id}-optionsfile`;
+
+    let label = Field.quick(
+      "label",
+      "form-label",
+      "Choose a file or drag and drop into the field below."
+    );
+    label.setAttribute("for", file_input_id);
+
+    let input = Field.quick("input", "form-control");
+    input.id = file_input_id;
+    input.type = "file";
+    input.setAttribute("accept", ".txt,.csv,.md");
+    input.addEventListener("change", (e) => {
+      reader.readAsText(e.target.files[0]);
+    });
+
+    let explanation = Field.quick(
+      "div",
+      "form-text",
+      "Plain text file with one option per row."
+    );
+    explanation.id = file_input_id + "-help";
+
+    // Example with drag-and-drop
+    const description = Field.quick(
+      "p",
+      "fw-light mt-2 mb-0",
+      this.values.values.length == 0
+        ? "No options have been loaded."
+        : `${this.values.values.length} options:`
+    );
+    let dd_example = Field.quick("pre", "border p-1 bg-light", options_as_text);
+    dd_example.setAttribute(
+      "style",
+      "width:700px; white-space: pre-wrap; max-height:200px;"
+    );
+    dd_example.addEventListener("dragover", (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+    });
+    dd_example.addEventListener("drop", (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      reader.readAsText(e.dataTransfer.files[0]);
+    });
+
+    file_div.appendChild(label);
+    file_div.appendChild(input);
+    file_div.appendChild(explanation);
+    file_div.appendChild(description);
+    file_div.appendChild(dd_example);
+
+    this.options_navbar.add_tab_content("file", file_div);
+  }
+
+  toggle_dropdown_switch() {
+    const temp_options = this.get_temp_options();
+    if (temp_options.length > this.max_before_autocomplete) {
+      this.form_field.switches
+        .querySelector("input[id$='dropdown']")
+        .setAttribute("disabled", "");
+    } else {
+      this.form_field.switches
+        .querySelector("input[id$='dropdown']")
+        .removeAttribute("disabled");
+    }
+  }
+
+  get_temp_options() {
+    let relevant_tab;
+    if (this.relevant_id) {
+      relevant_tab = this.options_navbar.tab_content.querySelector(
+        `[id^="${this.relevant_id}"]`
+      );
+    } else {
+      relevant_tab = this.options_navbar.tab_content.querySelector("div.show");
+      this.relevant_id = relevant_tab.id.split("-")[0];
+    }
+    if (this.relevant_id.startsWith("textarea")) {
+      const textarea = relevant_tab.querySelector("textarea").value;
+      return textarea.split("\n");
+    } else if (this.relevant_id.startsWith("movers")) {
+      const moving_fields = relevant_tab.querySelectorAll("div.blocked input");
+      return [...moving_fields].map((option) => option.value);
+    } else if (this.relevant_id.startsWith("file")) {
+      const file_contents = relevant_tab.querySelector("pre").innerHTML;
+      return file_contents.split("\n");
+    }
   }
 
   /**
@@ -2039,13 +2303,32 @@ class MultipleInput extends InputField {
   recover_fields(id, data) {
     // reset whatever values existing
     this.values.values = [];
-    // go through values in the form
-    for (let pair of data.entries()) {
-      // add the value of moving input fields only
-      if (pair[0].startsWith("mover")) {
-        this.values.values.push(pair[1].trim());
+
+    this.values.values = this.get_temp_options()
+      .map((x) => x.trim())
+      .filter((x) => x.length > 0);
+
+    // if the form in the modal already exists
+    if (this.options_navbar) {
+      if (!this.relevant_id.startsWith("textarea")) {
+        this.options_navbar.tab_content.querySelector("textarea").value =
+          this.values.values.join("\n");
+      }
+      if (!this.relevant_id.startsWith("movers")) {
+        const moving_div = this.options_navbar.tab_content.querySelector(
+          "div.mover-container"
+        );
+        moving_div
+          .querySelectorAll("div.blocked, div.mover")
+          .forEach((x) => x.remove());
+        this.form_field.add_moving_options("Select option", this, moving_div);
+      }
+      if (!this.relevant_id.startsWith("file")) {
+        this.options_navbar.tab_content.querySelector("pre").innerHTML =
+          this.values.values.join("\n");
       }
     }
+
     let default_field = this.form_field.form.querySelector(`#${id}-default`);
     if (default_field !== null) {
       let selected = default_field.querySelector("option[selected]");
@@ -2249,8 +2532,6 @@ class SelectInput extends MultipleInput {
   }
 
   update_default_field() {
-    let moving_fields =
-      this.form_field.form.querySelectorAll("div.blocked input");
     let default_field = this.form_field.form.querySelector(
       `select#${this.id}-default`
     );
@@ -2258,9 +2539,13 @@ class SelectInput extends MultipleInput {
     default_field
       .querySelectorAll("option:not([value=''])")
       .forEach((option) => option.remove());
-    let new_fields = [...moving_fields].map((option) => option.value);
+    const new_fields = this.get_temp_options();
 
-    if (selected && new_fields.indexOf(selected) == -1) {
+    if (
+      selected &&
+      new_fields.indexOf(selected) == -1 &&
+      default_field.querySelectorAll("option").length == 0
+    ) {
       selected = "";
       let empty_option = document.createElement("option");
       empty_option.innerHTML = "Select option below";
