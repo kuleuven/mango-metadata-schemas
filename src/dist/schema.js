@@ -78,7 +78,12 @@ class ComplexField {
     this.status = data.status; // only relevant for Schema class
     this.data_status = this.set_data_status();
     this.ls_id = `_mgs_${this.card_id}_${this.data_status}`;
-    this.properties_from_json(data);
+    if (this.ls_id != undefined && this.ls_id in localStorage) {
+      let schema_from_ls = JSON.parse(localStorage.getItem(this.ls_id));
+      this.properties_from_json(schema_from_ls);
+    } else {
+      this.properties_from_json(data);
+    }
   }
 
   properties_from_json(data) {
@@ -180,6 +185,7 @@ class ComplexField {
     if (form == undefined) {
       return;
     }
+    // console.log(form_object, form, form.querySelectorAll(".viewer"));
 
     // select the button that (supposedly, not necessarily) was used to add this field
     let clicked_button = form.querySelectorAll(".adder")[this.new_field_idx];
@@ -648,7 +654,7 @@ class Schema extends ComplexField {
   create_creator() {
     this.status = "draft";
 
-    if (this.ls_id in localStorage) {
+    if (this.ls_id in localStorage && this.field_ids.length == 0) {
       let schema_from_ls = JSON.parse(localStorage.getItem(this.ls_id));
       this.properties_from_json(schema_from_ls);
       // this.field_ids.forEach((field_id, idx) => {
@@ -1184,7 +1190,7 @@ class Schema extends ComplexField {
         schema_from_ls.last_modified > this.latest_saved
       ) {
         this.temp_title = schema_from_ls.title;
-        this.properties_from_json(schema_from_ls);
+        // this.properties_from_json(schema_from_ls);
         this.offer_reset_ls();
       } else if (schema_from_ls.last_modified <= this.latest_saved) {
         this.reset_ls();
@@ -1290,7 +1296,7 @@ class Schema extends ComplexField {
     const to_save = {
       title: this.temp_title ? this.temp_title : this.title,
       properties: this.properties,
-      last_modified: Date.now(),
+      last_modified: Date.now() / 1000,
     };
     if (
       this.data_status == "copy" ||
@@ -1307,7 +1313,7 @@ class Schema extends ComplexField {
         last_mod_ls,
         JSON.stringify({
           ls_id: this.ls_id,
-          timestamp: Date.now(),
+          timestamp: Date.now() / 1000,
           schema_name: this.name,
           schema_version: this.version,
           editing_tab: `#${tab_prefixes[this.data_status]}-tab-${

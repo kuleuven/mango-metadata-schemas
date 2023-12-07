@@ -1296,7 +1296,7 @@ class Schema extends ComplexField {
     const to_save = {
       title: this.temp_title ? this.temp_title : this.title,
       properties: this.properties,
-      last_modified: Date.now(),
+      last_modified: Date.now() / 1000,
     };
     if (
       this.data_status == "copy" ||
@@ -1313,7 +1313,7 @@ class Schema extends ComplexField {
         last_mod_ls,
         JSON.stringify({
           ls_id: this.ls_id,
-          timestamp: Date.now(),
+          timestamp: Date.now() / 1000,
           schema_name: this.name,
           schema_version: this.version,
           editing_tab: `#${tab_prefixes[this.data_status]}-tab-${

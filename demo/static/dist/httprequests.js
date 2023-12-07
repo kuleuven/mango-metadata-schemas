@@ -217,11 +217,16 @@ class TemplatesRequest extends MangoRequest {
       const current_schema = urls.schema_name;
       if (current_schema && Object.keys(schemas).indexOf(current_schema) > -1) {
         let current_schema_timestamp = schema_infos[current_schema].timestamp;
+        console.log(current_schema_timestamp);
+        console.log(localstorage_timestamp);
+        console.log(current_schema_timestamp - localstorage_timestamp);
         // if this current schema was updated after the latest changes in localStorage
         if (
           localstorage_timestamp == undefined ||
           current_schema_timestamp > localstorage_timestamp
         ) {
+          console.log("current schema wins");
+          console.log(current_schema);
           new bootstrap.Collapse(`#${current_schema}-schemas`).show();
           let trigger = document.querySelector(
             `#nav-tab-${current_schema} button`

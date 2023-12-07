@@ -1291,8 +1291,11 @@ class TypedInput extends InputField {
     if (
       this.form_field.form.querySelector(`#div-${this.id}-regex`) == undefined
     ) {
+      const regex_input_docs =
+        "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/pattern#constraint_validation";
+      const regex_explanation = `A regular expression to use in validation: the <a href="${regex_input_docs}">match has to be complete, not partial</a>.`;
       this.form_field.add_input("Regex pattern", `${this.id}-regex`, {
-        description: "A regular expression to use in validation.",
+        description: regex_explanation,
         value: this.values.pattern,
         required: false,
       });
@@ -1422,6 +1425,20 @@ class TypedInput extends InputField {
           input.max = this.values.maximum;
         }
       }
+      console.log(this);
+      const is_required_msg = this.required ? "This field is required. " : "";
+      const condition =
+        input.type == "number"
+          ? this.print_range() // if it's a number, message about the range
+          : this.values.pattern != undefined && this.values.pattern.length > 0 // otherwise if there is a regex pattern...
+          ? ` matching the regular expression /^${this.values.pattern}$/`
+          : "";
+      const validator_message = Field.quick(
+        "div",
+        "invalid-feedback",
+        `${is_required_msg}Please provide a ${this.type}${condition}.`
+      );
+      div.appendChild(validator_message);
     }
     return div;
   }
@@ -1443,13 +1460,13 @@ class TypedInput extends InputField {
     );
 
     // when selecting from the dropdown, adapt the contents of the form
-    this.form_field.form
-      .querySelector(".form-select")
-      .addEventListener("change", () => {
-        this.temp_values.type =
-          this.form_field.form.elements[`${this.id}-format`].value;
-        this.manage_format();
-      });
+    const format_select = this.form_field.form.querySelector(
+      `#${this.id}-format`
+    );
+    format_select.addEventListener("change", () => {
+      this.temp_values.type = format_select.value;
+      this.manage_format();
+    });
 
     let divider = document.createElement("hr");
     divider.id = this.id + "-divider";
@@ -1963,6 +1980,17 @@ class MultipleInput extends InputField {
       }
     }
     div.appendChild(form_shape);
+    if (active) {
+      const is_required_msg = this.required ? "This field is required. " : "";
+      const validator_message = Field.quick(
+        "div",
+        "invalid-feedback",
+        `${is_required_msg}Please provide ${
+          this.values.multiple ? "at least " : ""
+        }one of the accepted options.`
+      );
+      div.appendChild(validator_message);
+    }
 
     return div;
   }
