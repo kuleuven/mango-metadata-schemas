@@ -757,8 +757,10 @@ class InputField {
         clone.editor.field_ids = [...this.editor.field_ids];
         this.editor.field_ids.forEach((fid) => {
           let field = this.editor.fields[fid];
+          console.log(field);
           let new_field = field.clone(clone.editor, field.id, field.title);
           new_field.create_modal(this.editor);
+          console.log(new_field);
           clone.editor.fields[fid] = new_field;
           field.delete_modal();
         });
@@ -1429,7 +1431,7 @@ class TypedInput extends InputField {
       const is_required_msg = this.required ? "This field is required. " : "";
       const condition =
         input.type == "number"
-          ? this.print_range() // if it's a number, message about the range
+          ? " " + this.print_range() // if it's a number, message about the range
           : this.values.pattern != undefined && this.values.pattern.length > 0 // otherwise if there is a regex pattern...
           ? ` matching the regular expression /^${this.values.pattern}$/`
           : "";
@@ -1491,6 +1493,7 @@ class TypedInput extends InputField {
    */
   clone(schema, new_id, title) {
     let clone = super.clone(schema, new_id, title);
+    clone.type = this.type;
     clone.temp_values = { ...this.temp_values };
     return clone;
   }
