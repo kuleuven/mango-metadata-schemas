@@ -97,9 +97,7 @@ class Field {
       new_input.value = i;
       new_input.id = `check-${i}`;
 
-      if (active) {
-        new_input.name = field.name;
-      }
+      new_input.name = field.name;
 
       if (value) {
         let this_is_the_value = multiple ? value.indexOf(i) > -1 : value == i;
