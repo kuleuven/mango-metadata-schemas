@@ -1,5 +1,4 @@
-Metadata schemas
-================
+# Metadata schemas
 
 This article describes how the metadata schemas used in the ManGO portal
 are stored and represented, from the folder structure that supports the
@@ -306,7 +305,12 @@ Most of the text formats (“text”, “email”, “url”, “integer” and 
 can also have a `placeholder` attribute, i.e. an example of a desired
 value that is shown inside the input field when it is empty. In
 addition, “text”, “email” and “url” types can have a `pattern` attribute
-containing a regular expression to be used as additional restriction.
+containing a regular expression (or “regex”) to be used as additional
+restriction. Because of how [the attribute works in
+HTML](https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/pattern#constraint_validation),
+the validation expects a full match with the pattern. So, for example,
+if you would like the input to end in “.com” but don’t want to restrict
+the text before it, the pattern should be `.+[.]com`, not `.com$`.
 
 Finally, it is also possible to create an individual checkbox (with
 `type` “checkbox”), which takes the value “true” when checked and no
