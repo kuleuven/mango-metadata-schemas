@@ -1635,7 +1635,7 @@ class SchemaForm {
     // Add attributes to the form so it submits directly
     form_div.setAttribute("action", post_url);
     form_div.setAttribute("method", "POST");
-
+    form_div.setAttribute("novalidate", "");
     // Include BS5 validation
     form_div.addEventListener("submit", (e) => {
       if (!form_div.checkValidity()) {
