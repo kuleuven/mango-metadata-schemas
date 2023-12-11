@@ -1972,7 +1972,7 @@ class MultipleInput extends InputField {
   }
 
   repeatable = false;
-  max_before_autocomplete = 10;
+  static max_before_autocomplete = 10;
 
   /**
    * Parse an object to fill in the properties of the object instance.
@@ -2006,7 +2006,7 @@ class MultipleInput extends InputField {
     let div = document.createElement("div");
     let form_shape;
 
-    if (this.values.values.length > this.max_before_autocomplete) {
+    if (this.values.values.length > MultipleInput.max_before_autocomplete) {
       form_shape = Field.autocomplete(this, active);
       this.autocomplete_id = form_shape.id;
     } else {
@@ -2031,7 +2031,10 @@ class MultipleInput extends InputField {
       }
     }
     div.appendChild(form_shape);
-    if (this.values.values.length <= this.max_before_autocomplete && active) {
+    if (
+      this.values.values.length <= MultipleInput.max_before_autocomplete &&
+      active
+    ) {
       div.appendChild(this.validator_message);
     }
 
@@ -2150,17 +2153,34 @@ class MultipleInput extends InputField {
   }
 
   add_moving_options() {
-    this.options_navbar.add_item("movers", "Moving options", true);
+    this.options_navbar.add_item("movers", "Edit individual options", true);
 
     const moving_div = Field.quick("div", "mover-container");
     moving_div.setAttribute("style", "max-height:300px;overflow:auto;");
     // Add moving input fields to design the options
-    this.form_field.add_moving_options("Select option", this, moving_div);
+    this.form_field.add_moving_options(this, moving_div);
     this.options_navbar.add_tab_content("movers", moving_div);
+    this.listen_to_movers(moving_div);
+  }
+
+  listen_to_movers(moving_div) {
+    moving_div.querySelectorAll("input.mover").forEach((input) => {
+      input.addEventListener("change", () => {
+        this.toggle_editing_navbar("movers");
+      });
+    });
+    moving_div.querySelectorAll("button.mover").forEach((input) => {
+      input.addEventListener("click", () => {
+        this.toggle_editing_navbar("movers");
+      });
+    });
+    moving_div.querySelectorAll("button.adder, button#rem").forEach(() => {
+      this.toggle_dropdown_switch();
+    });
   }
 
   add_textarea_options(options_as_text) {
-    this.options_navbar.add_item("textarea", "Manual typing");
+    this.options_navbar.add_item("textarea", "Edit in a text box");
     const textarea_div = this.form_field.add_input(
       "Select options",
       `${this.id}-typed`,
@@ -2184,6 +2204,7 @@ class MultipleInput extends InputField {
       textarea.value = fixed_value.join("\n");
       this.update_default_field();
       this.toggle_dropdown_switch();
+      this.toggle_editing_navbar("textarea", options_as_text);
     });
     this.options_navbar.add_tab_content("textarea", textarea_div);
   }
@@ -2201,6 +2222,7 @@ class MultipleInput extends InputField {
       description.innerHTML = `${options.length} options:`;
       this.update_default_field();
       this.toggle_dropdown_switch();
+      this.toggle_editing_navbar("file", options_as_text);
     };
 
     let file_div = Field.quick("div", "ex my-2");
@@ -2224,18 +2246,10 @@ class MultipleInput extends InputField {
     let explanation = Field.quick(
       "div",
       "form-text",
-      "Plain text file with one option per row."
+      "Plain text file with one option per row. This will REPLACE existing values."
     );
     explanation.id = file_input_id + "-help";
 
-    // Example with drag-and-drop
-    const description = Field.quick(
-      "p",
-      "fw-light mt-2 mb-0",
-      this.values.values.length == 0
-        ? "No options have been loaded."
-        : `${this.values.values.length} options:`
-    );
     let dd_example = Field.quick("pre", "border p-1 bg-light", options_as_text);
     dd_example.setAttribute(
       "style",
@@ -2255,22 +2269,87 @@ class MultipleInput extends InputField {
     file_div.appendChild(label);
     file_div.appendChild(input);
     file_div.appendChild(explanation);
-    file_div.appendChild(description);
     file_div.appendChild(dd_example);
 
     this.options_navbar.add_tab_content("file", file_div);
   }
 
+  toggle_editing_navbar(active_id, options_as_text = "") {
+    this.options_navbar.nav_bar.querySelectorAll("button").forEach((btn) => {
+      if (!btn.id.startsWith(active_id)) {
+        btn.setAttribute("disabled", "");
+      }
+    });
+    const active_tab = this.options_navbar.tab_content.querySelector(
+      `[id^="${active_id}"]`
+    );
+
+    if (active_tab.querySelector("#in-editing") == undefined) {
+      const msg_row = Field.quick(
+        "div",
+        "row justify-content-between alert alert-warning p-2 m-1 shadow align-items-center"
+      );
+      msg_row.id = "in-editing";
+      const col_left = Field.quick("main", "col-8 p-0 m-0");
+      const col_right = Field.quick("aside", "col-2 p-0 m-0");
+      msg_row.appendChild(col_left);
+      msg_row.appendChild(col_right);
+
+      const icon = Field.quick("i", "bi bi-pencil-fill");
+      icon.setAttribute("fill", "currentColor");
+      col_left.appendChild(icon);
+
+      let msg_box = Field.quick(
+        "span",
+        "",
+        "  You are editing this tab, all other tabs are disabled.  "
+      );
+      msg_box.setAttribute("role", "alert");
+      msg_box.id = "autosave-warning";
+      col_left.appendChild(msg_box);
+
+      let btn = Field.quick("button", "btn btn-warning fw-bold", "Reset");
+      // btn.setAttribute("style", "cursor: pointer;");
+      btn.addEventListener("click", () => {
+        msg_row.remove();
+        this.options_navbar.nav_bar
+          .querySelectorAll("button")
+          .forEach((btn) => btn.removeAttribute("disabled"));
+        if (active_id == "textarea") {
+          active_tab.querySelector("textarea").value =
+            this.values.values.length > 0 ? options_as_text : "";
+        } else if (active_id == "file") {
+          active_tab.querySelector("input").value = "";
+          active_tab.querySelector("pre").innerHTML = options_as_text;
+        } else if (active_id == "movers") {
+          active_tab
+            .querySelectorAll("div.blocked, button")
+            .forEach((div) => div.remove());
+          this.form_field.add_moving_options(
+            this,
+            active_tab.querySelector(".mover-container")
+          );
+          this.listen_to_movers(active_tab.querySelector(".mover-container"));
+        }
+      });
+      col_right.appendChild(btn);
+
+      active_tab.prepend(msg_row);
+    }
+  }
+
   toggle_dropdown_switch() {
     const temp_options = this.get_temp_options();
-    if (temp_options.length > this.max_before_autocomplete) {
-      this.form_field.switches
-        .querySelector("input[id$='dropdown']")
-        .setAttribute("disabled", "");
-    } else {
-      this.form_field.switches
-        .querySelector("input[id$='dropdown']")
-        .removeAttribute("disabled");
+    if (this.form_field_switches) {
+      if (temp_options.length > this.max_before_autocomplete) {
+        this.form_field.switches
+          .querySelector("input[id$='dropdown']")
+          .setAttribute("disabled", "");
+      } else {
+        this.form_field.switches
+          .querySelector("input[id$='dropdown']")
+          .removeAttribute("disabled");
+      }
     }
   }
 
@@ -2321,7 +2400,7 @@ class MultipleInput extends InputField {
         moving_div
           .querySelectorAll("div.blocked, div.mover")
           .forEach((x) => x.remove());
-        this.form_field.add_moving_options("Select option", this, moving_div);
+        this.form_field.add_moving_options(this, moving_div);
       }
       if (!this.relevant_id.startsWith("file")) {
         this.options_navbar.tab_content.querySelector("pre").innerHTML =

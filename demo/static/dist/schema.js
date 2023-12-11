@@ -1350,26 +1350,30 @@ class Schema extends ComplexField {
     const is_new =
       this.data_status == "copy" || this.card_id.startsWith("schema-editor");
 
-    let msg_box = Field.quick(
+    const msg_row = Field.quick(
       "div",
-      "border border-warning shadow rounded-1 p-2 mt-2"
+      "row alert alert-warning p-2 mt-2 shadow"
     );
+    const col_left = Field.quick("main", "col p-0 m-0");
+    const col_right = Field.quick("aside", "col-3 p-0 m-0");
+    msg_row.appendChild(col_left);
+    msg_row.appendChild(col_right);
+
+    let msg_box = Field.quick(
+      "span",
+      "",
+      "You are seeing a temporary version of this draft; click on the buttons at the bottom to save your schema."
+    );
+    msg_box.setAttribute("role", "alert");
     msg_box.id = "autosave-warning";
+    col_left.appendChild(msg_box);
 
-    let msg = Field.quick(
-      "span",
-      "text-warning fw-semibold",
-      "You are seeing a temporary version of this draft; click on the buttons at the bottom to save to file. "
-    );
-    msg_box.appendChild(msg);
-
-    let action = is_new ? "reset" : "revert to saved changes";
     let btn = Field.quick(
-      "span",
-      "text-warning fw-bolder",
-      `Click here to ${action}.`
+      "button",
+      "btn btn-warning fw-bold",
+      is_new ? "Reset" : "Revert to saved changes"
     );
-    btn.setAttribute("style", "cursor: pointer;");
+    // btn.setAttribute("style", "cursor: pointer;");
     btn.addEventListener("click", () => {
       this.reset_ls();
       if (!this.card_id.startsWith("schema-editor")) {
@@ -1379,9 +1383,9 @@ class Schema extends ComplexField {
         location.reload();
       }
     });
-    msg_box.appendChild(btn);
+    col_right.appendChild(btn);
 
-    this.form.form.parentElement.insertBefore(msg_box, this.form.form);
+    this.form.form.parentElement.insertBefore(msg_row, this.form.form);
   }
 
   reset_ls() {
