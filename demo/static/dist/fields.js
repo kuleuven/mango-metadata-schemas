@@ -2340,8 +2340,8 @@ class MultipleInput extends InputField {
 
   toggle_dropdown_switch() {
     const temp_options = this.get_temp_options();
-    if (this.form_field_switches) {
-      if (temp_options.length > this.max_before_autocomplete) {
+    if (this.form_field.switches) {
+      if (temp_options.length > MultipleInput.max_before_autocomplete) {
         this.form_field.switches
           .querySelector("input[id$='dropdown']")
           .setAttribute("disabled", "");
