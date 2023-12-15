@@ -920,18 +920,21 @@ class BasicForm {
       new_input.querySelector("input.mover").addEventListener("change", () => {
         input_field.update_default_field();
         input_field.toggle_dropdown_switch();
+        input_field.toggle_editing_navbar("movers");
+        input_field.alert_repeated_movers(div);
       });
       new_input.querySelectorAll("button.mover").forEach((btn) =>
         btn.addEventListener("click", () => {
           input_field.update_default_field();
           input_field.toggle_dropdown_switch();
+          input_field.toggle_editing_navbar("movers");
         })
       );
       // disable its 'down' button
       new_input.querySelector(".down").setAttribute("disabled", "");
 
       // add it to the form
-      div.appendChild(new_input);
+      div.insertBefore(new_input, plus);
 
       // re-enable the 'down' button of the field before it
       new_input.previousSibling
@@ -951,8 +954,6 @@ class BasicForm {
     plus_icon.setAttribute("fill", "currentColor");
     plus_icon.setAttribute("width", "16");
     plus.prepend(plus_icon);
-    // plus_div.appendChild(plus);
-    div.appendChild(plus);
     // go through each option and create a mover
     // with its value if provided
     for (let i in options) {
@@ -985,6 +986,7 @@ class BasicForm {
       // add the field to the form, before the divider
       div.appendChild(input);
     }
+    div.appendChild(plus);
   }
 
   add_editor(div, before_switches = true) {

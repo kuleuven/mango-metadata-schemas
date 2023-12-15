@@ -2006,9 +2006,16 @@ class MultipleInput extends InputField {
     let div = document.createElement("div");
     let form_shape;
 
+    // get actual input field
     if (this.values.values.length > MultipleInput.max_before_autocomplete) {
+      // if we have so many values we go for a search gox
       form_shape = Field.autocomplete(this, active);
       this.autocomplete_id = form_shape.id;
+      if (this.values.multiple) {
+        // if many values are possible
+        this.answers_div = Field.quick("div", "my-2");
+        this.answers_div.id = `${this.name}-answers`;
+      }
     } else {
       form_shape =
         this.values.uid == "dropdown"
@@ -2016,11 +2023,13 @@ class MultipleInput extends InputField {
           : Field.checkbox_radio(this, active);
     }
 
+    // create description
     if (this.help) {
       let subtitle = Field.quick("div", "form-text mt-0 mb-1", this.help);
       subtitle.id = "help-" + this.id;
       div.appendChild(subtitle);
-      if (this.values.ui == "dropdown") {
+
+      if (this.autocomplete_id || this.values.ui == "dropdown") {
         form_shape.setAttribute("aria-describedby", subtitle.id);
       } else {
         form_shape.querySelectorAll("div.form-check").forEach((subdiv) => {
@@ -2030,11 +2039,15 @@ class MultipleInput extends InputField {
         });
       }
     }
+
+    // add field for multiple answers for search box, if relevant
+    if (this.answers_div) {
+      div.appendChild(this.answers_div);
+    }
     div.appendChild(form_shape);
-    if (
-      this.values.values.length <= MultipleInput.max_before_autocomplete &&
-      active
-    ) {
+
+    // add validation message
+    if (active) {
       div.appendChild(this.validator_message);
     }
 
@@ -2167,6 +2180,7 @@ class MultipleInput extends InputField {
     moving_div.querySelectorAll("input.mover").forEach((input) => {
       input.addEventListener("change", () => {
         this.toggle_editing_navbar("movers");
+        this.alert_repeated_movers(moving_div);
       });
     });
     moving_div.querySelectorAll("button.mover").forEach((input) => {
@@ -2176,7 +2190,81 @@ class MultipleInput extends InputField {
     });
     moving_div.querySelectorAll("button.adder, button#rem").forEach(() => {
       this.toggle_dropdown_switch();
+      this.update_help();
+      this.alert_repeated_movers(moving_div);
     });
+  }
+
+  alert_repeated_movers(moving_div) {
+    const current_values = [...moving_div.querySelectorAll("input.mover")].map(
+      (x) => x.value
+    );
+    if ([...new Set(current_values)].length < current_values.length) {
+      const parent = moving_div.parentElement;
+      let msg_row = parent.querySelector("#repeated-values");
+      const repeated_values = [
+        ...new Set(
+          current_values.filter(
+            (x) => current_values.filter((y) => y == x).length > 1
+          )
+        ),
+      ];
+      const msg = `  The following values are repeated: ${repeated_values.join(
+        ", "
+      )}. Only one instance of each will be kept.`;
+
+      if (msg_row != null) {
+        msg_row.remove();
+      }
+
+      msg_row = Field.quick(
+        "div",
+        "row justify-content-between alert alert-info p-2 m-1 shadow align-items-center"
+      );
+      msg_row.id = "repeated-values";
+      const col_left = Field.quick("main", "col-8 p-0 m-0");
+      const col_right = Field.quick("aside", "col-3 p-0 m-0");
+      msg_row.appendChild(col_left);
+      msg_row.appendChild(col_right);
+
+      const icon = Field.quick("i", "bi bi-info-circle-fill");
+      icon.setAttribute("fill", "currentColor");
+      col_left.appendChild(icon);
+
+      let msg_box = Field.quick("span", "", msg);
+      msg_box.setAttribute("role", "alert");
+      msg_box.id = "repeated-warning";
+      col_left.appendChild(msg_box);
+
+      let btn = Field.quick(
+        "button",
+        "btn btn-info fw-bold",
+        "Delete duplicates"
+      );
+      // btn.setAttribute("style", "cursor: pointer;");
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        const repeated_indices = repeated_values
+          .map((x) => {
+            return current_values
+              .map((y, i) => {
+                return y == x ? i : "other";
+              })
+              .filter((x) => x != "other")
+              .slice(1);
+          })
+          .flat();
+        parent.querySelectorAll(".blocked").forEach((x, i) => {
+          if (repeated_indices.indexOf(i) > -1) {
+            x.remove();
+          }
+          msg_row.remove();
+        });
+      });
+      col_right.appendChild(btn);
+
+      parent.insertBefore(msg_row, moving_div);
+    }
   }
 
   add_textarea_options(options_as_text) {
@@ -2201,7 +2289,7 @@ class MultipleInput extends InputField {
         .split("\n")
         .map((x) => x.trim())
         .filter((x) => x.length > 0);
-      textarea.value = fixed_value.join("\n");
+      textarea.value = [...new Set(fixed_value)].join("\n");
       this.update_default_field();
       this.toggle_dropdown_switch();
       this.toggle_editing_navbar("textarea", options_as_text);
@@ -2218,8 +2306,7 @@ class MultipleInput extends InputField {
         .split("\n")
         .map((x) => x.trim())
         .filter((x) => x.length > 0);
-      dd_example.innerHTML = options.join("\n");
-      description.innerHTML = `${options.length} options:`;
+      dd_example.innerHTML = [...new Set(options)].join("\n");
       this.update_default_field();
       this.toggle_dropdown_switch();
       this.toggle_editing_navbar("file", options_as_text);
@@ -2354,7 +2441,7 @@ class MultipleInput extends InputField {
   }
 
   get_temp_options() {
-    let relevant_tab;
+    let relevant_tab, raw_list;
     if (this.relevant_id) {
       relevant_tab = this.options_navbar.tab_content.querySelector(
         `[id^="${this.relevant_id}"]`
@@ -2365,14 +2452,15 @@ class MultipleInput extends InputField {
     }
     if (this.relevant_id.startsWith("textarea")) {
       const textarea = relevant_tab.querySelector("textarea").value;
-      return textarea.split("\n");
+      raw_list = textarea.split("\n");
     } else if (this.relevant_id.startsWith("movers")) {
       const moving_fields = relevant_tab.querySelectorAll("div.blocked input");
-      return [...moving_fields].map((option) => option.value);
+      raw_list = [...moving_fields].map((option) => option.value);
     } else if (this.relevant_id.startsWith("file")) {
       const file_contents = relevant_tab.querySelector("pre").innerHTML;
-      return file_contents.split("\n");
+      raw_list = file_contents.split("\n");
     }
+    return [...new Set(raw_list)];
   }
 
   /**

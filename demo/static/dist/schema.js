@@ -396,7 +396,7 @@ class ComplexField {
       this.name = "schema-editor"; // then the name should be 'schema-editor'
     } else if (this.parent) {
       // if this is the clone of another schema
-      this.name = this.parent.match(/(.+)-\d\.\d\.\d/)[1]; // get the name of the parent (no versions)
+      this.name = this.parent.match(/(.+)-\d+\.\d\.\d/)[1]; // get the name of the parent (no versions)
     }
   }
 
@@ -612,7 +612,7 @@ class Schema extends ComplexField {
     super(card_id, data_status);
     this.card_id = card_id;
     this.ls_id = `_mgs_${this.card_id}_${this.data_status}`;
-    this.name = card_id.match(/^(.*)-\d\d\d$/)[1];
+    this.name = card_id.match(/^(.*)-\d+\d\d$/)[1];
     this.version = version;
     this.container = container_id;
     this.urls = urls;
@@ -1600,15 +1600,6 @@ class SchemaForm {
 
     // create the form and add the fields
     this.from_json(json.properties);
-    this.names = SchemaForm.get_flattened_names(this.fields);
-  }
-
-  static get_flattened_names(fields) {
-    return Object.values(fields)
-      .map((x) =>
-        x.name ? x.name : SchemaForm.get_flattened_names(x.editor.fields)
-      )
-      .flat();
   }
 
   /**
@@ -1695,7 +1686,7 @@ class SchemaForm {
    * @param {Object<String,String[]>} annotated_data Key-value pairs with the existing metadata.
    */
   add_annotation(annotated_data) {
-    // add a hidden field withthe value of 'redirect_route
+    // add a hidden field with the value of 'redirect_route
     let hidden_input = document.createElement("input");
     hidden_input.type = "hidden";
     hidden_input.name = "redirect_route";
@@ -1706,20 +1697,27 @@ class SchemaForm {
     let keys = Object.keys(annotated_data).filter(
       (x) => x.startsWith(this.prefix) && !x.endsWith("__version__")
     );
+    const top_level_names = this.field_ids.map((x) => `${this.prefix}.${x}`);
 
     // extract fields that are not in composite fields and register them
     let non_objects = keys.filter(
       (fid) =>
         typeof annotated_data[fid][0] != "object" &&
-        this.names.indexOf(fid) > -1
+        top_level_names.indexOf(fid) > -1
     );
     non_objects.forEach((fid) => this.register_non_object(fid, annotated_data));
 
     // extract fields that are in composite fields
-    let objs = keys.filter((fid) => typeof annotated_data[fid][0] == "object");
+    let objs = keys.filter(
+      (fid) =>
+        typeof annotated_data[fid][0] == "object" &&
+        top_level_names.indexOf(fid) > -1
+    );
     // identify the unique composite fields
     // go through each composite field and register its subfields
-    objs.forEach((fid) => this.register_object(fid, annotated_data));
+    objs.forEach((fid) =>
+      this.register_object(fid, annotated_data, this.fields[fid])
+    );
 
     SchemaForm.prepare_objects(this, annotated_data, this.form, this.prefix);
   }
@@ -1731,14 +1729,24 @@ class SchemaForm {
    * @param {String} prefix Prefix common to all these fields.
    * @param {HTMLFormElement|HTMLDivElement} form Form or div element inside which we can find the input field to fill in.
    */
-  register_object(obj, annotated_data, prefix = null, form = null) {
+  register_object(
+    obj,
+    annotated_data,
+    fields = null,
+    prefix = null,
+    form = null
+  ) {
     // Start with the original prefix, but accumulate when we have nested composite fields
     prefix = prefix || this.prefix;
     form = form || this.form;
+    fields = fields || this.fields;
 
     // Identify the fields that belong to this particular composite fields
     let existing_values = annotated_data[obj];
     let raw_name = obj.match(`${prefix}.(?<field>[^\.]+)`).groups.field;
+    let top_level_names = fields[raw_name].editor.field_ids.map(
+      (x) => `${obj}.${x}`
+    );
     let first_unit =
       "__unit__" in existing_values[0]
         ? String(existing_values[0].__unit__[0])
@@ -1774,19 +1782,33 @@ class SchemaForm {
         .querySelector("div.input-view");
 
       // Extract the fields that are not inside nested composite fields and register them
+      console.log(Object.keys(object), top_level_names);
       let not_nested = Object.keys(object).filter(
-        (fid) => typeof object[fid][0] != "object" && fid != "__unit__"
+        (fid) =>
+          typeof object[fid][0] != "object" &&
+          fid != "__unit__" &&
+          top_level_names.indexOf(fid) > -1
       );
+      console.log(not_nested);
       not_nested.forEach((fid) => {
         this.register_non_object(fid, object, viewer);
       });
 
       // Extract the fields that are inside nested composite fields
       let nested = Object.keys(object).filter(
-        (fid) => typeof object[fid][0] == "object"
+        (fid) =>
+          typeof object[fid][0] == "object" && top_level_names.indexOf(fid) > -1
       );
       // Go through each nested composite field and register its subfields, with an accumulated prefix
-      nested.forEach((fid) => this.register_object(fid, object, obj, viewer));
+      nested.forEach((fid) =>
+        this.register_object(
+          fid,
+          object,
+          fields[raw_name].editor.fields,
+          obj,
+          viewer
+        )
+      );
     });
   }
 
