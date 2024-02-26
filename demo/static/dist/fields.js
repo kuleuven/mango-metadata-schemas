@@ -759,17 +759,17 @@ class InputField {
 
       if (this.constructor.name == "ObjectInput") {
         // this will have to change to adapt to creating filled-schemas (attached to new ids)
-        // clone.editor = this.editor;
+        // clone.minischema = this.minischema;
         clone.create_editor();
-        clone.editor.field_ids = [...this.editor.field_ids];
-        this.editor.field_ids.forEach((fid) => {
-          let field = this.editor.fields[fid];
-          let new_field = field.clone(clone.editor, field.id, field.title);
-          new_field.create_modal(this.editor);
-          clone.editor.fields[fid] = new_field;
+        clone.minischema.field_ids = [...this.minischema.field_ids];
+        this.minischema.field_ids.forEach((fid) => {
+          let field = this.minischema.fields[fid];
+          let new_field = field.clone(clone.minischema, field.id, field.title);
+          new_field.create_modal(this.minischema);
+          clone.minischema.fields[fid] = new_field;
           field.delete_modal();
         });
-        this.editor.reset();
+        this.minischema.reset();
       }
 
       // bring the current form, editor and contents to their original values
@@ -1721,13 +1721,13 @@ class ObjectInput extends InputField {
    */
   create_editor() {
     // If it doesn't exist, create a new ObjectEditor, otherwise just update the id of the form
-    if (this.editor == undefined) {
-      this.editor = new ObjectEditor(this);
+    if (this.minischema == undefined) {
+      this.minischema = new ObjectEditor(this);
     } else {
-      this.editor.form_id = this.form_field.form.id;
+      this.minischema.form_id = this.form_field.form.id;
     }
     // Start up the editor (offering subfield options)
-    this.editor.display_options();
+    this.minischema.display_options();
   }
 
   /**
@@ -1736,12 +1736,12 @@ class ObjectInput extends InputField {
    * @returns {FieldInfo} JSON representation of the contents of the field.
    */
   to_json() {
-    // Update `this.editor.properties` with the Object version of its subfields
-    this.editor.fields_to_json();
+    // Update `this.minischema.properties` with the Object version of its subfields
+    this.minischema.fields_to_json();
     // create the object
     let json = {
       title: this.title,
-      properties: this.editor.properties,
+      properties: this.minischema.properties,
       type: "object",
     };
 
@@ -1770,7 +1770,7 @@ class ObjectInput extends InputField {
 
   get default_help() {
     return `Nested form with ${
-      this.editor ? this.editor.field_ids.length : " "
+      this.minischema ? this.minischema.field_ids.length : " "
     }subfields that go together.`;
   }
 
@@ -1799,7 +1799,7 @@ class ObjectInput extends InputField {
    * @returns {HTMLDivElement}
    */
   viewer_input(active = false) {
-    return ComplexField.create_viewer(this.editor, active);
+    return ComplexField.create_viewer(this.minischema, active);
   }
 
   /**
@@ -1815,7 +1815,7 @@ class ObjectInput extends InputField {
 
     // if there is existing data, fill in the editor
     if (this.json_source != undefined) {
-      this.editor.from_json(this.json_source);
+      this.minischema.from_json(this.json_source);
     }
 
     // finish the form
@@ -1823,7 +1823,7 @@ class ObjectInput extends InputField {
 
     // insert the 'add element' button before the switches
     const switches = this.form_field.form.querySelector("#switches-div");
-    this.form_field.form.insertBefore(this.editor.button, switches);
+    this.form_field.form.insertBefore(this.minischema.button, switches);
   }
 
   /**
@@ -1835,12 +1835,12 @@ class ObjectInput extends InputField {
     super.create_modal(schema);
 
     // Assign the id of the modal as the hook of the editor
-    this.editor.card_id = `${this.mode}-${this.id}-${this.schema_name}-${this.schema_status}`;
+    this.minischema.card_id = `${this.mode}-${this.id}-${this.schema_name}-${this.schema_status}`;
 
     // Go through each subfield and render it
-    this.editor.field_ids.forEach((field_id, idx) => {
-      this.editor.new_field_idx = idx;
-      this.editor.view_field(this.editor.fields[field_id]);
+    this.minischema.field_ids.forEach((field_id, idx) => {
+      this.minischema.new_field_idx = idx;
+      this.minischema.view_field(this.minischema.fields[field_id]);
     });
   }
 

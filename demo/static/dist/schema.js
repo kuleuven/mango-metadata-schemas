@@ -487,7 +487,7 @@ class ComplexField {
     this.field_ids.forEach((fid) => {
       const field = this.fields[fid];
       if (field.type == "object") {
-        field.editor.activate_autocompletes(read, include_editor);
+        field.minischema.activate_autocompletes(read, include_editor);
       } else if (field.autocomplete_id != undefined) {
         field.activate_autocomplete();
         if (read) {
@@ -1623,8 +1623,8 @@ class SchemaForm {
       // the 'data_status' argument is not relevant here
       let new_field = InputField.choose_class(this.name, "", "", entry);
       if (new_field.constructor.name == "ObjectInput") {
-        new_field.editor = new ObjectEditor(new_field);
-        new_field.editor.from_json(new_field.json_source);
+        new_field.minischema = new ObjectEditor(new_field);
+        new_field.minischema.from_json(new_field.json_source);
       }
       this.fields[entry[0]] = new_field;
     }
@@ -1688,7 +1688,7 @@ class SchemaForm {
     this.field_ids.forEach((fid) => {
       const field = this.fields[fid];
       if (field.type == "object") {
-        field.editor.activate_autocompletes(true);
+        field.minischema.activate_autocompletes(true);
       } else if (field.autocomplete_id != undefined) {
         field.activate_autocomplete();
         field.read_autocomplete();
@@ -1759,7 +1759,7 @@ class SchemaForm {
     // Identify the fields that belong to this particular composite fields
     let existing_values = annotated_data[obj];
     let raw_name = obj.match(`${prefix}.(?<field>[^\.]+)`).groups.field;
-    let top_level_names = fields[raw_name].editor.field_ids.map(
+    let top_level_names = fields[raw_name].minischema.field_ids.map(
       (x) => `${obj}.${x}`
     );
     let first_unit =
@@ -1816,7 +1816,7 @@ class SchemaForm {
         this.register_object(
           fid,
           object,
-          fields[raw_name].editor.fields,
+          fields[raw_name].minischema.fields,
           obj,
           viewer
         )
@@ -1893,7 +1893,7 @@ class SchemaForm {
           `div.mini-viewer[data-field-name="${fid}"]`
         );
         viewer.setAttribute("data-composite-unit", String(unit));
-        let sub_schema = object_editor.fields[fid].editor;
+        let sub_schema = object_editor.fields[fid].minischema;
         console.log("preparing ", viewer);
         console.log(sub_schema);
         let empty_simple_subfields = sub_schema.field_ids.filter((subfid) => {
@@ -1974,7 +1974,7 @@ class SchemaForm {
           ];
           direct_children.forEach((child) => {
             const field_data =
-              composite_field.editor.fields[
+              composite_field.minischema.fields[
                 child.getAttribute("data-field-name")
               ];
             if (field_data.type != "object") {
@@ -2004,7 +2004,7 @@ class SchemaForm {
         // NOTE this is not good at dealing with nested composite fields yet!
         inner_repeatables.forEach((subfield) => {
           let subfield_data =
-            field.editor.fields[subfield.getAttribute("data-field-name")];
+            field.minischema.fields[subfield.getAttribute("data-field-name")];
           let old_button =
             subfield.querySelector("button i.bi-front").parentElement;
           let new_button = SchemaForm.field_replicator(subfield_data, subfield);
@@ -2033,7 +2033,7 @@ class SchemaForm {
       // if the field is composite, apply this to each field inside
       if (object_editor.fields[field_id].constructor.name == "ObjectInput") {
         SchemaForm.flatten_object(
-          object_editor.fields[field_id].editor,
+          object_editor.fields[field_id].minischema,
           subfield_flattened
         );
       } else {

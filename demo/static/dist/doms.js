@@ -293,7 +293,10 @@ class MovingViewer extends MovingField {
     // div element
     this.div = Field.quick("div", "card border-primary viewer");
     this.div.id = form.id;
-    this.body = form.viewer_input();
+    this.body =
+      form.constructor.name == "ObjectInput"
+        ? form.form_field.form
+        : form.viewer_input();
     const search_input = this.body.querySelector("input[type='search']");
     if (search_input != undefined) {
       search_input.id = search_input.id + "-editor";
@@ -368,11 +371,11 @@ class MovingViewer extends MovingField {
 
     // Transfer the mini-schema if the field is composite
     if (form.constructor.name == "ObjectInput") {
-      clone.editor.field_ids = [...form.editor.field_ids];
-      clone.editor.fields = { ...form.editor.fields };
-      clone.editor.field_ids.forEach((field_id, idx) => {
-        clone.editor.new_field_idx = idx;
-        clone.editor.view_field(clone.editor.fields[field_id]);
+      clone.minischema.field_ids = [...form.minischema.field_ids];
+      clone.minischema.fields = { ...form.minischema.fields };
+      clone.minischema.field_ids.forEach((field_id, idx) => {
+        clone.minischema.new_field_idx = idx;
+        clone.minischema.view_field(clone.minischema.fields[field_id]);
       });
     }
 
