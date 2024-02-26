@@ -737,18 +737,10 @@ class InputField {
     // if we are updating an existing field without changing the ID
     if (old_id == new_id) {
       this.title = data.get(`${this.id}-label`).trim();
-      if (this.options_navbar) {
-        const relevant_tab =
-          this.options_navbar.tab_content.querySelector("div.show");
-        this.relevant_id = relevant_tab.id.split("-")[0];
-        if (this.relevant_id == "file") {
-          data.append(
-            "file-options",
-            relevant_tab.querySelector("pre").innerHTML
-          );
-        }
-      }
-      this.recover_fields(this.id, data); // update the field
+      this.recover_fields(
+        this.id,
+        this.options_navbar ? this.temp_options : data
+      ); // update the field
       schema.update_field(this); // update the schema
       return this;
     } else {
@@ -760,20 +752,10 @@ class InputField {
         new_id,
         data.get(`${this.id}-label`).trim()
       );
-      if (this.options_navbar) {
-        const relevant_tab =
-          this.options_navbar.tab_content.querySelector("div.show");
-        const relevant_id = relevant_tab.id.split("-")[0];
-        if (relevant_id == "file") {
-          data.append(
-            "file-options",
-            relevant_tab.querySelector("pre").innerHTML
-          );
-        }
-        clone.options_navbar = this.options_navbar;
-        clone.relevant_id = relevant_id;
-      }
-      clone.recover_fields(this.id, data);
+      clone.recover_fields(
+        this.id,
+        this.options_navbar ? this.temp_options : data
+      );
 
       if (this.constructor.name == "ObjectInput") {
         // this will have to change to adapt to creating filled-schemas (attached to new ids)
@@ -1067,7 +1049,9 @@ class TypedInput extends InputField {
     } else if (regex_div) {
       regex_div.remove();
       placeholder_input.removeAttribute("pattern");
-      default_input.removeAttribute("pattern");
+      if (default_input != null) {
+        default_input.removeAttribute("pattern");
+      }
       this.temp_values.pattern = "";
       this.update_help();
     }
@@ -1539,8 +1523,6 @@ class TypedInput extends InputField {
     }
     if (TypedInput.types_with_regex.indexOf(this.type) > -1) {
       let pattern = data.get(`${id}-regex`);
-      console.log("From form: ", pattern);
-      console.log(this.temp_values.pattern);
       if (pattern != undefined) this.values.pattern = pattern.trim();
     } else {
       this.values.pattern = "";
@@ -2018,7 +2000,7 @@ class MultipleInput extends InputField {
       }
     } else {
       form_shape =
-        this.values.uid == "dropdown"
+        this.values.ui == "dropdown"
           ? Field.dropdown(this, active)
           : Field.checkbox_radio(this, active);
     }
@@ -2083,8 +2065,11 @@ class MultipleInput extends InputField {
           }
         },
         noResults: true,
+        maxResults: 20,
       },
-      resultItem: { highlight: true },
+      resultItem: {
+        highlight: true,
+      },
     });
     document
       .querySelector(new_selector)
@@ -2185,25 +2170,23 @@ class MultipleInput extends InputField {
         this.alert_repeated_movers(moving_div);
       });
     });
-    moving_div.querySelectorAll("button.mover").forEach((input) => {
+    moving_div.querySelectorAll("button.rem").forEach((input) => {
       input.addEventListener("click", () => {
-        this.toggle_editing_navbar("movers");
+        this.toggle_dropdown_switch();
+        this.update_default_field();
+        this.update_help();
+        this.alert_repeated_movers(moving_div);
       });
-    });
-    moving_div.querySelectorAll("button.adder, button#rem").forEach(() => {
-      this.toggle_dropdown_switch();
-      this.update_help();
-      this.alert_repeated_movers(moving_div);
     });
   }
 
   alert_repeated_movers(moving_div) {
-    const current_values = [...moving_div.querySelectorAll("input.mover")].map(
-      (x) => x.value
-    );
+    const current_values = [...moving_div.querySelectorAll("input.mover")]
+      .map((x) => x.value)
+      .filter((x) => x.length > 0);
+    const parent = moving_div.parentElement;
+    let msg_row = parent.querySelector("#repeated-values");
     if ([...new Set(current_values)].length < current_values.length) {
-      const parent = moving_div.parentElement;
-      let msg_row = parent.querySelector("#repeated-values");
       const repeated_values = [
         ...new Set(
           current_values.filter(
@@ -2270,16 +2253,21 @@ class MultipleInput extends InputField {
       col_right.appendChild(btn);
 
       parent.insertBefore(msg_row, moving_div);
+    } else {
+      if (msg_row != null) {
+        msg_row.remove();
+      }
     }
   }
 
   add_textarea_options(options_as_text) {
     this.options_navbar.add_item("textarea", "Edit in a text box");
+    const description = "Type or paste your options, one per line.";
     const textarea_div = this.form_field.add_input(
-      "Select options",
+      "Type options",
       `${this.id}-typed`,
       {
-        description: "Type or paste your options, one per line.",
+        description: description,
         required: false,
         value: this.values.values.length > 0 ? options_as_text : false,
         as_textarea: true,
@@ -2297,6 +2285,7 @@ class MultipleInput extends InputField {
         .filter((x) => x.length > 0);
       textarea.value = [...new Set(fixed_value)].join("\n");
       this.update_default_field();
+      this.update_help();
       this.toggle_dropdown_switch();
       this.toggle_editing_navbar("textarea", options_as_text);
     });
@@ -2314,6 +2303,7 @@ class MultipleInput extends InputField {
         .filter((x) => x.length > 0);
       dd_example.innerHTML = [...new Set(options)].join("\n");
       this.update_default_field();
+      this.update_help();
       this.toggle_dropdown_switch();
       this.toggle_editing_navbar("file", options_as_text);
     };
@@ -2470,7 +2460,6 @@ class MultipleInput extends InputField {
       const file_contents = relevant_tab.querySelector("pre").innerHTML;
       raw_list = file_contents.split("\n");
     }
-    console.log(raw_list, [...new Set(raw_list)]);
     return [...new Set(raw_list)];
   }
 
@@ -2501,9 +2490,14 @@ class MultipleInput extends InputField {
           .forEach((x) => x.remove());
         this.form_field.add_moving_options(this, moving_div);
       }
+      const values_as_text = this.values.values.join("\n");
+      if (!this.relevant_id.startsWith("textarea")) {
+        this.options_navbar.tab_content.querySelector("textarea").value =
+          values_as_text;
+      }
       if (!this.relevant_id.startsWith("file")) {
         this.options_navbar.tab_content.querySelector("pre").innerHTML =
-          this.values.values.join("\n");
+          values_as_text;
       }
     }
 
@@ -2512,11 +2506,11 @@ class MultipleInput extends InputField {
       let selected = default_field.querySelector("option[selected]");
       let selected_value = selected == null ? null : selected.value.trim();
       default_field.querySelectorAll("option").forEach((x) => x.remove());
-      for (let i of this.values.values) {
+      for (let val of this.values.values) {
         let new_option = document.createElement("option");
-        new_option.value = i;
-        new_option.innerHTML = i;
-        if (selected_value != null && i == selected_value) {
+        new_option.value = val;
+        new_option.innerHTML = val;
+        if (selected_value != null && val == selected_value) {
           new_option.setAttribute("selected", "");
         }
         default_field.appendChild(new_option);
@@ -2539,8 +2533,16 @@ class MultipleInput extends InputField {
     }
 
     // reset the form and field
-    super.reset();
+    this.relevant_id = "movers";
     this.values.values = [];
+    super.reset();
+    this.options_navbar.nav_bar.querySelectorAll("button").forEach((btn) => {
+      btn.removeAttribute("disabled");
+      if (btn.id.startsWith("movers")) {
+        bootstrap.Tab.getOrCreateInstance(btn).show();
+      }
+    });
+    this.options_navbar.tab_content.querySelector("#in-editing").remove();
   }
 
   /**
@@ -2701,45 +2703,53 @@ class SelectInput extends MultipleInput {
    * But once you have saved your input, the next edit will offer the right options.
    */
   add_default_field() {
-    this.form_field.add_select(
-      "Default value (if field is required)",
-      `${this.id}-default`,
-      this.values.values,
-      this.default
-    );
+    if (typeof this.values.values == "object") {
+      this.form_field.add_select(
+        "Default value (if field is required)",
+        `${this.id}-default`,
+        this.values.values,
+        this.default
+      );
+    }
   }
 
   update_default_field() {
     let default_field = this.form_field.form.querySelector(
       `select#${this.id}-default`
     );
-    let selected = default_field.value;
-    default_field
-      .querySelectorAll("option:not([value=''])")
-      .forEach((option) => option.remove());
-    const new_fields = this.temp_options;
+    if (typeof this.temp_options == "string") {
+      default_field.setAttribute("disabled", "");
+    } else {
+      default_field.removeAttribute("disabled");
 
-    if (
-      selected &&
-      new_fields.indexOf(selected) == -1 &&
-      default_field.querySelectorAll("option").length == 0
-    ) {
-      selected = "";
-      let empty_option = document.createElement("option");
-      empty_option.innerHTML = "Select option below";
-      empty_option.value = "";
-      default_field.appendChild(empty_option);
-    }
+      let selected = default_field.value;
+      default_field
+        .querySelectorAll("option:not([value=''])")
+        .forEach((option) => option.remove());
+      const new_fields = this.temp_options;
 
-    new_fields.forEach((option) => {
-      if (option) {
-        let option_field = document.createElement("option");
-        option_field.innerHTML = option;
-        option_field.value = option;
-        if (option == selected) option_field.setAttribute("selected", "");
-        default_field.appendChild(option_field);
+      if (
+        selected &&
+        new_fields.indexOf(selected) == -1 &&
+        default_field.querySelectorAll("option").length == 0
+      ) {
+        selected = "";
+        let empty_option = document.createElement("option");
+        empty_option.innerHTML = "Select option below";
+        empty_option.value = "";
+        default_field.appendChild(empty_option);
       }
-    });
+
+      new_fields.forEach((option) => {
+        if (option) {
+          let option_field = document.createElement("option");
+          option_field.innerHTML = option;
+          option_field.value = option;
+          if (option == selected) option_field.setAttribute("selected", "");
+          default_field.appendChild(option_field);
+        }
+      });
+    }
   }
 
   /**

@@ -63,7 +63,7 @@
                      role="tabpanel"
                      aria-labelledby="pills-{{ schema }}-tab">
                     <p class="text-end fst-italic">
-                        Schema version: {{ grouped_metadata[schema].get("mgs."~ schema ~".__version__") .value }}
+                        Schema version: {{ grouped_metadata[schema].get("mgs."~ schema ~".__version__").value }}
                     </p>
                     {% for name, info in schema_labels[schema].items() %}
                         {% if info['level'] == 0 %}

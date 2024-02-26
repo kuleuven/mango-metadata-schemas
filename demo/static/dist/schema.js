@@ -23,7 +23,7 @@ class ComplexField {
    */
   constructor(name, data_status = "draft") {
     // properties of the schema itself
-    this.modal_id = `choice-${name}-${data_status}`;
+    this.modal_id = `m-${name}-${data_status}`;
     this.initial_name = name;
     this.data_status = data_status;
     this.field_id_regex = "[a-zA-Z0-9_\\-]+";
@@ -107,7 +107,7 @@ class ComplexField {
    * Add new fields based on uploaded JSON file.
    * @param {FieldInfo} data JSON representation of a field.
    */
-  add_fields_from_json(data) {
+  add_fields_from_json(data, modal_id) {
     Object.keys(data).forEach((field_id) => {
       let new_field = InputField.choose_class(
         this.initial_name,
@@ -120,8 +120,9 @@ class ComplexField {
       this.add_field(new_field);
       this.new_field_idx = this.new_field_idx + 1;
     });
+
     bootstrap.Modal.getOrCreateInstance(
-      document.getElementById(this.modal_id)
+      document.getElementById(modal_id)
     ).toggle();
   }
 
@@ -412,7 +413,7 @@ class ComplexField {
     // create a form or div depending on whether it's for annotation or not
     // active can be true for a composite field during annotation, but we should not create a form for it
     let div =
-      schema.constructor.name == "SchemaForm"
+      active && schema.constructor.name == "SchemaForm"
         ? Field.quick("form", "mt-3 needs-validation")
         : Field.quick("div", "input-view");
 
@@ -480,6 +481,22 @@ class ComplexField {
 
   autosave() {
     return null;
+  }
+
+  activate_autocompletes(read = false, include_editor = true) {
+    this.field_ids.forEach((fid) => {
+      const field = this.fields[fid];
+      if (field.type == "object") {
+        field.editor.activate_autocompletes(read, include_editor);
+      } else if (field.autocomplete_id != undefined) {
+        field.activate_autocomplete();
+        if (read) {
+          field.read_autocomplete();
+        } else if (include_editor) {
+          field.activate_autocomplete(true);
+        }
+      }
+    });
   }
 }
 
@@ -1185,14 +1202,6 @@ class Schema extends ComplexField {
     this.card.appendChild(this.nav_bar.nav_bar);
     this.card.appendChild(this.nav_bar.tab_content);
     document.getElementById(this.container).appendChild(this.card);
-    const autocomplete_viewers = this.card.querySelectorAll(
-      "input[type='search']"
-    );
-    autocomplete_viewers.forEach((viewer) => {
-      const id_parts = viewer.id.split("-");
-      const field = this.fields[id_parts[id_parts.length - 1]];
-      field.activate_autocomplete();
-    });
 
     Object.keys(this.nav_bar_btn_ids).forEach((permission) => {
       let use_permissions = schema_infos[this.name].current_user_permissions
@@ -1255,6 +1264,8 @@ class Schema extends ComplexField {
         ).show();
       }
     }
+
+    this.activate_autocompletes();
   }
 
   /**
@@ -1669,16 +1680,20 @@ class SchemaForm {
     });
 
     document.getElementById(this.container).appendChild(form_div);
-    const autocomplete_fields = form_div.querySelectorAll(
-      "input[type='search']"
-    );
-    autocomplete_fields.forEach((viewer) => {
-      const id_parts = viewer.id.split("-");
-      const field = this.fields[id_parts[id_parts.length - 1]];
-      field.activate_autocomplete();
-      field.read_autocomplete();
-    });
+    this.activate_autocompletes();
     this.form = form_div;
+  }
+
+  activate_autocompletes() {
+    this.field_ids.forEach((fid) => {
+      const field = this.fields[fid];
+      if (field.type == "object") {
+        field.editor.activate_autocompletes(true);
+      } else if (field.autocomplete_id != undefined) {
+        field.activate_autocomplete();
+        field.read_autocomplete();
+      }
+    });
   }
 
   /**
@@ -1757,12 +1772,11 @@ class SchemaForm {
         child.getAttribute("data-field-name") == raw_name
     )[0];
     first_viewer.setAttribute("data-composite-unit", first_unit);
-    first_viewer
-      .querySelectorAll("[name]")
-      .forEach(
-        (subfield) =>
-          (subfield.name = `${subfield.name.split("__")[0]}__${first_unit}`)
-      );
+    first_viewer.querySelectorAll("[name]").forEach((subfield) => {
+      if (subfield.name.split(".").length == obj.split(".").length + 1) {
+        subfield.name = `${subfield.name.split("__")[0]}__${first_unit}`;
+      }
+    });
     if (existing_values.length > 1) {
       for (let i = 0; i < existing_values.length - 1; i++) {
         first_viewer.querySelector("h5 button").click();
@@ -1782,14 +1796,12 @@ class SchemaForm {
         .querySelector("div.input-view");
 
       // Extract the fields that are not inside nested composite fields and register them
-      console.log(Object.keys(object), top_level_names);
       let not_nested = Object.keys(object).filter(
         (fid) =>
           typeof object[fid][0] != "object" &&
           fid != "__unit__" &&
           top_level_names.indexOf(fid) > -1
       );
-      console.log(not_nested);
       not_nested.forEach((fid) => {
         this.register_non_object(fid, object, viewer);
       });
@@ -1849,12 +1861,21 @@ class SchemaForm {
       let first_input = form.querySelector(
         `[data-field-name="${fid.split(".").pop()}"]`
       );
-      for (let i = 0; i < existing_values.length - 1; i++) {
-        first_input.querySelector("label button").click();
+      const answers = first_input.querySelector("div[id$='answers']");
+      if (answers != null) {
+        for (let value of existing_values) {
+          const [pill, label] = Field.autocomplete_checkbox(value, input_name);
+          answers.appendChild(pill);
+          answers.appendChild(label);
+        }
+      } else {
+        for (let i = 0; i < existing_values.length - 1; i++) {
+          first_input.querySelector("label button").click();
+        }
+        form.querySelectorAll(`[name="${input_name}"]`).forEach((input, i) => {
+          input.value = existing_values[i];
+        });
       }
-      form.querySelectorAll(`[name="${input_name}"]`).forEach((input, i) => {
-        input.value = existing_values[i];
-      });
     }
   }
 
@@ -1865,35 +1886,36 @@ class SchemaForm {
     prefix,
     unit = 1
   ) {
-    let empty_composite_fields = object_editor.field_ids.filter((fid) => {
-      let is_object = object_editor.fields[fid].type == "object";
-      let is_not_annotated =
-        Object.keys(annotated_data).indexOf(`${prefix}.${fid}`) == -1;
-      return is_object && is_not_annotated;
-    });
-    empty_composite_fields.forEach((fid) => {
-      let viewer = form.querySelector(
-        `div.mini-viewer[data-field-name="${fid}"]`
-      );
-      viewer.setAttribute("data-composite-unit", String(unit));
-      let sub_schema = object_editor.fields[fid].editor;
-      let simple_subfields = sub_schema.field_ids.filter(
-        (subfid) => sub_schema.fields[subfid].type != "object"
-      );
-      simple_subfields.forEach((subfid) => {
-        let flattened_name = `${prefix}.${fid}.${subfid}`;
-        viewer.querySelector(
-          `[name="${flattened_name}"]`
-        ).name = `${flattened_name}__${unit}`;
+    object_editor.field_ids
+      .filter((fid) => object_editor.fields[fid].type == "object")
+      .forEach((fid) => {
+        let viewer = form.querySelector(
+          `div.mini-viewer[data-field-name="${fid}"]`
+        );
+        viewer.setAttribute("data-composite-unit", String(unit));
+        let sub_schema = object_editor.fields[fid].editor;
+        console.log("preparing ", viewer);
+        console.log(sub_schema);
+        let empty_simple_subfields = sub_schema.field_ids.filter((subfid) => {
+          let not_object = sub_schema.fields[subfid].type != "object";
+          console.log(`${prefix}.${fid}`);
+          let is_not_annotated = !(`${prefix}.${fid}` in annotated_data);
+          return not_object && is_not_annotated;
+        });
+        empty_simple_subfields.forEach((subfid) => {
+          let flattened_name = `${prefix}.${fid}.${subfid}`;
+          viewer
+            .querySelectorAll(`[name="${flattened_name}"]`)
+            .forEach((child) => (child.name = `${flattened_name}__${unit}`));
+        });
+        SchemaForm.prepare_objects(
+          sub_schema,
+          annotated_data,
+          viewer,
+          `${prefix}.${fid}`,
+          `${unit}.1`
+        );
       });
-      SchemaForm.prepare_objects(
-        sub_schema,
-        annotated_data,
-        viewer,
-        `${prefix}.${fid}`,
-        `${unit}.1`
-      );
-    });
   }
 
   static field_replicator(field, small_div, active) {
@@ -1935,6 +1957,17 @@ class SchemaForm {
         split_unit.push(String(largest_suffix + 1));
         let new_unit = split_unit.join(".");
         clone.setAttribute("data-composite-unit", new_unit);
+        // add the cloned div after the last one of its kind
+        let last_sibling = existing_siblings[existing_siblings.length - 1];
+        if (last_sibling.nextSibling == undefined) {
+          last_sibling.parentElement.appendChild(clone);
+        } else {
+          last_sibling.parentElement.insertBefore(
+            clone,
+            last_sibling.nextSibling
+          );
+        }
+
         function update_children_names(composite_field, subform, new_unit) {
           const direct_children = [
             ...subform.querySelector("div.input-view").childNodes,
@@ -1945,9 +1978,17 @@ class SchemaForm {
                 child.getAttribute("data-field-name")
               ];
             if (field_data.type != "object") {
-              child.querySelector(
-                "input"
-              ).name = `${field_data.name}__${new_unit}`;
+              const inputs = child.querySelectorAll("input,select");
+              inputs.forEach((input) => {
+                input.name = `${field_data.name}__${new_unit}`;
+                if (field_data.autocomplete_id != undefined) {
+                  const new_id = `${input.id}-${new_unit}`;
+                  input.id = new_id;
+                  field_data.autocomplete_id = new_id;
+                  field_data.activate_autocomplete();
+                  field_data.read_autocomplete();
+                }
+              });
             } else {
               const sub_unit = new_unit + ".1";
               child.setAttribute("data-composite-unit", sub_unit);
@@ -1972,17 +2013,6 @@ class SchemaForm {
       } else {
         let old_name = small_div.querySelector("[name]").name;
         clone.querySelector("[name]").name = old_name;
-      }
-
-      // add the cloned div after the last one of its kind
-      let last_sibling = existing_siblings[existing_siblings.length - 1];
-      if (last_sibling.nextSibling == undefined) {
-        last_sibling.parentElement.appendChild(clone);
-      } else {
-        last_sibling.parentElement.insertBefore(
-          clone,
-          last_sibling.nextSibling
-        );
       }
     });
     button.appendChild(icon);

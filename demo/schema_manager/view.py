@@ -49,8 +49,24 @@ def group_prefix_metadata_items(
     """ """
     # grouped_metadata = {no_schema_label: MultiDict()}
     grouped_metadata = {}
+
     # if group_analysis_unit:
     #     grouped_metadata["analysis"] = MultiDict()
+    def add_composite(parent, avu, i=3):
+        name_sections = avu.name.split(".")
+        unit_section = avu.units.split(".")
+        composite_name = ".".join(name_sections[:i])
+        composite_units = ".".join(unit_section[: (i - 2)])
+        print("ADDING COMPOSITE: ", avu.name, i, composite_name, composite_units)
+        if i < len(name_sections):
+            if composite_name not in parent:
+                parent[composite_name] = {composite_units: MultiDict()}
+            if composite_units not in parent[composite_name]:
+                parent[composite_name][composite_units] = MultiDict()
+            add_composite(parent[composite_name][composite_units], avu, i + 1)
+        else:
+            parent.add(avu.name, avu)
+
     for avu in metadata_items:
         if avu.name.startswith(mango_prefix) and avu.name.count(".") >= 2:
             (mango_schema_prefix, schema, avu_name) = avu.name.split(".", 2)
@@ -62,12 +78,7 @@ def group_prefix_metadata_items(
             else:
                 # creating a dict with the ordinal string from avu.unit as key
                 # chop off the last part to get the composite identifier
-                composite_id = ".".join(avu.name.split(".")[:-1])
-                if composite_id not in grouped_metadata[schema]:
-                    grouped_metadata[schema][composite_id] = {avu.units: MultiDict()}
-                if avu.units not in grouped_metadata[schema][composite_id]:
-                    grouped_metadata[schema][composite_id][avu.units] = MultiDict()
-                grouped_metadata[schema][composite_id][avu.units].add(avu.name, avu)
+                add_composite(grouped_metadata[schema], avu)
 
         # elif group_analysis_unit and avu.units and avu.units.startswith("analysis"):
         #     grouped_metadata["analysis"].add(avu.name, avu)

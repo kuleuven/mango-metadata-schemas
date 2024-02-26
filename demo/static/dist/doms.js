@@ -894,7 +894,10 @@ class BasicForm {
    * @param {HTMLDivElement} div Div element to put the moving options on
    */
   add_moving_options(input_field, div) {
-    let options = input_field.values.values;
+    let options =
+      input_field.temp_options.length > 0
+        ? input_field.temp_options
+        : input_field.values.values;
     let has_values = options.length > 0;
     // if no options are provided, start with two
     if (!has_values) {
@@ -916,25 +919,14 @@ class BasicForm {
       let current_max = Math.max(...this.option_indices);
 
       // add a new mover with a higher index
-      let new_input = this.add_mover(current_max + 1);
-      new_input.querySelector("input.mover").addEventListener("change", () => {
-        input_field.update_default_field();
-        input_field.toggle_dropdown_switch();
-        input_field.toggle_editing_navbar("movers");
-        input_field.alert_repeated_movers(div);
-      });
-      new_input.querySelectorAll("button.mover").forEach((btn) =>
-        btn.addEventListener("click", () => {
-          input_field.update_default_field();
-          input_field.toggle_dropdown_switch();
-          input_field.toggle_editing_navbar("movers");
-        })
-      );
+      let new_input = this.add_mover(current_max + 1, false);
       // disable its 'down' button
       new_input.querySelector(".down").setAttribute("disabled", "");
 
       // add it to the form
       div.insertBefore(new_input, plus);
+      input_field.listen_to_movers(div);
+      input_field.toggle_dropdown_switch();
 
       // re-enable the 'down' button of the field before it
       new_input.previousSibling
