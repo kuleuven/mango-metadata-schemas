@@ -239,12 +239,11 @@ class MovingField {
    * @param {Function} [action=false] What the button must do on click. If 'false', nothing happens.
    * @returns {HTMLButtonElement} The button to be added.
    */
-  add_btn(className, symbol, action = false) {
+  add_btn(className, symbol, action = false, color = "primary") {
     // use outlines for MovingViewer and filled buttons for MovingChoice
-    let button_color =
-      this.constructor.name == "MovingViewer"
-        ? "btn-outline-primary"
-        : "btn-primary";
+    let button_color = `btn-${
+      this.constructor.name == "MovingViewer" ? "outline-" : ""
+    }${color}`;
     let btn = Field.quick("button", `btn ${button_color} mover ${className}`);
     btn.id = `${className}-${this.idx}`;
     // what should the button do on click?
@@ -422,12 +421,12 @@ class MovingViewer extends MovingField {
    */
   move_down() {
     let form_index = this.schema.field_ids.indexOf(this.idx); // index of the field among other fields
-    let sibling = this.below.nextSibling; // element under the bottom button
-    let sibling_button = sibling.nextSibling; // button under the bottom button
+    let sibling = this.nextSibling; // element under the bottom button
+    // let sibling_button = sibling.nextSibling; // button under the bottom button
 
     // first, move the field and its button
     this.div.parentElement.insertBefore(sibling, this.div);
-    this.div.parentElement.insertBefore(sibling_button, this.div);
+    // this.div.parentElement.insertBefore(sibling_button, this.div);
 
     // if the other div went to the first place
     if (form_index == 0) {
@@ -454,11 +453,11 @@ class MovingViewer extends MovingField {
    */
   move_up() {
     let form_index = this.schema.field_ids.indexOf(this.idx); // index of the field among other fields
-    let sibling = this.div.previousSibling.previousSibling;
+    let sibling = this.div.previousSibling;
 
     // move the div and its button upwards
     this.div.parentElement.insertBefore(this.div, sibling);
-    this.div.parentElement.insertBefore(this.below, sibling);
+    // this.div.parentElement.insertBefore(this.below, sibling);
 
     // if this div went to first place
     if (form_index == 1) {
@@ -498,20 +497,18 @@ class MovingViewer extends MovingField {
         if (this.schema.field_ids.length > 1) {
           // if this is the last field
           if (this.idx == this.schema.field_ids.length - 1) {
-            this.div.previousSibling.previousSibling
+            this.div.previousSibling
               .querySelector(".down")
               .setAttribute("disabled", "");
           }
           // if this is the first field
           if (this.idx == 0) {
-            this.below.nextSibling
-              .querySelector(".up")
-              .setAttribute("disabled", "");
+            this.nextSibling.querySelector(".up").setAttribute("disabled", "");
           }
         }
 
         // remove the box and buttons
-        this.below.remove();
+        // this.below.remove();
         this.div.remove();
 
         // remove the field from the schema
@@ -629,13 +626,13 @@ class MovingChoice extends MovingField {
 
     // class "blocked" is the class of this kind of divs
     // if the other div went to first place
-    if (sibling.previousSibling.className !== "blocked") {
+    if (sibling.previousSibling == null) {
       sibling.querySelector(".up").setAttribute("disabled", "");
       this.up.removeAttribute("disabled");
     }
 
     // if this dev went to the last place
-    if (this.div.nextSibling.className !== "blocked") {
+    if (!this.div.nextSibling.classList.contains("blocked")) {
       sibling.querySelector(".down").removeAttribute("disabled");
       this.down.setAttribute("disabled", "");
     }
@@ -654,19 +651,13 @@ class MovingChoice extends MovingField {
 
     // class "blocked" is the class of this kind of divs
     // if this div went to first place
-    if (
-      this.div.previousSibling == undefined ||
-      this.div.previousSibling.className !== "blocked"
-    ) {
+    if (this.div.previousSibling == null) {
       this.up.setAttribute("disabled", "");
       sibling.querySelector(".up").removeAttribute("disabled");
     }
 
     // if we were in the last place
-    if (
-      sibling.nextSibling == undefined ||
-      sibling.nextSibling.className !== "blocked"
-    ) {
+    if (!sibling.nextSibling.classList.contains("blocked")) {
       this.down.removeAttribute("disabled");
       sibling.querySelector(".down").setAttribute("disabled", "");
     }

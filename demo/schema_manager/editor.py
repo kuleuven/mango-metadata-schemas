@@ -25,6 +25,7 @@ from urllib.parse import unquote
 
 import os
 import json
+from pathlib import Path
 from pprint import pprint
 import base64
 
@@ -112,17 +113,17 @@ def list_meta_data_schemas(realm):
         {
             "realm_permissions": 511,
             "schemas": [
-            {
-                "name": schema,
-                "url": url_for(
-                    "metadata_schema_editor_bp.get_schema",
-                    realm=realm,
-                    schema=schema
-                ),
-                "schema_info": schema_info,
-            }
-            for (schema, schema_info) in schemas.items()
-        ]
+                {
+                    "name": schema,
+                    "url": url_for(
+                        "metadata_schema_editor_bp.get_schema",
+                        realm=realm,
+                        schema=schema,
+                    ),
+                    "schema_info": schema_info,
+                }
+                for (schema, schema_info) in schemas.items()
+            ],
         }
     )
 
@@ -133,10 +134,10 @@ def list_meta_data_schemas(realm):
 def get_schema(realm: str, schema: str):
     # schema_manager = get_schema_manager(g.irods_session.zone, realm)
     schema_manager = get_schema_manager(current_app.config["ZONE_NAME"], realm)
-    if version := request.values.get('version', None):
+    if version := request.values.get("version", None):
         schema_content = schema_manager.load_schema(schema_name=schema, version=version)
     else:
-        status = request.values.get('status', 'published')
+        status = request.values.get("status", "published")
         schema_content = schema_manager.load_schema(schema_name=schema, status=status)
     if schema_content:
         return Response(schema_content, status=200, mimetype="application/json")
@@ -214,3 +215,16 @@ def archive_meta_data_schema():
         url_for("metadata_schema_editor_bp.metadata_schemas", realm=realm)
         + f"?schema_name={request.form['schema_name']}&schema_version={request.form.get('current_version', '')}"
     )
+
+
+@metadata_schema_editor_bp.route("/metadata-schema/library", methods=["GET"])
+def get_library_fields():
+    field_files = [
+        x for x in Path("storage", "library").iterdir() if x.suffix == ".json"
+    ]
+    if field_files:
+        field_files.sort()
+        fields = [x.read_text() for x in field_files]
+        return json.dumps(fields)
+    else:
+        return Response("error, no fields available in the library", status=404)

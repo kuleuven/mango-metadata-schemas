@@ -97,8 +97,13 @@ class ComplexField {
         this.data_status,
         [field_id, data.properties[field_id]]
       );
-      new_field.create_form();
-      new_field.create_modal(this);
+      if (!this.data_status.endsWith("library")) {
+        new_field.create_form();
+        new_field.create_modal(this);
+      } else if (new_field.type == "object") {
+        new_field.editor = new ObjectEditor(new_field);
+        new_field.editor.from_json(new_field.json_source);
+      }
       this.fields[field_id] = new_field;
     });
   }
@@ -138,37 +143,38 @@ class ComplexField {
    * Create a modal that offers the different fields that can be added and fill it when shown.
    */
   display_options() {
+    if (this.data_status.endsWith("library")) {
+      return;
+    }
     this.data_status = this.set_data_status(); // to make sure it's correct (but maybe this is redundant)
     this.ls_id = `_mgs_${this.card_id}_${this.data_status}`;
 
     // create a div to fill in with the different field examples
-    let formTemp = Field.quick("div", "formContainer");
-    formTemp.id = this.data_status + "-templates";
+    let design_modal_contents = Field.quick("div", "formContainer");
+    design_modal_contents.id = this.data_status + "-templates";
 
     // create the modal and add the div
-    let form_choice_modal = new Modal(
-      this.modal_id,
-      "What form element would you like to add?"
+    let design_modal = new Modal(
+      this.modal_id + "-design",
+      "What form element would you like to create?"
     );
-    form_choice_modal.create_modal([formTemp], "lg");
+    design_modal.create_modal([design_modal_contents], "lg");
 
     // when the modal is first shown, render all the placeholder fields
-    let this_modal = document.getElementById(this.modal_id);
-    this_modal.addEventListener("show.bs.modal", () => {
-      let formTemp = this_modal.querySelector("div.formContainer");
-      let from_json_load = InputField.from_json_example(this);
-      if (formTemp.childNodes.length == 0) {
+    let design_modal_modal = document.getElementById(this.modal_id + "-design");
+    design_modal_modal.addEventListener("show.bs.modal", () => {
+      let design_modal_contents =
+        design_modal_modal.querySelector("div.formContainer");
+      if (design_modal_contents.childNodes.length == 0) {
         Object.values(this.placeholders).forEach((placeholder) => {
           placeholder.schema_status = this.data_status;
-          formTemp.appendChild(placeholder.render(this));
+          design_modal_contents.appendChild(placeholder.render(this));
         });
-        formTemp.appendChild(from_json_load);
-      } else {
-        formTemp.replaceChild(from_json_load, formTemp.lastChild);
       }
     });
+
     if (this.constructor.name == "ObjectEditor") {
-      this_modal.addEventListener("hidden.bs.modal", () => {
+      design_modal_modal.addEventListener("hidden.bs.modal", () => {
         bootstrap.Modal.getOrCreateInstance(
           document.getElementById(this.card_id)
         ).show();
@@ -186,28 +192,27 @@ class ComplexField {
     if (form == undefined) {
       return;
     }
-    // console.log(form_object, form, form.querySelectorAll(".viewer"));
 
     // select the button that (supposedly, not necessarily) was used to add this field
-    let clicked_button = form.querySelectorAll(".adder")[this.new_field_idx];
+    // let clicked_button = form.querySelectorAll(".adder")[this.new_field_idx];
 
     // select whatever is currently under the 'clicked' button
-    let below = clicked_button.nextSibling;
+    // let below = clicked_button.nextSibling;
 
     // obtain the MovingViewer of the field and create a new button for it (to add things under it)
     let moving_viewer = form_object.view(this);
 
-    moving_viewer.below = this.create_button();
+    // moving_viewer.below = this.create_button();
 
     // add both the MovingViewer and its button after the clicked button
-    below.parentElement.insertBefore(moving_viewer.div, below);
-    below.parentElement.insertBefore(moving_viewer.below, below);
+    form.insertBefore(moving_viewer.div, this.button);
+    // below.parentElement.insertBefore(moving_viewer.below, below);
     if (form_object.autocomplete_id != undefined) {
       form_object.activate_autocomplete(true);
     }
 
     // disable/re-enable the buttons of the existing viewers
-    let viewers = below.parentElement.querySelectorAll(".viewer");
+    let viewers = form.parentElement.querySelectorAll(".viewer");
 
     // if this new field is in the first place
     if (this.new_field_idx === 0) {
@@ -365,21 +370,58 @@ class ComplexField {
    */
   create_button() {
     // create a div and its button
-    let div = Field.quick("div", "d-grid gap-2 adder mt-2");
-    let button = Field.quick("button", "btn btn-primary btn-sm", "Add element");
-    button.type = "button";
-    // attach button to modal
-    button.setAttribute("data-bs-toggle", "modal");
-    button.setAttribute("data-bs-target", `#${this.modal_id}`);
+    let div = Field.quick(
+      "div",
+      "d-flex justify-content-between btn-group adder mt-2 rounded-2"
+    );
+    div.setAttribute("role", "group");
+    div.setAttribute("aria-label", "Add new element");
 
-    // on click, the modal will also update `new_field_idx` based on the index of the field on top of it
-    button.addEventListener("click", () => {
-      this.new_field_idx = div.previousSibling.classList.contains("viewer")
-        ? this.field_ids.indexOf(div.previousSibling.id) + 1
-        : 0;
+    let button_pre = Field.quick(
+      "button",
+      "btn btn-outline-primary btn-light fw-bold",
+      " Add "
+    );
+    button_pre.setAttribute("disabled", "");
+    let plus_icon = Field.quick("i", "bi bi-plus-circle-fill");
+    plus_icon.setAttribute("fill", "currentColor");
+    button_pre.prepend(plus_icon);
+    div.appendChild(button_pre);
+
+    let buttons = [
+      { id: "library", message: "Browse library", modal_id: Library.modal_id },
+      {
+        id: "design",
+        message: "Design from scratch",
+        modal_id: `${this.modal_id}-design`,
+      },
+      { id: "file", message: "Upload JSON", modal_id: JsonInput.modal_id },
+    ];
+
+    buttons.forEach((button) => {
+      let btn = Field.quick(
+        "button",
+        "btn btn-primary btn-sm fw-bold ms-1",
+        button.message
+      );
+      btn.type = "button";
+      btn.id = button.id;
+      btn.setAttribute("data-bs-toggle", "modal");
+      btn.setAttribute("data-bs-target", `#${button.modal_id}`);
+      // on click, the modal will also update `new_field_idx` based on the index of the field on top of it
+      btn.addEventListener("click", () => {
+        this.new_field_idx = div.previousSibling.classList.contains("viewer")
+          ? this.field_ids.indexOf(div.previousSibling.id) + 1
+          : 0;
+        if (button.id == "library") {
+          library_request.library.attach_schema(this);
+        } else if (button.id == "file") {
+          json_input.attach_schema(this);
+        }
+      });
+      div.appendChild(btn);
     });
 
-    div.appendChild(button);
     return div;
   }
 
@@ -567,13 +609,13 @@ class ObjectEditor extends ComplexField {
     delete this.placeholders.object; // disable nested composite fields
   }
 
-  /**
-   * Create a button to add more fields.
-   * @returns {HTMLDivElement} A DIV with a button.
-   */
-  get button() {
-    return this.create_button();
-  }
+  // /**
+  //  * Create a button to add more fields.
+  //  * @returns {HTMLDivElement} A DIV with a button.
+  //  */
+  // get button() {
+  //   return this.create_button();
+  // }
 
   /**
    * Get the form with the moving viewers of the fields.
@@ -775,8 +817,8 @@ class Schema extends ComplexField {
       }
     }
     // create and add the first button to add fields
-    let button = this.create_button();
-    form.form.insertBefore(button, form.divider);
+    this.button = this.create_button();
+    form.form.insertBefore(this.button, form.divider);
 
     // create and add a submission button that saves the draft without publishing
     form.add_action_button("Save draft", "draft");
@@ -1634,6 +1676,8 @@ class SchemaForm {
 
     // Create the form, enabled for annotation
     let form_div = ComplexField.create_viewer(this, true);
+    console.log(this);
+    console.log(form_div);
 
     // Add a title to the form
     let title = document.createElement("h3");
@@ -1707,6 +1751,7 @@ class SchemaForm {
     hidden_input.name = "redirect_route";
     hidden_input.value = annotated_data.redirect_route[0];
     this.form.appendChild(hidden_input);
+    console.log(annotated_data);
 
     // exclude non-metadata keys, e.g. 'redirect_route'
     let keys = Object.keys(annotated_data).filter(
@@ -1772,6 +1817,12 @@ class SchemaForm {
         child.getAttribute("data-field-name") == raw_name
     )[0];
     first_viewer.setAttribute("data-composite-unit", first_unit);
+    console.log(
+      obj.split(".").length,
+      [...first_viewer.querySelectorAll("[name]")].map(
+        (x) => x.name.split(".").length
+      )
+    );
     first_viewer.querySelectorAll("[name]").forEach((subfield) => {
       if (subfield.name.split(".").length == obj.split(".").length + 1) {
         subfield.name = `${subfield.name.split("__")[0]}__${first_unit}`;
