@@ -41,13 +41,29 @@ class ComplexField {
     this.fields = {};
     this.new_field_idx = 0;
     this.empty_composite_idx = 0;
-    this.unfinished_composites = [];
+    this.wip = [];
   }
 
   is_composite = false;
 
   get prefix() {
     return `mgs__${this.name}`;
+  }
+
+  add_wip(fid) {
+    if (this.wip.indexOf(fid) == -1) {
+      this.wip.push(fid);
+    }
+    this.toggle_saving();
+    this.autosave();
+  }
+
+  remove_wip(fid) {
+    if (this.wip.indexOf(fid) > -1) {
+      this.wip.splice(fid, 1);
+    }
+    this.toggle_saving();
+    this.autosave();
   }
 
   update_field_id_regex() {
@@ -98,6 +114,7 @@ class ComplexField {
     if (this.ls_id != undefined && this.ls_id in localStorage) {
       let schema_from_ls = JSON.parse(localStorage.getItem(this.ls_id));
       this.properties_from_json(schema_from_ls);
+      this.wip = schema_from_ls.wip;
     } else {
       this.properties_from_json(data);
     }
@@ -220,7 +237,7 @@ class ComplexField {
       this.constructor.name == "Schema"
         ? ["publish", "draft"].map((btn) => form.querySelector("button#" + btn)) // publish and draft for schemas
         : [form.querySelector("button#add")]; // "add/update" for a composite field
-    if (has_duplicates || this.unfinished_composites.length > 0) {
+    if (has_duplicates || this.wip.length > 0) {
       buttons.forEach((btn) => btn.setAttribute("disabled", ""));
     } else {
       buttons.forEach((btn) => btn.removeAttribute("disabled"));
@@ -444,6 +461,10 @@ class ObjectEditor extends ComplexField {
     return `${this.composite.schema.prefix}__${this.composite.id}`;
   }
 
+  reset_wip() {
+    this.wip = [];
+    this.toggle_saving();
+  }
   /**
    * Obtain the data_status of the mini-schema.
    * @returns {String} Derived status as used in IDs for DOM elements.
@@ -453,11 +474,20 @@ class ObjectEditor extends ComplexField {
   }
 
   toggle_saving() {
-    return;
-  }
-
-  autosave() {
-    this.composite.in_editing = true;
+    const card = this.form_div.parentElement.parentElement;
+    if (this.wip.length > 0) {
+      card.classList.replace("border-primary", "border-danger");
+      card.classList.add("bg-danger-subtle");
+      this.composite.form_field.rowsub
+        .querySelector("button#add")
+        .removeAttribute("disabled");
+    } else {
+      card.classList.remove("bg-danger-subtle");
+      card.classList.replace("border-danger", "border-primary");
+      this.composite.form_field.rowsub
+        .querySelector("button#add")
+        .setAttribute("disabled", "");
+    }
   }
 
   set new_name(name) {
@@ -615,7 +645,7 @@ class Schema extends ComplexField {
     name_input.name = "schema_name";
     name_input.addEventListener("change", () => {
       this.temp_name = name_input.value;
-      this.autosave();
+      this.add_wip(".name");
     });
 
     // create and add an input field for the user-facing label/title
@@ -630,7 +660,7 @@ class Schema extends ComplexField {
     title_input.name = "title";
     title_input.addEventListener("change", () => {
       this.temp_title = title_input.value;
-      this.autosave();
+      this.add_wip(".title");
     });
 
     if (this.ls_id in localStorage) {
@@ -1174,11 +1204,15 @@ class Schema extends ComplexField {
   }
 
   autosave() {
+    if (this.wip.length == 0) {
+      return;
+    }
     this.fields_to_json();
     const to_save = {
       title: this.temp_title ? this.temp_title : this.title,
       properties: this.properties,
       last_modified: Date.now() / 1000,
+      wip: this.wip,
     };
     if (
       this.data_status == "copy" ||
@@ -1250,6 +1284,7 @@ class Schema extends ComplexField {
 
   reset_ls() {
     localStorage.removeItem(this.ls_id);
+    this.wip = [];
     if (last_mod_ls in localStorage) {
       const last_modified = JSON.parse(localStorage.getItem(last_mod_ls));
       last_modified.timestamp = Date.now();

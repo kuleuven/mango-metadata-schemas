@@ -125,8 +125,7 @@ class InputField {
     this.schema.update_field_id_regex();
 
     // Enable or disable 'saving' the schema based on whether this field has been created by duplicating.
-    this.schema.autosave();
-    this.schema.toggle_saving();
+    this.schema.add_wip(this.id);
 
     // Create the MovingViewer and add it to the editing section of the schema
     this.view_field();
@@ -170,6 +169,13 @@ class InputField {
 
     // disable/re-enable the buttons of the existing viewers
     let viewers = field_box.querySelectorAll(".viewer");
+    console.log(
+      this.schema.field_ids,
+      this.schema.new_field_idx,
+      this.id,
+      this.schema.field_ids.indexOf(this.id)
+    );
+    console.log(this.schema.fields);
 
     // if this new field is in the first place
     if (this.schema.new_field_idx === 0) {
@@ -1768,7 +1774,6 @@ class ObjectInput extends InputField {
    */
   constructor(schema, data_status = null) {
     super(schema, data_status);
-    this._in_editing = false;
   }
 
   form_type = "object";
@@ -1790,31 +1795,6 @@ class ObjectInput extends InputField {
     }
     // Start up the editor (offering subfield options)
     this.minischema.display_options();
-  }
-
-  set in_editing(val) {
-    this._in_editing = val;
-    const unfinished_idx = this.schema.unfinished_composites.indexOf(this.id);
-    const card = this.form_field.form.parentElement.parentElement;
-
-    if (val && unfinished_idx == -1) {
-      this.schema.unfinished_composites.push(this.id);
-      card.classList.replace("border-primary", "border-danger");
-      card.classList.add("bg-danger-subtle");
-      this.form_field.rowsub
-        .querySelector("button#add")
-        .removeAttribute("disabled");
-      this.schema.autosave();
-    }
-    if (!val && unfinished_idx > -1) {
-      this.schema.unfinished_composites.splice(this.id, 1);
-      card.classList.remove("bg-danger-subtle");
-      card.classList.replace("border-danger", "border-primary");
-      this.form_field.rowsub
-        .querySelector("button#add")
-        .setAttribute("disabled", "");
-    }
-    this.schema.toggle_saving();
   }
 
   /**
@@ -1907,7 +1887,7 @@ class ObjectInput extends InputField {
       .setAttribute("disabled", "");
     this.form_field.form.querySelectorAll("input,textarea").forEach((input) => {
       input.addEventListener("change", () => {
-        this.in_editing = true;
+        this.minischema.add_wip(input.id);
       });
     });
 
@@ -1932,7 +1912,8 @@ class ObjectInput extends InputField {
       } else {
         form.classList.remove("was-validated");
         this.register_fields();
-        this.in_editing = false;
+        this.minischema.reset_wip();
+        this.schema.add_wip(this.id);
       }
     });
 
@@ -1951,7 +1932,7 @@ class ObjectInput extends InputField {
     const clone = new ObjectInput(this.schema);
     clone.id = `i${this.schema.empty_composite_idx}-composite-temp`;
     this.schema.empty_composite_idx += 1;
-    clone._in_editing = true;
+    this.schema.add_wip(clone.id);
     clone.create_editor();
     let new_button = Field.quick(
       "button",
@@ -1959,7 +1940,7 @@ class ObjectInput extends InputField {
       this.button_title
     );
     new_button.addEventListener("click", () => {
-      this.schema.unfinished_composites.push(clone.id);
+      this.schema.wip.push(clone.id);
       clone.title = "TEMPORARY COMPOSITE FIELD";
       clone.add_to_schema();
     });

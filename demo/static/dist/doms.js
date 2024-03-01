@@ -427,7 +427,7 @@ class MovingViewer extends MovingField {
 
     // move the field down in the schema
     this.move(1);
-    this.schema.autosave();
+    this.schema.add_wip(this.idx);
   }
 
   /**
@@ -455,7 +455,7 @@ class MovingViewer extends MovingField {
 
     // move the field down in the schema
     this.move(-1);
-    this.schema.autosave();
+    this.schema.add_wip(this.idx);
   }
 
   move(where = 0) {
@@ -500,8 +500,7 @@ class MovingViewer extends MovingField {
         this.schema.update_field_id_regex();
 
         // update the schema editor
-        this.schema.autosave();
-        this.schema.toggle_saving();
+        this.schema.add_wip(this.idx);
       },
       () => {
         // cancel if the choice is not confirmed
