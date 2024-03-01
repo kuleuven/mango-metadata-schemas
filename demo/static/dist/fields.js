@@ -23,8 +23,7 @@
  * @property {String} dummy_title Title for the example in the options viewer. Always "Informative label".
  * @property {String} mode In first instance, "add"; when an existing field can be edited, "mod".
  * @property {Boolean} is_duplicate Whether the field has just been created via duplication of a different field.
- * @property {String} schema_name Name of the schema the field belongs to.
- * @property {String} schema_status Derived status of the schema as it is used in the ID of the form ('new', 'draft', 'copy' or 'object...').
+ * @property {Schema} schema Schema the field belongs to.
  * @property {Boolean} required Whether the field should be required when implementing the metadata.
  * @property {Boolean} repeatable Whether the field can be repeated in the implementation form.
  * @property {Object} values Variable properties specific to different kinds of fields.
@@ -40,7 +39,7 @@ class InputField {
    * @param {String} schema_name Name of the schema that the field is attached to, for form identification purposes.
    * @param {String} [data_status=draft] Status of the schema version that the field is attached to, for form identification purposes.
    */
-  constructor(schema_name, id_regex, data_status = "draft") {
+  constructor(schema, data_status = null) {
     // Strings for the example
     this.description = "";
     this.dummy_title = "Informative label";
@@ -57,9 +56,13 @@ class InputField {
     this.help_is_custom = false;
 
     // Schema information
-    this.schema_name = schema_name;
-    this.schema_status = data_status;
-    this.id_regex = id_regex;
+    this.schema = schema;
+    this.data_status = data_status == null ? schema.data_status : data_status;
+    this.id_regex = schema.field_id_regex;
+  }
+
+  get editing_modal_id() {
+    return `${this.mode}-${this.schema.prefix}__${this.id}__${this.schema.data_status}`;
   }
 
   /**
@@ -110,6 +113,88 @@ class InputField {
     this.help = data.help;
   }
 
+  /**
+   * Add a new field to the (mini-)schema.
+   */
+  add_to_schema() {
+    // Add the field ID to the list of field IDs, in the right order
+    this.schema.field_ids.splice(this.schema.new_field_idx, 0, this.id);
+
+    // Add the field to the object with fields
+    this.schema.fields[this.id] = this;
+    this.schema.update_field_id_regex();
+
+    // Enable or disable 'saving' the schema based on whether this field has been created by duplicating.
+    this.schema.autosave();
+    this.schema.toggle_saving();
+
+    // Create the MovingViewer and add it to the editing section of the schema
+    this.view_field();
+  }
+
+  /**
+   * Update an existing field in a schema.
+   */
+  update_field() {
+    // Replace the field in this.fields
+    this.schema.fields[this.id] = this;
+    this.schema.autosave();
+    this.schema.toggle_saving();
+
+    // Identify the form with MovingViewers and the MovingViewer itself
+    const viewer = this.form_field.form;
+
+    // Update the title of the MovingViewer
+    viewer.querySelector("h5").innerHTML = this.required
+      ? this.title + "*"
+      : this.title;
+    let rep_icon = Field.quick("i", "bi bi-front px-2");
+    if (this.repeatable) {
+      viewer.querySelector("h5").appendChild(rep_icon);
+    } else if (viewer.querySelector("h5 .bi-front")) {
+      viewer.querySelector("h5").removeChild(rep_icon);
+    }
+  }
+  /**
+   * Create a MovingViewer for a field and add it to the editing section of the (mini-)schema.
+   */
+  view_field() {
+    // identify the DOM element where the moving viewer will be inserted
+    let field_box = this.schema.field_box;
+    let moving_viewer = this.view();
+
+    field_box.appendChild(moving_viewer.div);
+    if (this.autocomplete_id != undefined) {
+      this.activate_autocomplete(true);
+    }
+
+    // disable/re-enable the buttons of the existing viewers
+    let viewers = field_box.querySelectorAll(".viewer");
+
+    // if this new field is in the first place
+    if (this.schema.new_field_idx === 0) {
+      // disable its up-button
+      moving_viewer.up.setAttribute("disabled", "");
+
+      // re-enable the up-button of the field that was first before, if relevant
+      if (viewers.length > 1) {
+        viewers[1].querySelector(".up").removeAttribute("disabled");
+      }
+    }
+
+    // if this new field is in the last place
+    if (this.schema.new_field_idx === this.schema.field_ids.length - 1) {
+      // disable its down-button
+      moving_viewer.down.setAttribute("disabled", "");
+
+      // re-enable the down-button of the field that was last before, if relevant
+      if (viewers.length > 1) {
+        viewers[viewers.length - 2]
+          .querySelector(".down")
+          .removeAttribute("disabled");
+      }
+    }
+  }
   /**
    * Process the data from a JSON file with fields and add an event to the 'Load' button to add them to a schema.
    * @param {HTMLDivElement} json_div Box with messages and text for loading fields from JSON.
@@ -577,25 +662,17 @@ class InputField {
     // add a button to confirm the changes
     this.form_field.add_action_button(
       this.mode == "add"
-        ? `Add to ${
-            this.schema_status.startsWith("object") ? "object" : "schema"
-          }`
+        ? `Add to ${this.schema.is_composite ? "composite field" : "schema"}`
         : "Update",
       "add"
     );
   }
 
-  /**
-   * Create a modal to host the form to edit the field and define what happens when the form is "submitted".
-   * @param {Schema} schema (Mini-)schema that the field is attached to.
-   */
-  create_modal(schema) {
-    // define the ID of the editing modal
-    let modal_id = `${this.mode}-${this.id}-${this.schema_name}-${this.schema_status}`;
-
+  create_editor() {
+    this.create_form();
     // create the modal
     let edit_modal = new Modal(
-      modal_id,
+      this.editing_modal_id,
       `${this.mode == "add" ? "Add" : "Edit"} ${this.button_title}`
     );
 
@@ -604,15 +681,8 @@ class InputField {
     edit_modal.create_modal([form], "lg");
 
     // capture modal for manipulation
-    let modal_dom = document.getElementById(modal_id);
+    let modal_dom = document.getElementById(this.editing_modal_id);
     this.modal = bootstrap.Modal.getOrCreateInstance(modal_dom);
-    if (schema.constructor.name == "ObjectEditor") {
-      modal_dom.addEventListener("hidden.bs.modal", () => {
-        bootstrap.Modal.getOrCreateInstance(
-          document.getElementById(schema.card_id)
-        ).show();
-      });
-    }
 
     // define behavior on form submission
     this.form_field.add_submit_action(
@@ -625,7 +695,7 @@ class InputField {
           form.classList.add("was-validated");
         } else {
           // create a new field of the same type with the data in the form
-          let clone = this.register_fields(schema);
+          let clone = this.register_fields();
 
           // ok the form
           form.classList.remove("was-validated");
@@ -636,13 +706,12 @@ class InputField {
           // recreate the updated (probably cleaned) form
           modal_dom.querySelector(".modal-body").appendChild(form);
 
-          // create id for the new field
-          let clone_modal_id = `${clone.mode}-${clone.id}-${clone.schema_name}-${clone.schema_status}`;
-
           // if the new field is completely new or has changed ID
-          if (clone_modal_id != modal_id) {
+          if (clone.editing_modal_id != this.editing_modal_id) {
             // fill the new field's modal with its form
-            let clone_modal_dom = document.getElementById(clone_modal_id);
+            let clone_modal_dom = document.getElementById(
+              clone.editing_modal_id
+            );
             let clone_form = clone.form_field.form;
             clone_modal_dom
               .querySelector(".modal-body")
@@ -662,8 +731,7 @@ class InputField {
   }
 
   delete_modal() {
-    let modal_id = `${this.mode}-${this.id}-${this.schema_name}-${this.schema_status}`;
-    let modal = document.getElementById(modal_id);
+    let modal = document.getElementById(this.editing_modal_id);
     if (modal != null) {
       modal.remove();
     }
@@ -671,25 +739,22 @@ class InputField {
 
   /**
    * Prepare and make a new instance of a field available when editing a schema.
-   * @param {Schema} schema (Mini-)schema the field belongs to.
    * @returns {HTMLDivElement} Element that contains an illustration example and a button to activate an editor modal.
    */
-  render(schema) {
+  render() {
     this.id = `${this.form_type}-temp`;
 
     // create the form to design the field and the modal that will host it
-    this.create_form();
-    this.create_modal(schema);
+    this.create_editor();
 
     // create the button that triggers the modal
-    let modal_id = `add-${this.id}-${this.schema_name}-${schema.data_status}`;
     let new_button = Field.quick(
       "button",
       "btn btn-primary choice-button",
       this.button_title
     );
     new_button.setAttribute("data-bs-toggle", "modal");
-    new_button.setAttribute("data-bs-target", "#" + modal_id);
+    new_button.setAttribute("data-bs-target", "#" + this.editing_modal_id);
 
     // append everything to a div
     let new_form = InputField.example_box(new_button);
@@ -716,10 +781,9 @@ class InputField {
    * Create or update an input field and update the Schema it belongs to.
    * Read the data from the editing form of the field and either update the field or create a new one.
    * In the latter case, reset the original form so it can be used for new instances of the field.
-   * @param {Schema} schema (Mini-)schema the field belongs to.
    * @returns {InputField} Updated version of the input field.
    */
-  register_fields(schema) {
+  register_fields() {
     // retrieve data from the form
     let data = new FormData(this.form_field.form);
     let old_id = this.id;
@@ -741,17 +805,13 @@ class InputField {
         this.id,
         this.options_navbar ? this.temp_options : data
       ); // update the field
-      schema.update_field(this); // update the schema
+      this.schema.update_field(this); // update the schema
       return this;
     } else {
       // if we are changing IDs or creating a new field altogether
       // create a new field with the same type
 
-      let clone = this.clone(
-        schema,
-        new_id,
-        data.get(`${this.id}-label`).trim()
-      );
+      let clone = this.clone(new_id, data.get(`${this.id}-label`).trim());
       clone.recover_fields(
         this.id,
         this.options_navbar ? this.temp_options : data
@@ -760,12 +820,12 @@ class InputField {
       if (this.constructor.name == "ObjectInput") {
         // this will have to change to adapt to creating filled-schemas (attached to new ids)
         // clone.minischema = this.minischema;
-        clone.create_editor();
+        clone.init_minischema();
         clone.minischema.field_ids = [...this.minischema.field_ids];
         this.minischema.field_ids.forEach((fid) => {
           let field = this.minischema.fields[fid];
-          let new_field = field.clone(clone.minischema, field.id, field.title);
-          new_field.create_modal(this.minischema);
+          let new_field = field.clone(field.id, field.title);
+          new_field.create_editor();
           clone.minischema.fields[fid] = new_field;
           field.delete_modal();
         });
@@ -776,14 +836,13 @@ class InputField {
       this.reset();
 
       // set the mode of the new field, create form and modal that hosts the form
-      clone.create_form();
-      clone.create_modal(schema);
+      clone.create_editor();
 
       // register new field in the schema
       if (this.mode == "mod") {
-        schema.replace_field(old_id, clone);
+        this.schema.replace_field(old_id, clone);
       } else {
-        schema.add_field(clone);
+        clone.add_to_schema();
       }
       return clone;
     }
@@ -791,13 +850,12 @@ class InputField {
 
   /**
    *
-   * @param {Schema} schema (Mini-)schema that the field belongs to.
    * @param {String} new_id ID for the clone.
    * @param {String} title User-facing label of the clone, retrieved from the form
    * @returns {InputField} A new field with data from the form, to be added to the schema.
    */
-  clone(schema, new_id, title) {
-    let clone = new this.constructor(schema.initial_name, this.schema_status);
+  clone(new_id, title) {
+    let clone = new this.constructor(this.schema);
     // id as it will show in the "ID" field of the form
     clone.field_id = new_id;
     clone.id = new_id;
@@ -829,11 +887,10 @@ class InputField {
 
   /**
    * Create an Element to show and edit the field.
-   * @param {Schema} schema (Mini-)schema the field belongs to.
    * @returns {MovingViewer} Element to show and edit the field.
    */
-  view(schema) {
-    return new MovingViewer(this, schema);
+  view() {
+    return new MovingViewer(this);
   }
 
   /**
@@ -857,25 +914,27 @@ class InputField {
    * @param {FieldInfo} data Contents of the field to create.
    * @returns {InputField} The right input field with the data from the FieldInfo object.
    */
-  static choose_class(schema_name, id_regex, data_status, [id, data] = []) {
+  static choose_class(schema, data_status = null, [id, data] = []) {
     let new_field;
+    data_status = data_status == null ? schema.data_status : data_status;
 
     // if the type is 'object', create a composite field
     if (data.type == "object") {
-      new_field = new ObjectInput(schema_name, id_regex, data_status);
+      new_field = new ObjectInput(schema, data_status);
     } else if (data.type == "select") {
       // if the type is 'select', create a multiple-value or single-value multiple choice, depending on the value of 'multiple'
       new_field = data.multiple
-        ? new CheckboxInput(schema_name, id_regex, data_status)
-        : new SelectInput(schema_name, id_regex, data_status);
+        ? new CheckboxInput(schema, data_status)
+        : new SelectInput(schema, data_status);
     } else {
       // the other remaining option is the single field
-      new_field = new TypedInput(schema_name, id_regex, data_status);
+      new_field = new TypedInput(schema, data_status);
     }
     // fill in the basic information not present in the FieldInfo object
     new_field.field_id = id;
     new_field.id = id;
-    new_field.update_id_regex(id_regex);
+
+    new_field.update_id_regex(schema.field_id_regex);
     new_field.mode = "mod";
 
     // read the FieldInfo object to retrieve and register the data
@@ -934,11 +993,9 @@ class TypedInput extends InputField {
   /**
    * Initialize a new single field in a (mini-)schema.
    * @class
-   * @param {String} schema_name Name of the schema that the field is attached to, for form identification purposes.
-   * @param {String} [data_status=draft] Status of the schema version that the field is attached to, for form identification purposes.
    */
-  constructor(schema_name, id_regex = "", data_status = "draft") {
-    super(schema_name, id_regex, data_status);
+  constructor(schema, data_status = null) {
+    super(schema, data_status);
     this.type = "text";
     this.values = { placeholder: "", pattern: "" };
     this.temp_values = {
@@ -997,6 +1054,11 @@ class TypedInput extends InputField {
       // if we don't have any
       return "";
     }
+  }
+
+  update_field() {
+    super.update_field();
+    this.form_field.form.firstChild.replaceChild(this.viewer_input());
   }
 
   get_form_div(key) {
@@ -1487,13 +1549,12 @@ class TypedInput extends InputField {
 
   /**
    *
-   * @param {Schema} schema (Mini-)schema that the field belongs to.
    * @param {String} new_id ID for the clone.
    * @param {String} title User-facing label of the clone, retrieved from the form
    * @returns {InputField} A new field with data from the form, to be added to the schema.
    */
-  clone(schema, new_id, title) {
-    let clone = super.clone(schema, new_id, title);
+  clone(new_id, title) {
+    let clone = super.clone(new_id, title);
     clone.type = this.type;
     clone.temp_values = { ...this.temp_values };
     return clone;
@@ -1697,18 +1758,17 @@ class TypedInput extends InputField {
  * Its `form_type` is always "object", like its `type`.
  * Its `button_title` is "Composite field" and its description is a brief summary.
  * @extends InputField
- * @property {ObjectEditor} editor Mini-schema containing the InputFields corresponding to the components of the composite field
+ * @property {ObjectEditor} minischema Mini-schema containing the InputFields corresponding to the components of the composite field
  * @property {FieldInfo} json_source Contents coming from a JSON file, used to fill in the `editor`.
  */
 class ObjectInput extends InputField {
   /**
    * Initialize a new Field in a (mini-)schema.
    * @class
-   * @param {String} schema_name Name of the schema that the field is attached to, for form identification purposes.
-   * @param {String} [data_status=draft] Status of the schema version that the field is attached to, for form identification purposes.
    */
-  constructor(schema_name, id_regex = "", data_status = "draft") {
-    super(schema_name, id_regex, data_status);
+  constructor(schema, data_status = null) {
+    super(schema, data_status);
+    this._in_editing = false;
   }
 
   form_type = "object";
@@ -1716,18 +1776,45 @@ class ObjectInput extends InputField {
   description =
     "This can contain any combination of the previous form elements.<br>";
 
+  get editing_modal_id() {
+    return `form-${this.schema.prefix}__${this.id}`;
+  }
+
   /**
    * Create and link a mini-schema (ObjectEditor) to contain the subfields.
    */
-  create_editor() {
+  init_minischema() {
     // If it doesn't exist, create a new ObjectEditor, otherwise just update the id of the form
     if (this.minischema == undefined) {
       this.minischema = new ObjectEditor(this);
-    } else {
-      this.minischema.form_id = this.form_field.form.id;
     }
     // Start up the editor (offering subfield options)
     this.minischema.display_options();
+  }
+
+  set in_editing(val) {
+    this._in_editing = val;
+    const unfinished_idx = this.schema.unfinished_composites.indexOf(this.id);
+    const card = this.form_field.form.parentElement.parentElement;
+
+    if (val && unfinished_idx == -1) {
+      this.schema.unfinished_composites.push(this.id);
+      card.classList.replace("border-primary", "border-danger");
+      card.classList.add("bg-danger-subtle");
+      this.form_field.rowsub
+        .querySelector("button#add")
+        .removeAttribute("disabled");
+      this.schema.autosave();
+    }
+    if (!val && unfinished_idx > -1) {
+      this.schema.unfinished_composites.splice(this.id, 1);
+      card.classList.remove("bg-danger-subtle");
+      card.classList.replace("border-danger", "border-primary");
+      this.form_field.rowsub
+        .querySelector("button#add")
+        .setAttribute("disabled", "");
+    }
+    this.schema.toggle_saving();
   }
 
   /**
@@ -1811,37 +1898,108 @@ class ObjectInput extends InputField {
     this.setup_form();
 
     // create and link an ObjectEditor (mini-schema)
-    this.create_editor();
-
-    // if there is existing data, fill in the editor
-    if (this.json_source != undefined) {
-      this.minischema.from_json(this.json_source);
-    }
+    this.init_minischema();
 
     // finish the form
     this.end_form();
+    this.form_field.rowsub
+      .querySelector("button#add")
+      .setAttribute("disabled", "");
+    this.form_field.form.querySelectorAll("input,textarea").forEach((input) => {
+      input.addEventListener("change", () => {
+        this.in_editing = true;
+      });
+    });
 
     // insert the 'add element' button before the switches
     const switches = this.form_field.form.querySelector("#switches-div");
-    this.form_field.form.insertBefore(this.minischema.button, switches);
+    this.minischema.add_field_box(switches);
   }
 
-  /**
-   * Create a modal to host the form to edit the field and define what happens when the form is "submitted".
-   * @param {Schema} schema (Mini-)schema that the field is attached to.
-   */
-  create_modal(schema) {
-    // Initiate the modal
-    super.create_modal(schema);
+  // /**
+  //  * Create a modal to host the form to edit the field and define what happens when the form is "submitted".
+  //  */
+  create_editor() {
+    this.create_form();
+    // this.view_field();
+
+    const form = this.form_field.form;
+    this.form_field.add_submit_action("add", (e) => {
+      e.preventDefault();
+      if (!form.checkValidity()) {
+        e.stopPropagation();
+        form.classList.add("was-validated");
+      } else {
+        form.classList.remove("was-validated");
+        this.register_fields();
+        this.in_editing = false;
+      }
+    });
 
     // Assign the id of the modal as the hook of the editor
-    this.minischema.card_id = `${this.mode}-${this.id}-${this.schema_name}-${this.schema_status}`;
+    this.minischema.card_id = this.editing_modal_id;
+    // if there is existing data, fill in the editor
+    if (this.json_source != undefined) {
+      this.minischema.from_json(this.json_source, this.id);
+      this.minischema.field_ids.forEach((fid) => {
+        this.minischema.fields[fid].view_field();
+      });
+    }
+  }
 
-    // Go through each subfield and render it
-    this.minischema.field_ids.forEach((field_id, idx) => {
-      this.minischema.new_field_idx = idx;
-      this.minischema.view_field(this.minischema.fields[field_id]);
+  render() {
+    const clone = new ObjectInput(this.schema);
+    clone.id = `i${this.schema.empty_composite_idx}-composite-temp`;
+    this.schema.empty_composite_idx += 1;
+    clone._in_editing = true;
+    clone.create_editor();
+    let new_button = Field.quick(
+      "button",
+      "btn btn-primary choice-button",
+      this.button_title
+    );
+    new_button.addEventListener("click", () => {
+      this.schema.unfinished_composites.push(clone.id);
+      clone.title = "TEMPORARY COMPOSITE FIELD";
+      clone.add_to_schema();
     });
+
+    let new_form = InputField.example_box(new_button);
+    new_form.appendChild(this.create_example());
+
+    return new_form;
+  }
+
+  register_fields() {
+    // retrieve data from the form
+    let data = new FormData(this.form_field.form);
+    let old_id = this.id;
+    let new_id = data.get(`${this.id}-id`).trim();
+    // capture the 'default' value if relevant
+    let help = data.get(`${this.id}-help`);
+    this.help = help.trim();
+
+    // if we are updating an existing field without changing the ID
+    this.title = data.get(`${this.id}-label`).trim();
+    this.recover_fields(this.id, data); // update the field
+
+    if (old_id == new_id) {
+      this.update_field(); // update the schema
+    } else {
+      this.id = new_id;
+      this.schema.replace_field(old_id, this);
+      this.minischema.new_name = this.id;
+    }
+  }
+
+  update_field() {
+    super.update_field();
+    const form = this.form_field.form;
+    form.querySelector(`input#${this.id}-label`).value = this.title;
+    form.querySelector(`input#${this.id}-repeatable`).value = this.repeatable;
+    form.querySelector(`textarea#${this.id}-help`).value = this.help
+      ? this.help
+      : "";
   }
 
   /**
@@ -1944,11 +2102,9 @@ class MultipleInput extends InputField {
   /**
    * Initialize a new MultipleInput Field in a (mini-)schema.
    * @class
-   * @param {String} schema_name Name of the schema that the field is attached to, for form identification purposes.
-   * @param {String} [data_status=draft] Status of the schema version that the field is attached to, for form identification purposes.
    */
-  constructor(schema_name, id_regex = "", data_status = "draft") {
-    super(schema_name, id_regex, data_status);
+  constructor(schema, data_status = null) {
+    super(schema, data_status);
     this.type = "select";
     this.values.values = [];
   }
@@ -1977,6 +2133,14 @@ class MultipleInput extends InputField {
     return `Choose ${this.values.multiple ? "at least " : ""}one of ${
       this.temp_options.length
     } options.`;
+  }
+
+  update_field() {
+    super.update_field();
+    this.form_field.form.firstChild.replaceWith(this.viewer_input());
+    if (this.autocomplete_id != undefined) {
+      this.activate_autocomplete();
+    }
   }
 
   /**
@@ -2048,9 +2212,16 @@ class MultipleInput extends InputField {
   }
 
   activate_autocomplete(editor = false) {
-    const new_selector = `#${this.autocomplete_id}${editor ? "-editor" : ""}`;
+    const parent_selector = editor
+      ? this.schema.field_box.querySelector(`#${this.id}`)
+      : this.schema.card.querySelector(
+          `.input-view .mini-viewer[data-field-name='${this.id}']`
+        );
+    const new_selector = parent_selector.querySelector("input[type='search']");
     const autocomplete = new autoComplete({
-      selector: new_selector,
+      selector: () => {
+        return new_selector;
+      },
       placeHolder: this.default != undefined ? this.default : "Search...",
       data: { src: this.values.values, cache: true },
       resultsList: {
@@ -2071,9 +2242,7 @@ class MultipleInput extends InputField {
         highlight: true,
       },
     });
-    document
-      .querySelector(new_selector)
-      .parentElement.appendChild(this.validator_message);
+    new_selector.parentElement.appendChild(this.validator_message);
   }
 
   read_autocomplete() {
@@ -2117,7 +2286,7 @@ class MultipleInput extends InputField {
 
     const nav_bar_container = Field.quick("div", "shadow p-2 rounded");
     this.options_navbar = new NavBar(
-      `${this.schema_name}-${this.id}-optionstab`,
+      `${this.schema.prefix}-${this.id}-optionstab`,
       ["nav-pills", "nav-justified"]
     );
     this.add_moving_options();
@@ -2309,7 +2478,7 @@ class MultipleInput extends InputField {
     };
 
     let file_div = Field.quick("div", "ex my-2");
-    const file_input_id = `${this.schema_name}-${this.id}-optionsfile`;
+    const file_input_id = `${this.schema.prefix}-${this.id}-optionsfile`;
 
     let label = Field.quick(
       "label",
@@ -2684,11 +2853,9 @@ class SelectInput extends MultipleInput {
   /**
    * Initialize a new SelectInput Field in a (mini-)schema.
    * @class
-   * @param {String} schema_name Name of the schema that the field is attached to, for form identification purposes.
-   * @param {String} [data_status=draft] Status of the schema version that the field is attached to, for form identification purposes.
    */
-  constructor(schema_name, id_regex = "", data_status = "draft") {
-    super(schema_name, id_regex, data_status);
+  constructor(schema, data_status = null) {
+    super(schema, data_status);
     this.values.multiple = false;
     this.values.ui = "radio";
   }
@@ -2811,8 +2978,8 @@ class CheckboxInput extends MultipleInput {
    * @param {String} schema_name Name of the schema that the field is attached to, for form identification purposes.
    * @param {String} [data_status=draft] Status of the schema version that the field is attached to, for form identification purposes.
    */
-  constructor(schema_name, id_regex = "", data_status = "draft") {
-    super(schema_name, id_regex, data_status);
+  constructor(schema, data_status = null) {
+    super(schema, data_status);
     this.values.multiple = true;
     this.values.ui = "checkbox";
   }

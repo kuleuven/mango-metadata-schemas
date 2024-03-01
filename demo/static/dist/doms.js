@@ -118,7 +118,7 @@ class Field {
 
   static autocomplete(field, active) {
     const input_tag = document.createElement("input");
-    input_tag.id = `${field.schema_name}-${field.id}`;
+    input_tag.id = `${field.schema.name}-${field.data_status}-${field.id}`;
     input_tag.type = "search";
 
     if (active) {
@@ -283,45 +283,31 @@ class MovingViewer extends MovingField {
    * @param {InputField} form Field to be edited.
    * @param {ComplexField} schema Schema or mini-schema of a composite field to which the field belongs.
    */
-  constructor(form, schema) {
+  constructor(form) {
     super(form.id);
+    const is_composite = form.constructor.name == "ObjectInput";
     this.title = form.required ? form.title + "*" : form.title;
     this.repeatable = form.repeatable;
-    this.help_text =
-      form.constructor.name == "ObjectInput" && form.help ? form.help : "";
 
     // div element
     this.div = Field.quick("div", "card border-primary viewer");
     this.div.id = form.id;
-    this.body =
-      form.constructor.name == "ObjectInput"
-        ? form.form_field.form
-        : form.viewer_input();
+    this.body = is_composite ? form.form_field.form : form.viewer_input();
     const search_input = this.body.querySelector("input[type='search']");
     if (search_input != undefined) {
       search_input.id = search_input.id + "-editor";
     }
 
-    // Modal called for editing the field
-    let modal_id = `mod-${form.id}-${form.schema_name}-${form.schema_status}`;
-    let modal = bootstrap.Modal.getOrCreateInstance(
-      document.getElementById(modal_id)
-    );
-    if (form.schema_status.startsWith("object")) {
-      this.parent_modal = bootstrap.Modal.getOrCreateInstance(
-        document.getElementById(schema.card_id)
-      );
-    }
-
     // more buttons
     this.rem = this.add_btn("rem", "trash", () => this.remove());
     this.copy = this.add_btn("copy", "front", () => this.duplicate(form));
-    this.edit = this.add_btn("edit", "pencil", () => {
-      if (this.parent_modal) {
-        this.parent_modal.toggle();
-      }
-      modal.toggle();
-    });
+    // Modal called for editing the field
+    if (!is_composite) {
+      let modal = bootstrap.Modal.getOrCreateInstance(
+        document.getElementById(form.editing_modal_id)
+      );
+      this.edit = this.add_btn("edit", "pencil", () => modal.toggle());
+    }
     // aesthetics when a field has just been duplicated
     if (form.is_duplicate) {
       this.copy.setAttribute("disabled", "");
@@ -330,8 +316,12 @@ class MovingViewer extends MovingField {
     }
 
     // bring everything together
-    this.assemble();
-    this.schema = schema;
+    this.assemble(is_composite ? form.editing_modal_id : null);
+    this.schema = form.schema;
+  }
+
+  get position() {
+    return this.schema.field_ids.indexOf(this.idx);
   }
 
   /**
@@ -342,10 +332,7 @@ class MovingViewer extends MovingField {
    */
   duplicate(form) {
     // copy of the clone
-    const clone = new form.constructor(
-      this.schema.initial_name,
-      form.schema_status
-    );
+    const clone = new form.constructor(this.schema);
 
     // keep track of how many copies have been made, for temp-ID purposes
     if (form.copies) {
@@ -366,8 +353,7 @@ class MovingViewer extends MovingField {
     clone.viewer_subtitle = form.viewer_subtitle;
     clone.mode = "mod";
     // Create the form and the modal corresponding to the clone field
-    clone.create_form();
-    clone.create_modal(this.schema);
+    clone.create_editor();
 
     // Transfer the mini-schema if the field is composite
     if (form.constructor.name == "ObjectInput") {
@@ -375,19 +361,19 @@ class MovingViewer extends MovingField {
       clone.minischema.fields = { ...form.minischema.fields };
       clone.minischema.field_ids.forEach((field_id, idx) => {
         clone.minischema.new_field_idx = idx;
-        clone.minischema.view_field(clone.minischema.fields[field_id]);
+        clone.minischema.fields[field_id].view_field();
       });
     }
 
     // Add the cloned field to the (mini-)schema it belongs to
-    this.schema.new_field_idx = this.schema.field_ids.indexOf(form.id) + 1;
-    this.schema.add_field(clone);
+    this.schema.new_field_idx = this.position + 1;
+    clone.add_to_schema();
   }
 
   /**
    * Construct and fill the HTML Element.
    */
-  assemble() {
+  assemble(body_id = null) {
     let header = Field.quick("div", "card-header mover-header");
     let header_title = document.createElement("h5");
     header_title.innerHTML = this.title;
@@ -400,19 +386,17 @@ class MovingViewer extends MovingField {
     // add buttons in order
     let header_buttons = Field.quick("div", "btn-list");
     for (let button of [this.up, this.down, this.copy, this.edit, this.rem]) {
-      header_buttons.appendChild(button);
+      if (button) header_buttons.appendChild(button);
     }
     // append HTML Elements to their parents
     header.appendChild(header_title);
     header.appendChild(header_buttons);
 
     let body = Field.quick("div", "card-body");
-    body.appendChild(this.body);
-    if (this.help_text) {
-      let description = Field.quick("p", "form-text mt-0 mb-1", this.help_text);
-      description.id = "help-composite";
-      body.insertBefore(description, this.body);
+    if (body_id != null) {
+      body.id = body_id;
     }
+    body.appendChild(this.body);
 
     this.div.appendChild(header);
     this.div.appendChild(body);
@@ -424,29 +408,25 @@ class MovingViewer extends MovingField {
    * which is disabled if this is the last viewer in the sequence of viewers.
    */
   move_down() {
-    let form_index = this.schema.field_ids.indexOf(this.idx); // index of the field among other fields
-    let sibling = this.below.nextSibling; // element under the bottom button
-    let sibling_button = sibling.nextSibling; // button under the bottom button
+    let sibling = this.div.nextSibling;
 
     // first, move the field and its button
     this.div.parentElement.insertBefore(sibling, this.div);
-    this.div.parentElement.insertBefore(sibling_button, this.div);
 
     // if the other div went to the first place
-    if (form_index == 0) {
+    if (this.position == 0) {
       sibling.querySelector(".up").setAttribute("disabled", "");
       this.up.removeAttribute("disabled");
     }
 
     // if this div became last
-    if (form_index + 2 == this.schema.field_ids.length) {
+    if (this.position + 2 == this.schema.field_ids.length) {
       sibling.querySelector(".down").removeAttribute("disabled");
       this.down.setAttribute("disabled", "");
     }
 
     // move the field down in the schema
-    this.schema.field_ids.splice(form_index, 1);
-    this.schema.field_ids.splice(form_index + 1, 0, this.idx);
+    this.move(1);
     this.schema.autosave();
   }
 
@@ -456,29 +436,35 @@ class MovingViewer extends MovingField {
    * which is disabled if this is the first viewer in the sequence of viewers.
    */
   move_up() {
-    let form_index = this.schema.field_ids.indexOf(this.idx); // index of the field among other fields
-    let sibling = this.div.previousSibling.previousSibling;
+    let sibling = this.div.previousSibling;
 
     // move the div and its button upwards
     this.div.parentElement.insertBefore(this.div, sibling);
-    this.div.parentElement.insertBefore(this.below, sibling);
 
     // if this div went to first place
-    if (form_index == 1) {
+    if (this.position == 1) {
       this.up.setAttribute("disabled", "");
       sibling.querySelector(".up").removeAttribute("disabled");
     }
 
     // if this div was the last one
-    if (form_index + 1 == this.schema.field_ids.length) {
+    if (this.position + 1 == this.schema.field_ids.length) {
       this.down.removeAttribute("disabled");
       sibling.querySelector(".down").setAttribute("disabled", "");
     }
 
-    // move the field up in the schema
-    this.schema.field_ids.splice(form_index, 1);
-    this.schema.field_ids.splice(form_index - 1, 0, this.idx);
+    // move the field down in the schema
+    this.move(-1);
     this.schema.autosave();
+  }
+
+  move(where = 0) {
+    const old_position = this.position;
+    const fids = this.schema.field_ids;
+    fids.splice(old_position, 1);
+    if (where != 0) {
+      fids.splice(old_position + where, 0, this.idx);
+    }
   }
 
   /**
@@ -487,69 +473,38 @@ class MovingViewer extends MovingField {
    * confirmation modal triggered by it is accepted.
    */
   remove() {
-    // if the field belongs to a composite field, hide its editing modal
-    if (this.parent_modal) {
-      this.parent_modal.toggle();
-    }
-
     // Ask for confirmation
     Modal.ask_confirmation(
       "Deleted fields cannot be recovered.",
       () => {
-        let form_index = this.schema.field_ids.indexOf(this.idx); // index of the field among other fields
-
         if (this.schema.field_ids.length > 1) {
           // if this is the last field
-          if (this.idx == this.schema.field_ids.length - 1) {
-            this.div.previousSibling.previousSibling
+          if (this.position == this.schema.field_ids.length - 1) {
+            this.div.previousSibling
               .querySelector(".down")
               .setAttribute("disabled", "");
           }
           // if this is the first field
-          if (this.idx == 0) {
-            this.below.nextSibling
-              .querySelector(".up")
-              .setAttribute("disabled", "");
+          if (this.position == 0) {
+            this.nextSibling.querySelector(".up").setAttribute("disabled", "");
           }
         }
 
         // remove the box and buttons
-        this.below.remove();
         this.div.remove();
 
         // remove the field from the schema
-        this.schema.field_ids.splice(form_index, 1);
+        this.move();
         this.schema.fields[this.idx].delete_modal();
         delete this.schema.fields[this.idx];
         this.schema.update_field_id_regex();
 
         // update the schema editor
-        this.schema.toggle_saving();
         this.schema.autosave();
-
-        // if the field belongs to a composite field, show its editing modal
-        if (this.parent_modal) {
-          if (
-            !document
-              .querySelector(`.modal#${this.schema.card_id}`)
-              .classList.contains("show")
-          ) {
-            this.parent_modal.toggle();
-          }
-        }
+        this.schema.toggle_saving();
       },
       () => {
         // cancel if the choice is not confirmed
-        // (show the composite field again if relevant)
-        if (this.parent_modal) {
-          if (
-            !document
-              .querySelector(`.modal#${this.schema.card_id}`)
-              .classList.contains("show")
-          ) {
-            this.parent_modal.toggle();
-          }
-        }
       }
     );
   }
@@ -1063,7 +1018,7 @@ class BasicForm {
     let div = Field.quick("div", "col-auto mt-3");
     let button = Field.quick("button", "btn btn-" + color, text);
     button.id = id;
-    button.type = "submit";
+    button.type = id == "add" ? "button" : "submit";
     div.appendChild(button);
     this.rowsub.appendChild(div);
   }
@@ -1074,9 +1029,7 @@ class BasicForm {
    * @param {Function} action Action to execute when clicking on the button.
    */
   add_submit_action(id, action) {
-    this.form
-      .querySelector("[type='submit']#" + id)
-      .addEventListener("click", action);
+    this.rowsub.querySelector("button#" + id).addEventListener("click", action);
   }
 
   /**
