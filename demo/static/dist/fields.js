@@ -142,7 +142,7 @@ class InputField {
     this.schema.toggle_saving();
 
     // Identify the form with MovingViewers and the MovingViewer itself
-    const viewer = this.form_field.form;
+    const viewer = this.schema.field_box.querySelector(`#${this.id}`);
 
     // Update the title of the MovingViewer
     viewer.querySelector("h5").innerHTML = this.required
@@ -805,43 +805,55 @@ class InputField {
         this.id,
         this.options_navbar ? this.temp_options : data
       ); // update the field
-      this.schema.update_field(this); // update the schema
+      this.update_field(); // update the schema
+      return this;
+    } else if (this.mode == "mod") {
+      this.new_name = new_id;
       return this;
     } else {
-      // if we are changing IDs or creating a new field altogether
+      // if we are creating a new field altogether
       // create a new field with the same type
-
       let clone = this.clone(new_id, data.get(`${this.id}-label`).trim());
+      console.log(this.temp_options, clone.temp_options);
       clone.recover_fields(
         this.id,
         this.options_navbar ? this.temp_options : data
       );
-
-      if (this.constructor.name == "ObjectInput") {
-        // this will have to change to adapt to creating filled-schemas (attached to new ids)
-        // clone.minischema = this.minischema;
-        clone.init_minischema();
-        this.minischema.fields.forEach((field) => {
-          let new_field = field.clone(field.id, field.title);
-          new_field.create_editor();
-          clone.minischema.fields.push(new_field);
-          field.delete_modal();
-        });
-        this.minischema.reset();
-      }
+      console.log(clone);
 
       // bring the current form, editor and contents to their original values
       this.reset();
 
       // set the mode of the new field, create form and modal that hosts the form
       clone.create_editor();
+      clone.add_to_schema();
 
       // register new field in the schema
-      if (this.mode == "add") {
-        clone.add_to_schema();
-      }
       return clone;
     }
+  }
+
+  set new_name(new_name) {
+    const card = this.schema.field_box.querySelector(`#${this.id}`);
+    function update_element_id(el) {
+      const old_id_parts = el.id.split("-");
+      const which_id = old_id_parts.indexOf(this.id);
+      if (which_id > -1) {
+        old_id_parts[which_id] = new_name;
+        el.id = old_id_parts.join("-");
+      }
+    }
+    card
+      .querySelectorAll(`[id*="${this.id}"]`)
+      .forEach((el) => update_element_id(el));
+    card.id = new_name;
+    if (this.constructor.name != "ObjectInput") {
+      const modal = docuemnt.getElementById(this.editing_modal_id);
+      modal
+        .querySelectorAll(`[id*="${this.id}"]`)
+        .forEach((el) => update_element_id(el));
+    }
+    this.id = new_name;
   }
 
   /**
@@ -1054,7 +1066,9 @@ class TypedInput extends InputField {
 
   update_field() {
     super.update_field();
-    this.form_field.form.firstChild.replaceChild(this.viewer_input());
+    this.schema.field_box
+      .querySelector(`#${this.id}`)
+      .firstChild.replaceChild(this.viewer_input());
   }
 
   get_form_div(key) {
@@ -1959,19 +1973,9 @@ class ObjectInput extends InputField {
     if (old_id == new_id) {
       this.update_field(); // update the schema
     } else {
+      this.new_name = new_id;
       this.minischema.new_name = new_id;
-      // this.id = new_id;
-      this.rename_form_fields;
     }
-  }
-
-  rename_form_fields(old_id) {
-    this.form_field.form
-      .querySelectorAll(`[id^='${old_id}-']`)
-      .forEach((input) => {
-        const suffix = input.id.split("-")[1];
-        input.id = `${this.id}-${suffix}`;
-      });
   }
 
   update_field() {
@@ -2119,7 +2123,9 @@ class MultipleInput extends InputField {
 
   update_field() {
     super.update_field();
-    this.form_field.form.firstChild.replaceWith(this.viewer_input());
+    this.schema.field_box
+      .querySelector(`#${this.id}`)
+      .firstChild.replaceWith(this.viewer_input());
     if (this.autocomplete_id != undefined) {
       this.activate_autocomplete();
     }
@@ -2589,6 +2595,7 @@ class MultipleInput extends InputField {
 
   get temp_options() {
     let relevant_tab, raw_list;
+    console.log(this.options_navbar, this.relevant_id);
 
     if (!this.options_navbar) {
       return this.values.values;
@@ -2601,12 +2608,14 @@ class MultipleInput extends InputField {
       relevant_tab = this.options_navbar.tab_content.querySelector("div.show");
       this.relevant_id = relevant_tab.id.split("-")[0];
     }
+    console.log(relevant_tab);
     if (this.relevant_id.startsWith("textarea")) {
       const textarea = relevant_tab.querySelector("textarea").value;
       raw_list = textarea.split("\n");
     } else if (this.relevant_id.startsWith("movers")) {
       const moving_fields = relevant_tab.querySelectorAll("div.blocked input");
       raw_list = [...moving_fields].map((option) => option.value);
+      console.log(moving_fields);
     } else if (this.relevant_id.startsWith("file")) {
       const file_contents = relevant_tab.querySelector("pre").innerHTML;
       raw_list = file_contents.split("\n");
@@ -2620,11 +2629,7 @@ class MultipleInput extends InputField {
    */
   recover_fields(id, data) {
     // reset whatever values existing
-    this.values.values = [];
-
-    this.values.values = this.temp_options
-      .map((x) => x.trim())
-      .filter((x) => x.length > 0);
+    this.values.values = data.map((x) => x.trim()).filter((x) => x.length > 0);
 
     // if the form in the modal already exists
     if (this.options_navbar) {
