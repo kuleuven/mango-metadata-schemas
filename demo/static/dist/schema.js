@@ -9,8 +9,7 @@
  * @property {SelectInput} placeholders.select Placeholder for a single-value multiple-choice field.
  * @property {CheckboxInput} placeholders.checkbox Placeholder for a multiple-value multiple-choice field.
  * @property {ObjectInput} placeholders.object Placeholder for a composite field.
- * @property {String[]} field_ids Ordered names of the fields.
- * @property {Object<String,InputField>} fields Collection of fields that belong to the schema.
+ * @property {InputField[]} fields Collection of fields that belong to the schema.
  * @property {Object<String,FieldInfo>} properties Object-version of the information of the fields, to store in a JSON.
  * @property {Number} new_field_idx Index of the following field that could be added.
  */
@@ -37,9 +36,7 @@ class ComplexField {
     };
 
     // initial state before adding any fields
-    this.field_ids = [];
-    this.fields = {};
-    this.new_field_idx = 0;
+    this.fields = [];
     this.empty_composite_idx = 0;
     this.wip = [];
   }
@@ -48,6 +45,10 @@ class ComplexField {
 
   get prefix() {
     return `mgs__${this.name}`;
+  }
+
+  get field_ids() {
+    return this.fields.map((f) => f.id);
   }
 
   add_wip(fid) {
@@ -70,11 +71,7 @@ class ComplexField {
     this.field_id_regex = `^((?!^${this.field_ids.join(
       "$|^"
     )}$)[a-z0-9_\\-]+)+$`;
-    this.field_ids.forEach((field_id) => {
-      if (field_id in this.fields) {
-        this.fields[field_id].update_id_regex(this.field_id_regex);
-      }
-    });
+    this.fields.forEach((field) => field.update_id_regex(this.field_id_regex));
     Object.keys(this.placeholders).forEach((key) => {
       this.placeholders[key].update_id_regex(this.field_id_regex);
     });
@@ -85,8 +82,8 @@ class ComplexField {
    */
   fields_to_json() {
     this.properties = {};
-    this.field_ids.forEach((field_id) => {
-      this.properties[field_id] = this.fields[field_id].json;
+    this.fields.forEach((field) => {
+      this.properties[field.id] = field.json;
     });
   }
 
@@ -121,17 +118,12 @@ class ComplexField {
   }
 
   properties_from_json(data) {
-    this.field_ids = Object.keys(data.properties);
-    this.update_field_id_regex();
-
-    this.field_ids.forEach((field_id) => {
-      let new_field = InputField.choose_class(this, null, [
-        field_id,
-        data.properties[field_id],
-      ]);
+    Object.entries(data.properties).forEach((field) => {
+      let new_field = InputField.choose_class(this, null, field);
       new_field.create_editor();
-      this.fields[field_id] = new_field;
+      this.fields.push(new_field);
     });
+    this.update_field_id_regex();
   }
 
   /**
@@ -205,21 +197,6 @@ class ComplexField {
   }
 
   /**
-   * Replace (rename) an existing field in a schema.
-   * @param {String} old_id ID of the field to be replaced.
-   * @param {InputField} form_object Replacement field.
-   */
-  replace_field(old_id, form_object) {
-    // Remove the existing field from this.fields and from this.field_ids
-    delete this.fields[old_id];
-    this.new_field_idx = this.field_ids.indexOf(old_id); // set next-field index to the index of the replaced field
-    this.field_ids.splice(this.new_field_idx, 1);
-
-    // Add the replacement field
-    form_object.add_to_schema();
-  }
-
-  /**
    * Disable or enable saving a (mini-)schema based on whether any of the existing fields is a duplicate.
    * Duplicates don't have ids, so we cannot save a schema until that issue is resolved.
    */
@@ -258,13 +235,6 @@ class ComplexField {
     button.setAttribute("data-bs-toggle", "modal");
     button.setAttribute("data-bs-target", `#${this.modal_id}`);
 
-    // on click, the modal will also update `new_field_idx` based on the index of the field on top of it
-    button.addEventListener("click", () => {
-      this.new_field_idx = div.previousSibling.classList.contains("viewer")
-        ? this.field_ids.indexOf(div.previousSibling.id) + 1
-        : 0;
-    });
-
     div.appendChild(button);
     return div;
   }
@@ -273,9 +243,7 @@ class ComplexField {
    * Reset the contents of this schema: no fields, initial name
    */
   reset() {
-    this.field_ids = [];
-    this.fields = {};
-    this.new_field_idx = 0;
+    this.fields = [];
 
     // if relevant, reset the name
     // if this is the initial schema and a new draft has been created
@@ -305,12 +273,8 @@ class ComplexField {
 
     // go through each of the fields
     // QUESTION should the code inside the forEach be defined in the InputField classes?
-    schema.field_ids.forEach((field_id) => {
-      let subfield = ComplexField.add_field_viewer(
-        schema.fields[field_id],
-        active
-      );
-      div.appendChild(subfield);
+    schema.fields.forEach((field) => {
+      div.appendChild(ComplexField.add_field_viewer(field, active));
     });
 
     return div;
@@ -370,8 +334,7 @@ class ComplexField {
   }
 
   activate_autocompletes(read = false, include_editor = true) {
-    this.field_ids.forEach((fid) => {
-      const field = this.fields[fid];
+    this.fields.forEach((field) => {
       if (field.type == "object") {
         field.minischema.activate_autocompletes(read, include_editor);
       } else if (field.autocomplete_id != undefined) {
@@ -404,21 +367,18 @@ class DummyObject extends ComplexField {
     let schema_name = "example";
     super(schema_name, schema_name);
     delete this.placeholders;
-    this.field_ids = ["text", "date", "hair"];
 
     // Create a simple field of type 'text' for illustration
     let name = new TypedInput(schema_name);
     name.id = "text";
     name.title = "Full name";
     name.value = "Jane Doe";
-    this.fields.text = name;
 
     // Create a simple field of type 'date' for illustration
     let bday = new TypedInput(schema_name);
     bday.type = "date";
     bday.title = "Birth date";
     bday.value = "1970-05-03";
-    this.fields.date = bday;
 
     // Create a single-value multiple-choice field for illustration
     let hair = new SelectInput(schema_name);
@@ -426,7 +386,8 @@ class DummyObject extends ComplexField {
     hair.values.values = ["brown", "red", "blond", "dark", "pink"];
     hair.value = "red";
     hair.title = "Hair color";
-    this.fields.hair = hair;
+
+    this.fields = [name, bday, hair];
   }
 }
 
@@ -492,14 +453,15 @@ class ObjectEditor extends ComplexField {
 
   set new_name(name) {
     const current_ids = Object.fromEntries(
-      this.field_ids.map((fid) => [fid, this.fields[fid].editing_modal_id])
+      this.fields.map((field) => [field.id, field.editing_modal_id])
     );
     this.name = name;
+    this.composite.id = name;
     const new_ids = Object.fromEntries(
-      this.field_ids.map((fid) => [fid, this.fields[fid].editing_modal_id])
+      this.fields.map((field) => [field.id, field.editing_modal_id])
     );
-    this.field_ids.forEach((fid) => {
-      document.getElementById(current_ids[fid]).id = new_ids[fid];
+    this.fields.forEach((field) => {
+      document.getElementById(current_ids[field.id]).id = new_ids[field.id];
     });
   }
 }
@@ -590,7 +552,7 @@ class Schema extends ComplexField {
   create_creator() {
     this.status = "draft";
 
-    if (this.ls_id in localStorage && this.field_ids.length == 0) {
+    if (this.ls_id in localStorage && this.fields.length == 0) {
       let schema_from_ls = JSON.parse(localStorage.getItem(this.ls_id));
       this.properties_from_json(schema_from_ls);
     }
@@ -612,10 +574,7 @@ class Schema extends ComplexField {
 
     if (this.ls_id in localStorage) {
       this.offer_reset_ls();
-      this.field_ids.forEach((field_id, idx) => {
-        this.new_field_idx = idx;
-        this.fields[field_id].view_field();
-      });
+      this.fields.forEach((field) => field.view_field());
     }
   }
 
@@ -740,7 +699,7 @@ class Schema extends ComplexField {
     }
 
     // if there are no fields, the draft cannot be published
-    if (this.field_ids.length == 0) {
+    if (this.fields.length == 0) {
       this.form.form
         .querySelector("button#publish")
         .setAttribute("disabled", "");
@@ -752,21 +711,18 @@ class Schema extends ComplexField {
    * @param {Schema} parent Schema of the parent.
    */
   from_parent(parent) {
-    this.field_ids = [...parent.field_ids]; // duplicate field ids
     this.parent = `${parent.name}-${parent.version}`; // register name and version of the parent
     this.initial_name = `${parent.name}-new`;
     this.status = "draft"; // start as draft (but data_status will be 'copy')
     this.origin = {
-      ids: [...parent.field_ids],
       json: { ...parent.properties },
     };
     this.nav_bar = parent.nav_bar;
-    this.field_id_regex = parent.field_id_regex;
     // go through each existing field and clone it
     Object.entries(parent.properties).forEach((entry) => {
       let new_field = InputField.choose_class(this, "child", entry);
       new_field.create_editor();
-      this.fields[entry[0]] = new_field;
+      this.fields.push(new_field);
     });
   }
 
@@ -791,7 +747,7 @@ class Schema extends ComplexField {
   }
 
   prepare_json_download() {
-    if (this.field_ids.length == 0) {
+    if (this.fields.length == 0) {
       return;
     }
     this.fields_to_json();
@@ -1118,7 +1074,7 @@ class Schema extends ComplexField {
     }
 
     // show a message if there are no fields
-    if (this.field_ids.length == 0) {
+    if (this.fields.length == 0) {
       let msg = Field.quick(
         "div",
         "viewer",
@@ -1128,16 +1084,10 @@ class Schema extends ComplexField {
     }
 
     // show all existing fields
-    this.field_ids.forEach((field_id, idx) => {
-      this.new_field_idx = idx;
-      this.fields[field_id].view_field(); // show in editor
-    });
+    this.fields.forEach((field) => field.view_field());
 
     if (this.status == "published") {
-      this.child.field_ids.forEach((field_id, idx) => {
-        this.child.new_field_idx = idx; // show the fields in the clone editor
-        this.child.fields[field_id].view_field();
-      });
+      this.child.fields.forEach((field) => field.view_field());
     }
 
     if (last_mod_ls in localStorage) {
@@ -1208,6 +1158,7 @@ class Schema extends ComplexField {
       return;
     }
     this.fields_to_json();
+    console.log(this.properties);
     const to_save = {
       title: this.temp_title ? this.temp_title : this.title,
       properties: this.properties,
@@ -1468,7 +1419,6 @@ class SchemaGroup {
  * @property {String} version Version number of the current schema version.
  * @property {String} parent Name of the schema this schema was cloned from, if relevant. (Not implemented)
  * @property {Object<String,InputField>} fields Collection of fields that constitute this schema.
- * @property {String[]} field_ids Ordered list of IDs of the fields.
  * @property {HTMLFormElement} form Form used to implement the metadata annotation.
  */
 class SchemaForm {

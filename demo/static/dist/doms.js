@@ -357,16 +357,11 @@ class MovingViewer extends MovingField {
 
     // Transfer the mini-schema if the field is composite
     if (form.constructor.name == "ObjectInput") {
-      clone.minischema.field_ids = [...form.minischema.field_ids];
-      clone.minischema.fields = { ...form.minischema.fields };
-      clone.minischema.field_ids.forEach((field_id, idx) => {
-        clone.minischema.new_field_idx = idx;
-        clone.minischema.fields[field_id].view_field();
-      });
+      clone.minischema.fields = [...form.minischema.fields];
+      clone.minischema.fields.forEach((field) => field.view_field());
     }
 
     // Add the cloned field to the (mini-)schema it belongs to
-    this.schema.new_field_idx = this.position + 1;
     clone.add_to_schema();
   }
 
@@ -420,7 +415,7 @@ class MovingViewer extends MovingField {
     }
 
     // if this div became last
-    if (this.position + 2 == this.schema.field_ids.length) {
+    if (this.position + 2 == this.schema.fields.length) {
       sibling.querySelector(".down").removeAttribute("disabled");
       this.down.setAttribute("disabled", "");
     }
@@ -448,7 +443,7 @@ class MovingViewer extends MovingField {
     }
 
     // if this div was the last one
-    if (this.position + 1 == this.schema.field_ids.length) {
+    if (this.position + 1 == this.schema.fields.length) {
       this.down.removeAttribute("disabled");
       sibling.querySelector(".down").setAttribute("disabled", "");
     }
@@ -460,10 +455,9 @@ class MovingViewer extends MovingField {
 
   move(where = 0) {
     const old_position = this.position;
-    const fids = this.schema.field_ids;
-    fids.splice(old_position, 1);
+    const old_field = this.schema.fields.splice(old_position, 1)[0];
     if (where != 0) {
-      fids.splice(old_position + where, 0, this.idx);
+      this.schema.fields.splice(old_position + where, 0, old_field);
     }
   }
 
@@ -477,16 +471,18 @@ class MovingViewer extends MovingField {
     Modal.ask_confirmation(
       "Deleted fields cannot be recovered.",
       () => {
-        if (this.schema.field_ids.length > 1) {
+        if (this.schema.fields.length > 1) {
           // if this is the last field
-          if (this.position == this.schema.field_ids.length - 1) {
+          if (this.position == this.schema.fields.length - 1) {
             this.div.previousSibling
               .querySelector(".down")
               .setAttribute("disabled", "");
           }
           // if this is the first field
           if (this.position == 0) {
-            this.nextSibling.querySelector(".up").setAttribute("disabled", "");
+            this.div.nextSibling
+              .querySelector(".up")
+              .setAttribute("disabled", "");
           }
         }
 
@@ -494,9 +490,8 @@ class MovingViewer extends MovingField {
         this.div.remove();
 
         // remove the field from the schema
+        this.schema.fields[this.position].delete_modal();
         this.move();
-        this.schema.fields[this.idx].delete_modal();
-        delete this.schema.fields[this.idx];
         this.schema.update_field_id_regex();
 
         // update the schema editor

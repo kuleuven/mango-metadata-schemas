@@ -118,10 +118,7 @@ class InputField {
    */
   add_to_schema() {
     // Add the field ID to the list of field IDs, in the right order
-    this.schema.field_ids.splice(this.schema.new_field_idx, 0, this.id);
-
-    // Add the field to the object with fields
-    this.schema.fields[this.id] = this;
+    this.schema.fields.push(this);
     this.schema.update_field_id_regex();
 
     // Enable or disable 'saving' the schema based on whether this field has been created by duplicating.
@@ -131,12 +128,16 @@ class InputField {
     this.view_field();
   }
 
+  get position() {
+    return this.schema.fields.indexOf(this);
+  }
+
   /**
    * Update an existing field in a schema.
    */
   update_field() {
     // Replace the field in this.fields
-    this.schema.fields[this.id] = this;
+    this.schema.fields[this.position] = this;
     this.schema.autosave();
     this.schema.toggle_saving();
 
@@ -169,16 +170,9 @@ class InputField {
 
     // disable/re-enable the buttons of the existing viewers
     let viewers = field_box.querySelectorAll(".viewer");
-    console.log(
-      this.schema.field_ids,
-      this.schema.new_field_idx,
-      this.id,
-      this.schema.field_ids.indexOf(this.id)
-    );
-    console.log(this.schema.fields);
 
     // if this new field is in the first place
-    if (this.schema.new_field_idx === 0) {
+    if (this.position === 0) {
       // disable its up-button
       moving_viewer.up.setAttribute("disabled", "");
 
@@ -189,7 +183,7 @@ class InputField {
     }
 
     // if this new field is in the last place
-    if (this.schema.new_field_idx === this.schema.field_ids.length - 1) {
+    if (this.position === this.schema.fields.length - 1) {
       // disable its down-button
       moving_viewer.down.setAttribute("disabled", "");
 
@@ -827,12 +821,10 @@ class InputField {
         // this will have to change to adapt to creating filled-schemas (attached to new ids)
         // clone.minischema = this.minischema;
         clone.init_minischema();
-        clone.minischema.field_ids = [...this.minischema.field_ids];
-        this.minischema.field_ids.forEach((fid) => {
-          let field = this.minischema.fields[fid];
+        this.minischema.fields.forEach((field) => {
           let new_field = field.clone(field.id, field.title);
           new_field.create_editor();
-          clone.minischema.fields[fid] = new_field;
+          clone.minischema.fields.push(new_field);
           field.delete_modal();
         });
         this.minischema.reset();
@@ -845,9 +837,7 @@ class InputField {
       clone.create_editor();
 
       // register new field in the schema
-      if (this.mode == "mod") {
-        this.schema.replace_field(old_id, clone);
-      } else {
+      if (this.mode == "add") {
         clone.add_to_schema();
       }
       return clone;
@@ -1837,7 +1827,7 @@ class ObjectInput extends InputField {
 
   get default_help() {
     return `Nested form with ${
-      this.minischema ? this.minischema.field_ids.length : " "
+      this.minischema ? this.minischema.fields.length : " "
     }subfields that go together.`;
   }
 
@@ -1922,9 +1912,7 @@ class ObjectInput extends InputField {
     // if there is existing data, fill in the editor
     if (this.json_source != undefined) {
       this.minischema.from_json(this.json_source, this.id);
-      this.minischema.field_ids.forEach((fid) => {
-        this.minischema.fields[fid].view_field();
-      });
+      this.minischema.fields.forEach((field) => field.view_field());
     }
   }
 
@@ -1967,10 +1955,19 @@ class ObjectInput extends InputField {
     if (old_id == new_id) {
       this.update_field(); // update the schema
     } else {
-      this.id = new_id;
-      this.schema.replace_field(old_id, this);
-      this.minischema.new_name = this.id;
+      this.minischema.new_name = new_id;
+      // this.id = new_id;
+      this.rename_form_fields;
     }
+  }
+
+  rename_form_fields(old_id) {
+    this.form_field.form
+      .querySelectorAll(`[id^='${old_id}-']`)
+      .forEach((input) => {
+        const suffix = input.id.split("-")[1];
+        input.id = `${this.id}-${suffix}`;
+      });
   }
 
   update_field() {
