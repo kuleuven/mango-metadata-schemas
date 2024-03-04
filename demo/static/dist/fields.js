@@ -1931,6 +1931,10 @@ class ObjectInput extends InputField {
       this.schema.wip.push(clone.id);
       clone.title = "TEMPORARY COMPOSITE FIELD";
       clone.add_to_schema();
+      console.log(this.schema.modal_id);
+      bootstrap.Modal.getOrCreateInstance(
+        document.getElementById(this.schema.modal_id)
+      ).hide();
     });
 
     let new_form = InputField.example_box(new_button);
