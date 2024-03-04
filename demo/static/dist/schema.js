@@ -205,8 +205,9 @@ class ComplexField {
     let form = this.form_div;
 
     // Check if any field is a duplicate
-    const has_duplicates = Object.values(this.fields).some(
-      (field) => field.is_duplicate
+    const has_duplicates = this.fields.some((field) => field.is_duplicate);
+    const has_wip_composites = this.fields.some(
+      (field) => field.minischema && field.minischema.wip.length > 0
     );
 
     // Buttons to update:
@@ -214,7 +215,7 @@ class ComplexField {
       this.constructor.name == "Schema"
         ? ["publish", "draft"].map((btn) => form.querySelector("button#" + btn)) // publish and draft for schemas
         : [form.querySelector("button#add")]; // "add/update" for a composite field
-    if (has_duplicates || this.wip.length > 0) {
+    if (has_duplicates || has_wip_composites) {
       buttons.forEach((btn) => btn.setAttribute("disabled", ""));
     } else {
       buttons.forEach((btn) => btn.removeAttribute("disabled"));
@@ -449,6 +450,7 @@ class ObjectEditor extends ComplexField {
         .querySelector("button#add")
         .setAttribute("disabled", "");
     }
+    this.composite.schema.toggle_saving();
   }
 
   set new_name(name) {
