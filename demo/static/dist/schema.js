@@ -22,7 +22,6 @@ class ComplexField {
    */
   constructor(name, data_status = "draft") {
     // properties of the schema itself
-    this.modal_id = `m-${name}-${data_status}`;
     this.initial_name = name;
     this.data_status = data_status;
     this.field_id_regex = "[a-zA-Z0-9_\\-]+";
@@ -45,6 +44,10 @@ class ComplexField {
 
   get prefix() {
     return `mgs__${this.name}`;
+  }
+
+  get modal_id() {
+    return `m-${this.prefix}-${this.data_status}`;
   }
 
   get field_ids() {
@@ -420,7 +423,7 @@ class ObjectEditor extends ComplexField {
   is_composite = true;
 
   get prefix() {
-    return `${this.composite.schema.prefix}__${this.composite.id}`;
+    return `${this.composite.schema.prefix}-${this.composite.id}`;
   }
 
   reset_wip() {

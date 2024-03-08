@@ -62,7 +62,7 @@ class InputField {
   }
 
   get editing_modal_id() {
-    return `${this.mode}-${this.schema.prefix}__${this.id}__${this.schema.data_status}`;
+    return `${this.mode}-${this.schema.prefix}-${this.id}-${this.schema.data_status}`;
   }
 
   /**
@@ -742,7 +742,7 @@ class InputField {
    * @returns {HTMLDivElement} Element that contains an illustration example and a button to activate an editor modal.
    */
   render() {
-    this.id = `${this.form_type}-temp`;
+    this.id = `${this.form_type}_temp`;
 
     // create the form to design the field and the modal that will host it
     this.create_editor();
@@ -836,11 +836,11 @@ class InputField {
   set new_name(new_name) {
     const card = this.schema.field_box.querySelector(`#${this.id}`);
     function update_element_id(el, this_id) {
-      const old_id_parts = el.id.split("-");
-      const which_id = old_id_parts.indexOf(this_id);
-      if (which_id > -1) {
-        old_id_parts[which_id] = new_name;
-        el.id = old_id_parts.join("-");
+      const { pre, pos } = el.id.match(
+        `(?<pre>[a-z_-]+-)?(?<id>${this_id})(?<pos>-[a-z_-]+)?`
+      ).groups;
+      if (!(pre == undefined && pos == undefined)) {
+        el.id = `${pre || ""}${new_name}${pos || ""}`;
       }
     }
     card.querySelectorAll(`[id*="${this.id}"]`).forEach((el) => {
@@ -848,7 +848,7 @@ class InputField {
     });
     card.id = new_name;
     if (this.constructor.name != "ObjectInput") {
-      const modal = docuemnt.getElementById(this.editing_modal_id);
+      const modal = document.getElementById(this.editing_modal_id);
       modal.querySelectorAll(`[id*="${this.id}"]`).forEach((el) => {
         update_element_id(el, this.id);
       });
@@ -1786,7 +1786,7 @@ class ObjectInput extends InputField {
     "This can contain any combination of the previous form elements.<br>";
 
   get editing_modal_id() {
-    return `form-${this.schema.prefix}__${this.id}`;
+    return `form-${this.schema.prefix}-${this.id}`;
   }
 
   /**
@@ -1932,7 +1932,7 @@ class ObjectInput extends InputField {
 
   render() {
     const clone = new ObjectInput(this.schema);
-    clone.id = `i${this.schema.empty_composite_idx}-composite-temp`;
+    clone.id = `i${this.schema.empty_composite_idx}ctemp`;
     this.schema.empty_composite_idx += 1;
     this.schema.add_wip(clone.id);
     clone.create_editor();
