@@ -130,7 +130,7 @@ class ComplexField {
    * Add new fields based on uploaded JSON file.
    * @param {FieldInfo} data JSON representation of a field.
    */
-  add_fields_from_json(data, modal_id) {
+  add_fields_from_json(data) {
     Object.keys(data).forEach((field_id) => {
       let new_field = InputField.choose_class(this, null, [
         field_id,
@@ -142,7 +142,7 @@ class ComplexField {
     });
 
     bootstrap.Modal.getOrCreateInstance(
-      document.getElementById(modal_id)
+      document.getElementById(this.modal_id)
     ).toggle();
   }
 
@@ -463,7 +463,10 @@ class ObjectEditor extends ComplexField {
       this.fields.map((field) => [field.id, field.editing_modal_id])
     );
     this.fields.forEach((field) => {
-      document.getElementById(current_ids[field.id]).id = new_ids[field.id];
+      const old_modal = document.getElementById(current_ids[field.id]);
+      if (old_modal != null) {
+        old_modal.id = new_ids[field.id];
+      }
     });
   }
 }
@@ -520,9 +523,8 @@ class Schema extends ComplexField {
    */
   from_json(data) {
     this.saved_json = data;
-    this.create_editor();
-
     super.from_json(data);
+    this.create_editor();
 
     // retrieve schema-specific information
     this.name = data.schema_name;
@@ -655,9 +657,9 @@ class Schema extends ComplexField {
     this.form.add_submit_action("publish", (e) => {
       e.preventDefault();
       // BS5 validity check
-      if (!form.form.checkValidity()) {
+      if (!this.form.form.checkValidity()) {
         e.stopPropagation();
-        form.form.classList.add("was-validated");
+        this.form.form.classList.add("was-validated");
       } else {
         // trigger confirmation message, which also has its hidden fields
         let second_sentence =
@@ -685,7 +687,7 @@ class Schema extends ComplexField {
             this.save_draft("publish");
           }
         );
-        form.form.classList.remove("was-validated");
+        this.form.form.classList.remove("was-validated");
       }
     });
 

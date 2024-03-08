@@ -835,23 +835,23 @@ class InputField {
 
   set new_name(new_name) {
     const card = this.schema.field_box.querySelector(`#${this.id}`);
-    function update_element_id(el) {
+    function update_element_id(el, this_id) {
       const old_id_parts = el.id.split("-");
-      const which_id = old_id_parts.indexOf(this.id);
+      const which_id = old_id_parts.indexOf(this_id);
       if (which_id > -1) {
         old_id_parts[which_id] = new_name;
         el.id = old_id_parts.join("-");
       }
     }
-    card
-      .querySelectorAll(`[id*="${this.id}"]`)
-      .forEach((el) => update_element_id(el));
+    card.querySelectorAll(`[id*="${this.id}"]`).forEach((el) => {
+      update_element_id(el, this.id);
+    });
     card.id = new_name;
     if (this.constructor.name != "ObjectInput") {
       const modal = docuemnt.getElementById(this.editing_modal_id);
-      modal
-        .querySelectorAll(`[id*="${this.id}"]`)
-        .forEach((el) => update_element_id(el));
+      modal.querySelectorAll(`[id*="${this.id}"]`).forEach((el) => {
+        update_element_id(el, this.id);
+      });
     }
     this.id = new_name;
   }
@@ -1067,8 +1067,8 @@ class TypedInput extends InputField {
   update_field() {
     super.update_field();
     this.schema.field_box
-      .querySelector(`#${this.id}`)
-      .firstChild.replaceChild(this.viewer_input());
+      .querySelector(`#${this.id} .card-body`)
+      .firstChild.replaceWith(this.viewer_input());
   }
 
   get_form_div(key) {
@@ -1946,6 +1946,8 @@ class ObjectInput extends InputField {
       clone.title = "TEMPORARY COMPOSITE FIELD";
       clone.add_to_schema();
       console.log(this.schema.modal_id);
+      console.log(clone);
+      console.log(this.schema.fields);
       bootstrap.Modal.getOrCreateInstance(
         document.getElementById(this.schema.modal_id)
       ).hide();
@@ -1968,6 +1970,9 @@ class ObjectInput extends InputField {
 
     // if we are updating an existing field without changing the ID
     this.title = data.get(`${this.id}-label`).trim();
+    this.form_field.form.parentElement.parentElement.querySelector(
+      ".card-header h5"
+    ).innerHTML = this.title;
     this.recover_fields(this.id, data); // update the field
 
     if (old_id == new_id) {
@@ -2124,7 +2129,7 @@ class MultipleInput extends InputField {
   update_field() {
     super.update_field();
     this.schema.field_box
-      .querySelector(`#${this.id}`)
+      .querySelector(`#${this.id} .card-body`)
       .firstChild.replaceWith(this.viewer_input());
     if (this.autocomplete_id != undefined) {
       this.activate_autocomplete();
@@ -2595,7 +2600,6 @@ class MultipleInput extends InputField {
 
   get temp_options() {
     let relevant_tab, raw_list;
-    console.log(this.options_navbar, this.relevant_id);
 
     if (!this.options_navbar) {
       return this.values.values;
@@ -2608,14 +2612,12 @@ class MultipleInput extends InputField {
       relevant_tab = this.options_navbar.tab_content.querySelector("div.show");
       this.relevant_id = relevant_tab.id.split("-")[0];
     }
-    console.log(relevant_tab);
     if (this.relevant_id.startsWith("textarea")) {
       const textarea = relevant_tab.querySelector("textarea").value;
       raw_list = textarea.split("\n");
     } else if (this.relevant_id.startsWith("movers")) {
       const moving_fields = relevant_tab.querySelectorAll("div.blocked input");
       raw_list = [...moving_fields].map((option) => option.value);
-      console.log(moving_fields);
     } else if (this.relevant_id.startsWith("file")) {
       const file_contents = relevant_tab.querySelector("pre").innerHTML;
       raw_list = file_contents.split("\n");
