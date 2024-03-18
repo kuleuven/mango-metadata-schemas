@@ -4,26 +4,26 @@ class Library {
   constructor(library_fields) {
     this.fields = {};
     this.library_fields = library_fields;
+    this.field_id_regex = ".+";
+    this.prefix = "library";
     library_fields.forEach((field, i) => {
       let field_object;
-      const schema_name = "library";
-      const id_regex = "";
       const data_status = "library";
       if (field.data.type == "object") {
-        field_object = new ObjectInput(schema_name, id_regex, data_status);
-        field_object.editor = new ObjectEditor(field_object);
+        field_object = new ObjectInput(this, data_status);
       } else if ((field.data.type = "select")) {
         field_object = field.data.multiple
-          ? new CheckboxInput(schema_name, id_regex, data_status)
-          : new SelectInput(schema_name, id_regex, data_status);
+          ? new CheckboxInput(this, data_status)
+          : new SelectInput(this, data_status);
       } else {
-        field_object = new TypedInput(schema_name, id_regex, data_status);
-      }
-      field_object.from_json(field.data);
-      if (field.data.type == "object") {
-        field_object.editor.from_json(field_object.json_source);
+        field_object = new TypedInput(this, data_status);
       }
       field_object.id = field.name;
+      field_object.create_editor();
+      field_object.from_json(field.data);
+      if (field.data.type == "object") {
+        field_object.minischema.from_json(field_object.json_source);
+      }
 
       this.fields[i.toString()] = field_object;
     });
@@ -35,23 +35,15 @@ class Library {
   create_modal() {
     this.modal = new Modal(Library.modal_id, "Choose a pre-made form element.");
     this.modal.create_modal([this.nav_content], "lg");
+    this.card = this.nav_content;
     this.library_fields.forEach((field, i) => {
       const f = this.fields[i.toString()];
       if (f.type == "object") {
-        f.editor.activate_autocompletes(false, false);
-      } else if (f.autocomplete_id != undefined) {
+        f.minischema.activate_autocompletes();
+      } else {
         f.activate_autocomplete();
       }
     });
-    document
-      .getElementById(Library.modal_id)
-      .addEventListener("hidden.bs.modal", () => {
-        if (this.schema && this.schema.constructor == "ObjectEditor") {
-          bootstrap.Modal.getOrCreateInstance(
-            document.getElementById(this.schema.card_id)
-          ).show();
-        }
-      });
   }
 
   create_navbar() {
@@ -120,10 +112,6 @@ class Library {
       }
       return { button: new_button, i: i };
     });
-    this.schema = {
-      constructor: schema.constructor.name,
-      card_id: schema.card_id,
-    };
   }
 }
 
@@ -142,11 +130,6 @@ class JsonInput {
     this.modal.create_modal([this.json_div], "lg");
     this.modal_modal = document.getElementById(JsonInput.modal_id);
     this.modal_modal.addEventListener("hidden.bs.modal", () => {
-      if (this.schema && this.schema.constructor == "ObjectEditor") {
-        bootstrap.Modal.getOrCreateInstance(
-          document.getElementById(this.schema.card_id)
-        ).show();
-      }
       this.reset();
     });
   }
@@ -171,11 +154,7 @@ class JsonInput {
         schema.add_fields_from_json(this.fields, JsonInput.modal_id);
       }
     });
-    this.schema = {
-      constructor: schema.constructor.name,
-      card_id: schema.card_id,
-      field_ids: schema.field_ids,
-    };
+    this.existing_names = schema.field_ids;
   }
 
   verify_json_data(data) {
@@ -217,7 +196,7 @@ class JsonInput {
             errors = [...errors, ...new_msg];
           } else {
             let field_name = field[0];
-            while (this.schema.field_ids.indexOf(field_name) > -1) {
+            while (this.existing_names.indexOf(field_name) > -1) {
               field_name = field_name + "-new";
             }
             // if the name already exists (and was therefore changed)
