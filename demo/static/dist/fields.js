@@ -942,7 +942,6 @@ class InputField {
     new_field.field_id = id;
     new_field.id = id;
 
-    new_field.update_id_regex(schema.field_id_regex);
     new_field.mode = "mod";
 
     // read the FieldInfo object to retrieve and register the data
