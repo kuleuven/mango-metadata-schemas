@@ -448,6 +448,11 @@ class ObjectEditor extends ComplexField {
       : `object-${this.composite.data_status}`;
   }
 
+  get card() {
+    console.log(this.composite.schema);
+    return undefined;
+  }
+
   toggle_saving() {
     const card = this.form_div.parentElement.parentElement;
     if (this.wip.length > 0) {
@@ -942,7 +947,8 @@ class Schema extends ComplexField {
 
     // add button and tab for viewing the saved form of the schema version
     this.nav_bar.add_item("view", "View", true);
-    let viewer = ComplexField.create_viewer(this);
+    const viewer = ComplexField.create_viewer(this);
+    this.viewer = viewer;
     this.nav_bar.add_tab_content("view", viewer);
 
     if (this.status == "draft") {
