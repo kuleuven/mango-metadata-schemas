@@ -285,14 +285,14 @@ class MovingViewer extends MovingField {
    */
   constructor(form) {
     super(form.id);
-    const is_composite = form.constructor.name == "ObjectInput";
+    this.is_composite = form.constructor.name == "ObjectInput";
     this.title = form.required ? form.title + "*" : form.title;
     this.repeatable = form.repeatable;
 
     // div element
     this.div = Field.quick("div", "card border-primary viewer");
     this.div.id = form.id;
-    this.body = is_composite ? form.form_field.form : form.viewer_input();
+    this.body = this.is_composite ? form.form_field.form : form.viewer_input();
     const search_input = this.body.querySelector("input[type='search']");
     if (search_input != undefined) {
       search_input.id = search_input.id + "-editor";
@@ -302,7 +302,7 @@ class MovingViewer extends MovingField {
     this.rem = this.add_btn("rem", "trash", () => this.remove());
     this.copy = this.add_btn("copy", "front", () => this.duplicate(form));
     // Modal called for editing the field
-    if (!is_composite) {
+    if (!this.is_composite) {
       let modal = bootstrap.Modal.getOrCreateInstance(
         document.getElementById(form.editing_modal_id)
       );
@@ -312,11 +312,13 @@ class MovingViewer extends MovingField {
     if (form.is_duplicate) {
       this.copy.setAttribute("disabled", "");
       // this.edit.classList.replace('btn-outline-primary', 'btn-primary');
-      this.edit.classList.add("shadow");
+      if (this.edit) {
+        this.edit.classList.add("shadow");
+      }
     }
 
     // bring everything together
-    this.assemble(is_composite ? form.editing_modal_id : null);
+    this.assemble();
     this.schema = form.schema;
   }
 
@@ -331,9 +333,6 @@ class MovingViewer extends MovingField {
    * @param {InputField} form Field to duplicate / copy / clone.
    */
   duplicate(form) {
-    // copy of the clone
-    const clone = new form.constructor(this.schema);
-
     // keep track of how many copies have been made, for temp-ID purposes
     if (form.copies) {
       form.copies += 1;
@@ -342,33 +341,29 @@ class MovingViewer extends MovingField {
     }
 
     // Transfer values of the original field to the copy
-    clone.id = `${form.id}-copy${form.copies}`;
-    clone.title = form.title;
-    clone.is_duplicate = true;
-    clone.required = form.required;
-    clone.repeatable = form.repeatable;
-    clone.values = { ...form.values }; // new version of 'values'
-    clone.type = form.type;
-    clone.default = form.default;
-    clone.viewer_subtitle = form.viewer_subtitle;
-    clone.mode = "mod";
+    const clone = form.clone(`${form.id}-copy${form.copies}`, form.title);
     // Create the form and the modal corresponding to the clone field
     clone.create_editor();
-
-    // Transfer the mini-schema if the field is composite
-    if (form.constructor.name == "ObjectInput") {
-      clone.minischema.fields = [...form.minischema.fields];
-      clone.minischema.fields.forEach((field) => field.view_field());
-    }
-
     // Add the cloned field to the (mini-)schema it belongs to
     clone.add_to_schema();
+
+    // Transfer the mini-schema if the field is composite
+    if (this.is_composite) {
+      form.minischema.fields.forEach((field) => {
+        const miniclone = field.clone(field.id, field.title);
+        miniclone.schema = clone.minischema;
+        miniclone.data_status = clone.minischema.data_status;
+        miniclone.id_regex = clone.minischema.field_id_regex;
+        miniclone.create_editor();
+        miniclone.add_to_schema();
+      });
+    }
   }
 
   /**
    * Construct and fill the HTML Element.
    */
-  assemble(body_id = null) {
+  assemble() {
     let header = Field.quick("div", "card-header mover-header");
     let header_title = document.createElement("h5");
     header_title.innerHTML = this.title;
@@ -388,9 +383,6 @@ class MovingViewer extends MovingField {
     header.appendChild(header_buttons);
 
     let body = Field.quick("div", "card-body");
-    if (body_id != null) {
-      body.id = body_id;
-    }
     body.appendChild(this.body);
 
     this.div.appendChild(header);

@@ -1181,7 +1181,6 @@ class Schema extends ComplexField {
       return;
     }
     this.fields_to_json();
-    console.log(this.properties);
     const to_save = {
       title: this.temp_title ? this.temp_title : this.title,
       properties: this.properties,

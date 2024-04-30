@@ -138,6 +138,7 @@ class InputField {
   update_field() {
     // Replace the field in this.fields
     this.schema.fields[this.position] = this;
+    this.schema.add_wip(this.id);
     this.schema.autosave();
     this.schema.toggle_saving();
 
@@ -814,12 +815,10 @@ class InputField {
       // if we are creating a new field altogether
       // create a new field with the same type
       let clone = this.clone(new_id, data.get(`${this.id}-label`).trim());
-      console.log(this.temp_options, clone.temp_options);
       clone.recover_fields(
         this.id,
         this.options_navbar ? this.temp_options : data
       );
-      console.log(clone);
 
       // bring the current form, editor and contents to their original values
       this.reset();
