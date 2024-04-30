@@ -1614,9 +1614,9 @@ class SchemaForm {
     // Identify the fields that belong to this particular composite fields
     let existing_values = annotated_data[obj];
     let raw_name = obj.match(`${prefix}.(?<field>[^\.]+)`).groups.field;
-    let top_level_names = fields[raw_name].minischema.field_ids.map(
-      (x) => `${obj}.${x}`
-    );
+    let top_level_names = fields
+      .filter((f) => f.id == raw_name)[0]
+      .minischema.field_ids.map((x) => `${obj}.${x}`);
     let first_unit =
       "__unit__" in existing_values[0]
         ? String(existing_values[0].__unit__[0])
