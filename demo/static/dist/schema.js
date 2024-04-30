@@ -1464,12 +1464,20 @@ class SchemaForm {
    * @param {Object<String,FieldInfo>} schema_json Collection of Object-versions of fields.
    */
   from_json(schema_json) {
+    function expand_composites(composite_field) {
+      composite_field.minischema = new ObjectEditor(composite_field);
+      composite_field.minischema.from_json(composite_field.json_source);
+      composite_field.minischema.fields.forEach((subfield) => {
+        if (subfield.form_type == "object") {
+          expand_composites(subfield);
+        }
+      });
+    }
     // Go through each field in the JSON file and create its InputField
     this.fields = Object.entries(schema_json).map((entry) => {
       let new_field = InputField.choose_class(this, null, entry);
-      if (new_field.constructor.name == "ObjectInput") {
-        new_field.minischema = new ObjectEditor(new_field);
-        new_field.minischema.from_json(new_field.json_source);
+      if (new_field.form_type == "object") {
+        expand_composites(new_field);
       }
       return new_field;
     });
@@ -1869,6 +1877,7 @@ class SchemaForm {
    */
   static flatten_object(object_editor, flattened_id) {
     // go through each field
+    console.log(object_editor);
     object_editor.fields.forEach((field) => {
       // flatten the id
       let subfield_flattened = `${flattened_id}.${field.id}`;
