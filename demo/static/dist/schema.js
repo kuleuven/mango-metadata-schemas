@@ -168,9 +168,6 @@ class ComplexField {
    * Create a modal that offers the different fields that can be added and fill it when shown.
    */
   display_options() {
-    // this.data_status = this.set_data_status(); // to make sure it's correct (but maybe this is redundant)
-    // this.ls_id = `_mgs_${this.card_id}_${this.data_status}`;
-
     // create a div to fill in with the different field examples
     let formTemp = Field.quick("div", "formContainer");
     formTemp.id = this.data_status + "-templates";
@@ -197,13 +194,6 @@ class ComplexField {
         formTemp.replaceChild(from_json_load, formTemp.lastChild);
       }
     });
-    // if (this.constructor.name == "ObjectEditor") {
-    //   this_modal.addEventListener("hidden.bs.modal", () => {
-    //     bootstrap.Modal.getOrCreateInstance(
-    //       document.getElementById(this.card_id)
-    //     ).show();
-    //   });
-    // }
   }
 
   /**
@@ -445,7 +435,7 @@ class ObjectEditor extends ComplexField {
   set_data_status() {
     return String(this.composite.data_status).endsWith("undefined")
       ? "undefined"
-      : `object-${this.composite.data_status}`;
+      : this.data_status;
   }
 
   get card() {
