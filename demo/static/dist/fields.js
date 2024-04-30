@@ -1118,7 +1118,9 @@ class TypedInput extends InputField {
       });
     } else if (regex_div) {
       regex_div.remove();
-      placeholder_input.removeAttribute("pattern");
+      if (placeholder_input != null) {
+        placeholder_input.removeAttribute("pattern");
+      }
       if (default_input != null) {
         default_input.removeAttribute("pattern");
       }

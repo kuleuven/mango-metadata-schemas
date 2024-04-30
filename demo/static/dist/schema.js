@@ -1611,9 +1611,8 @@ class SchemaForm {
     // Identify the fields that belong to this particular composite fields
     let existing_values = annotated_data[obj];
     let raw_name = obj.match(`${prefix}.(?<field>[^\.]+)`).groups.field;
-    let top_level_names = fields
-      .filter((f) => f.id == raw_name)[0]
-      .minischema.field_ids.map((x) => `${obj}.${x}`);
+    let minischema = fields.filter((f) => f.id == raw_name)[0].minischema;
+    let top_level_names = minischema.field_ids.map((x) => `${obj}.${x}`);
     let first_unit =
       "__unit__" in existing_values[0]
         ? String(existing_values[0].__unit__[0])
@@ -1665,13 +1664,7 @@ class SchemaForm {
       );
       // Go through each nested composite field and register its subfields, with an accumulated prefix
       nested.forEach((fid) =>
-        this.register_object(
-          fid,
-          object,
-          fields[raw_name].minischema.fields,
-          obj,
-          viewer
-        )
+        this.register_object(fid, object, minischema.fields, obj, viewer)
       );
     });
   }
