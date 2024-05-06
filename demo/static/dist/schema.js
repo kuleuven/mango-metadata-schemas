@@ -1815,11 +1815,8 @@ class SchemaForm {
           const direct_children = [
             ...subform.querySelector("div.input-view").childNodes,
           ];
-          direct_children.forEach((child) => {
-            const field_data =
-              composite_field.minischema.fields[
-                child.getAttribute("data-field-name")
-              ];
+          direct_children.forEach((child, i) => {
+            const field_data = composite_field.minischema.fields[i];
             if (field_data.type != "object") {
               const inputs = child.querySelectorAll("input,select");
               inputs.forEach((input) => {
@@ -1869,8 +1866,6 @@ class SchemaForm {
    * @param {String} flattened_id Prefix to be added to the id of a field.
    */
   static flatten_object(object_editor, flattened_id) {
-    // go through each field
-    console.log(object_editor);
     object_editor.fields.forEach((field) => {
       // flatten the id
       let subfield_flattened = `${flattened_id}.${field.id}`;
