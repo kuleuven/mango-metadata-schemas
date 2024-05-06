@@ -23,7 +23,10 @@ class ComplexField {
   constructor(name, data_status = "draft") {
     // properties of the schema itself
     this.initial_name = name;
-    this.data_status = data_status;
+
+    if (!String(data_status).endsWith("undefined")) {
+      this.data_status = data_status;
+    }
     this.field_id_regex = "[a-zA-Z0-9_\\-]+";
 
     // Placeholder fields to start with
@@ -121,12 +124,17 @@ class ComplexField {
   }
 
   properties_from_json(data) {
+    const is_manager = !this.data_status.endsWith("undefined");
     Object.entries(data.properties).forEach((field) => {
       let new_field = InputField.choose_class(this, null, field);
-      new_field.create_editor();
+      if (is_manager) {
+        new_field.create_editor();
+      }
       this.fields.push(new_field);
     });
-    this.update_field_id_regex();
+    if (is_manager) {
+      this.update_field_id_regex();
+    }
   }
 
   /**
@@ -444,14 +452,15 @@ class ObjectEditor extends ComplexField {
    * @param {ObjectInput} parent Composite field this mini-schema is linked to.
    */
   constructor(parent) {
+    const parent_status = String(parent.data_status);
     super(
       parent.id,
-      `${parent.data_status.startsWith("object") ? "" : "object-"}${
-        parent.data_status
-      }`
+      `${parent_status.startsWith("object") ? "" : "object-"}${parent_status}`
     );
     this.composite = parent;
-    this.form_div = this.composite.form_field.form;
+    if (this.composite.form_field != undefined) {
+      this.form_div = this.composite.form_field.form;
+    }
   }
 
   is_composite = true;
@@ -469,7 +478,14 @@ class ObjectEditor extends ComplexField {
    * @returns {String} Derived status as used in IDs for DOM elements.
    */
   set_data_status() {
-    return `object-${this.composite.data_status}`;
+    return String(this.composite.data_status).endsWith("undefined")
+      ? "undefined"
+      : this.data_status;
+  }
+
+  get card() {
+    console.log(this.composite.schema);
+    return undefined;
   }
 
   toggle_saving() {
@@ -966,7 +982,8 @@ class Schema extends ComplexField {
 
     // add button and tab for viewing the saved form of the schema version
     this.nav_bar.add_item("view", "View", true);
-    let viewer = ComplexField.create_viewer(this);
+    const viewer = ComplexField.create_viewer(this);
+    this.viewer = viewer;
     this.nav_bar.add_tab_content("view", viewer);
 
     if (this.status == "draft") {
@@ -1199,7 +1216,6 @@ class Schema extends ComplexField {
       return;
     }
     this.fields_to_json();
-    console.log(this.properties);
     const to_save = {
       title: this.temp_title ? this.temp_title : this.title,
       properties: this.properties,
@@ -1480,12 +1496,12 @@ class SchemaForm {
     this.container = container_id;
     this.prefix = prefix;
 
-    // Initialized empty set of fields
-    this.fields = {};
-    this.field_ids = Object.keys(json.properties);
-
     // create the form and add the fields
     this.from_json(json.properties);
+  }
+
+  get field_ids() {
+    return this.fields.map((field) => field.id);
   }
 
   /**
@@ -1493,16 +1509,23 @@ class SchemaForm {
    * @param {Object<String,FieldInfo>} schema_json Collection of Object-versions of fields.
    */
   from_json(schema_json) {
-    // Go through each field in the JSON file and create its InputField
-    for (let entry of Object.entries(schema_json)) {
-      // the 'data_status' argument is not relevant here
-      let new_field = InputField.choose_class(this, null, entry);
-      if (new_field.constructor.name == "ObjectInput") {
-        new_field.minischema = new ObjectEditor(new_field);
-        new_field.minischema.from_json(new_field.json_source);
-      }
-      this.fields[entry[0]] = new_field;
+    function expand_composites(composite_field) {
+      composite_field.minischema = new ObjectEditor(composite_field);
+      composite_field.minischema.from_json(composite_field.json_source);
+      composite_field.minischema.fields.forEach((subfield) => {
+        if (subfield.form_type == "object") {
+          expand_composites(subfield);
+        }
+      });
     }
+    // Go through each field in the JSON file and create its InputField
+    this.fields = Object.entries(schema_json).map((entry) => {
+      let new_field = InputField.choose_class(this, null, entry);
+      if (new_field.form_type == "object") {
+        expand_composites(new_field);
+      }
+      return new_field;
+    });
 
     // Create names with the flattened ids, even inside objects
     SchemaForm.flatten_object(this, this.prefix);
@@ -1562,8 +1585,7 @@ class SchemaForm {
   }
 
   activate_autocompletes() {
-    this.field_ids.forEach((fid) => {
-      const field = this.fields[fid];
+    this.fields.forEach((field) => {
       if (field.type == "object") {
         field.minischema.activate_autocompletes(true);
       } else {
@@ -1637,9 +1659,8 @@ class SchemaForm {
     // Identify the fields that belong to this particular composite fields
     let existing_values = annotated_data[obj];
     let raw_name = obj.match(`${prefix}.(?<field>[^\.]+)`).groups.field;
-    let top_level_names = fields[raw_name].minischema.field_ids.map(
-      (x) => `${obj}.${x}`
-    );
+    let minischema = fields.filter((f) => f.id == raw_name)[0].minischema;
+    let top_level_names = minischema.field_ids.map((x) => `${obj}.${x}`);
     let first_unit =
       "__unit__" in existing_values[0]
         ? String(existing_values[0].__unit__[0])
@@ -1697,13 +1718,7 @@ class SchemaForm {
       );
       // Go through each nested composite field and register its subfields, with an accumulated prefix
       nested.forEach((fid) =>
-        this.register_object(
-          fid,
-          object,
-          fields[raw_name].minischema.fields,
-          obj,
-          viewer
-        )
+        this.register_object(fid, object, minischema.fields, obj, viewer)
       );
     });
   }
@@ -1770,21 +1785,22 @@ class SchemaForm {
     prefix,
     unit = 1
   ) {
-    object_editor.field_ids
-      .filter((fid) => object_editor.fields[fid].type == "object")
-      .forEach((fid) => {
+    object_editor.fields
+      .filter((field) => field.type == "object")
+      .forEach((field) => {
+        const fid = field.id;
         let viewer = form.querySelector(
           `div.mini-viewer[data-field-name="${fid}"]`
         );
         viewer.setAttribute("data-composite-unit", String(unit));
-        let sub_schema = object_editor.fields[fid].minischema;
-        let empty_simple_subfields = sub_schema.field_ids.filter((subfid) => {
-          let not_object = sub_schema.fields[subfid].type != "object";
+        let sub_schema = field.minischema;
+        let empty_simple_subfields = sub_schema.fields.filter((subfield) => {
+          let not_object = subfield.type != "object";
           let is_not_annotated = !(`${prefix}.${fid}` in annotated_data);
           return not_object && is_not_annotated;
         });
-        empty_simple_subfields.forEach((subfid) => {
-          let flattened_name = `${prefix}.${fid}.${subfid}`;
+        empty_simple_subfields.forEach((subfield) => {
+          let flattened_name = `${prefix}.${fid}.${subfield.id}`;
           viewer
             .querySelectorAll(`[name="${flattened_name}"]`)
             .forEach((child) => (child.name = `${flattened_name}__${unit}`));
@@ -1903,18 +1919,16 @@ class SchemaForm {
    */
   static flatten_object(object_editor, flattened_id) {
     // go through each field
-    object_editor.field_ids.forEach((field_id) => {
+    console.log(object_editor);
+    object_editor.fields.forEach((field) => {
       // flatten the id
-      let subfield_flattened = `${flattened_id}.${field_id}`;
+      let subfield_flattened = `${flattened_id}.${field.id}`;
       // if the field is composite, apply this to each field inside
-      if (object_editor.fields[field_id].constructor.name == "ObjectInput") {
-        SchemaForm.flatten_object(
-          object_editor.fields[field_id].minischema,
-          subfield_flattened
-        );
+      if (field.constructor.name == "ObjectInput") {
+        SchemaForm.flatten_object(field.minischema, subfield_flattened);
       } else {
         // assign the flattened id as a name
-        object_editor.fields[field_id].name = subfield_flattened;
+        field.name = subfield_flattened;
       }
     });
   }

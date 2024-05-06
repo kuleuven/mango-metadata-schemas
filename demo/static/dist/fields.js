@@ -146,6 +146,7 @@ class InputField {
   update_field() {
     // Replace the field in this.fields
     this.schema.fields[this.position] = this;
+    this.schema.add_wip(this.id);
     this.schema.autosave();
     this.schema.toggle_saving();
 
@@ -820,12 +821,10 @@ class InputField {
       // if we are creating a new field altogether
       // create a new field with the same type
       let clone = this.clone(new_id, data.get(`${this.id}-label`).trim());
-      console.log(this.temp_options, clone.temp_options);
       clone.recover_fields(
         this.id,
         this.options_navbar ? this.temp_options : data
       );
-      console.log(clone);
 
       // bring the current form, editor and contents to their original values
       this.reset();
@@ -948,7 +947,6 @@ class InputField {
     new_field.field_id = id;
     new_field.id = id;
 
-    new_field.update_id_regex(schema.field_id_regex);
     new_field.mode = "mod";
 
     // read the FieldInfo object to retrieve and register the data
@@ -1126,7 +1124,9 @@ class TypedInput extends InputField {
       });
     } else if (regex_div) {
       regex_div.remove();
-      placeholder_input.removeAttribute("pattern");
+      if (placeholder_input != null) {
+        placeholder_input.removeAttribute("pattern");
+      }
       if (default_input != null) {
         default_input.removeAttribute("pattern");
       }
@@ -1876,8 +1876,11 @@ class ObjectInput extends InputField {
    * @returns {HTMLDivElement}
    */
   viewer_input(active = false) {
-    this.minischema.card = ComplexField.create_viewer(this.minischema, active);
-    return this.minischema.card;
+    this.minischema.viewer = ComplexField.create_viewer(
+      this.minischema,
+      active
+    );
+    return this.minischema.viewer;
   }
 
   /**
