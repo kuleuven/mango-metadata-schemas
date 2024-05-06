@@ -73,6 +73,10 @@ class InputField {
     return;
   }
 
+  autocomplete_selector() {
+    return undefined;
+  }
+
   /**
    * Retrieve the contents in JSON format for form submission.
    * @returns {FieldInfo} JSON representation of the contents of the field.
@@ -160,8 +164,8 @@ class InputField {
     let rep_icon = Field.quick("i", "bi bi-front px-2");
     if (this.repeatable) {
       viewer.querySelector("h5").appendChild(rep_icon);
-    } else if (viewer.querySelector("h5 .bi-front")) {
-      viewer.querySelector("h5").removeChild(rep_icon);
+    } else if (viewer.querySelector("h5").querySelector(".bi-front")) {
+      viewer.querySelector("h5").querySelector(".bi-front").remove();
     }
   }
   /**
@@ -1955,9 +1959,6 @@ class ObjectInput extends InputField {
       this.schema.wip.push(clone.id);
       clone.title = "TEMPORARY COMPOSITE FIELD";
       clone.add_to_schema();
-      console.log(this.schema.modal_id);
-      console.log(clone);
-      console.log(this.schema.fields);
       bootstrap.Modal.getOrCreateInstance(
         document.getElementById(this.schema.modal_id)
       ).hide();
@@ -2218,13 +2219,12 @@ class MultipleInput extends InputField {
       if (this.schema.field_box != null) {
         parent_selector = this.schema.field_box.querySelector(`#${this.id}`);
       }
-    } else if (this.schema.card != null) {
-      parent_selector = this.schema.card.querySelector(
-        `.mini-viewer[data-field-name='${this.id}']`
-      );
-    }
-    if (parent_selector == null) {
-      console.log(this.id, this.schema);
+    } else if (this.schema.card != null || this.schema.viewer != null) {
+      const schema_card =
+        this.schema.card != null ? this.schema.card : this.schema.viewer;
+      parent_selector = [...schema_card.childNodes].filter(
+        (x) => x.getAttribute("data-field-name") == this.id
+      )[0];
     }
     return parent_selector == null
       ? undefined
@@ -2269,6 +2269,9 @@ class MultipleInput extends InputField {
 
   read_autocomplete() {
     const autocomplete_field = this.autocomplete_selector();
+    if (this.autocomplete_selector() == undefined) {
+      return undefined;
+    }
     if (this.values.multiple) {
       const answers_div = Field.quick("div", "my-2");
       autocomplete_field.parentElement.prepend(answers_div);

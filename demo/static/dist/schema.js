@@ -484,7 +484,6 @@ class ObjectEditor extends ComplexField {
   }
 
   get card() {
-    console.log(this.composite.schema);
     return undefined;
   }
 
@@ -1532,8 +1531,6 @@ class SchemaForm {
 
     // Create the form, enabled for annotation
     let form_div = ComplexField.create_viewer(this, true);
-    console.log(this);
-    console.log(form_div);
 
     // Add a title to the form
     let title = document.createElement("h3");
@@ -1580,8 +1577,8 @@ class SchemaForm {
     });
 
     document.getElementById(this.container).appendChild(form_div);
+    this.card = form_div;
     this.activate_autocompletes();
-    this.form = form_div;
   }
 
   activate_autocompletes() {
@@ -1605,8 +1602,7 @@ class SchemaForm {
     hidden_input.type = "hidden";
     hidden_input.name = "redirect_route";
     hidden_input.value = annotated_data.redirect_route[0];
-    this.form.appendChild(hidden_input);
-    console.log(annotated_data);
+    this.card.appendChild(hidden_input);
 
     // exclude non-metadata keys, e.g. 'redirect_route'
     let keys = Object.keys(annotated_data).filter(
@@ -1634,7 +1630,7 @@ class SchemaForm {
       this.register_object(fid, annotated_data, this.fields[fid])
     );
 
-    SchemaForm.prepare_objects(this, annotated_data, this.form, this.prefix);
+    SchemaForm.prepare_objects(this, annotated_data, this.card, this.prefix);
   }
 
   /**
@@ -1653,7 +1649,7 @@ class SchemaForm {
   ) {
     // Start with the original prefix, but accumulate when we have nested composite fields
     prefix = prefix || this.prefix;
-    form = form || this.form;
+    form = form || this.card;
     fields = fields || this.fields;
 
     // Identify the fields that belong to this particular composite fields
@@ -1671,12 +1667,6 @@ class SchemaForm {
         child.getAttribute("data-field-name") == raw_name
     )[0];
     first_viewer.setAttribute("data-composite-unit", first_unit);
-    console.log(
-      obj.split(".").length,
-      [...first_viewer.querySelectorAll("[name]")].map(
-        (x) => x.name.split(".").length
-      )
-    );
     first_viewer.querySelectorAll("[name]").forEach((subfield) => {
       if (subfield.name.split(".").length == obj.split(".").length + 1) {
         subfield.name = `${subfield.name.split("__")[0]}__${first_unit}`;
@@ -1731,7 +1721,7 @@ class SchemaForm {
    */
   register_non_object(fid, annotated_data, form = null) {
     // Start with the original form, but in fields inside a composite field it will be its div.
-    form = form || this.form;
+    form = form || this.card;
 
     // Extract the data linked to this field
     let existing_values = annotated_data[fid];
