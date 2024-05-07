@@ -2219,10 +2219,8 @@ class MultipleInput extends InputField {
       if (this.schema.field_box != null) {
         parent_selector = this.schema.field_box.querySelector(`#${this.id}`);
       }
-    } else if (this.schema.card != null || this.schema.viewer != null) {
-      const schema_card =
-        this.schema.card != null ? this.schema.card : this.schema.viewer;
-      parent_selector = [...schema_card.childNodes].filter(
+    } else if (this.schema.viewer != null) {
+      parent_selector = [...this.schema.viewer.childNodes].filter(
         (x) => x.getAttribute("data-field-name") == this.id
       )[0];
     }
