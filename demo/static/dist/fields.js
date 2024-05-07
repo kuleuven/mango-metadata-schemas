@@ -1120,7 +1120,6 @@ class TypedInput extends InputField {
       this.add_regex_field();
       const regex_input = this.get_form_input("regex");
       regex_input.addEventListener("change", () => {
-        console;
         placeholder_input.setAttribute("pattern", regex_input.value);
         default_input.setAttribute("pattern", regex_input.value);
         this.temp_values.pattern = regex_input.value;
@@ -2306,10 +2305,10 @@ class MultipleInput extends InputField {
     this.setup_form();
 
     const nav_bar_container = Field.quick("div", "shadow p-2 rounded");
-    this.options_navbar = new NavBar(
-      `${this.schema.prefix}-${this.id}-optionstab`,
-      ["nav-pills", "nav-justified"]
-    );
+    this.options_navbar = new NavBar(`${this.editing_modal_id}-optionstab`, [
+      "nav-pills",
+      "nav-justified",
+    ]);
     this.add_moving_options();
 
     const options_as_text =
@@ -2319,7 +2318,6 @@ class MultipleInput extends InputField {
 
     this.add_textarea_options(options_as_text);
     this.add_file_options(options_as_text);
-
     nav_bar_container.appendChild(this.options_navbar.nav_bar);
     nav_bar_container.appendChild(this.options_navbar.tab_content);
     this.options_navbar.nav_bar.childNodes.forEach((nav_item) => {

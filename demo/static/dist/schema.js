@@ -87,10 +87,9 @@ class ComplexField {
    * Collect the Object-version of the fields into the `properties` property to save as JSON.
    */
   fields_to_json() {
-    this.properties = {};
-    this.fields.forEach((field) => {
-      this.properties[field.id] = field.json;
-    });
+    this.properties = Object.fromEntries(
+      this.fields.map((field) => [field.id, field.json])
+    );
   }
 
   add_field_box(under_button) {
