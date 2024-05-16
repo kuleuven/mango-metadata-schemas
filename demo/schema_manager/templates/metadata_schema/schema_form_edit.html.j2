@@ -8,12 +8,11 @@
          schema-url="{{ url_for('metadata_schema_editor_bp.get_schema', schema=schema, realm=realm, status='published') }}"
          schema-values="{{ schema_values }}"
          prefix="{{ prefix }}"
-         post-url="{{ url_for("metadata_schema_form_bp.edit_schema_metadata_for_item") }}">
-    </div>
-    {% for file in ['doms', 'fields', 'schema', 'httprequests', 'annotator'] %}
+         post-url="{{ url_for("metadata_schema_form_bp.edit_schema_metadata_for_item") }}"></div>
+    {% for file in ['doms', 'other_inputs', 'fields', 'schema', 'httprequests', 'annotator'] %}
         <script src="{{url_for('static', filename='dist/{}.js'.format(file))}}"></script>
     {% endfor %}
     <link href="{{ url_for('static', filename='css/mdschema.css') }}"
-          rel="stylesheet"/>
+          rel="stylesheet" />
     {# Retrieve code to post values from original jinja #}
 {% endblock body %}
