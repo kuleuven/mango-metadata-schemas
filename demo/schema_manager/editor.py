@@ -234,3 +234,8 @@ def get_library_fields(realm):
         return json.dumps(fields)
     else:
         return Response("error, no fields available in the library", status=404)
+
+@metadata_schema_editor_bp.route("/metadata-schema/library-realms", methods=["GET"])
+def get_library_realms():
+    realms = [realm.parts[-1] for realm in Path("storage", "library").iterdir() if realm.is_dir()]
+    return json.dumps(realms)
