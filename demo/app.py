@@ -24,8 +24,10 @@ app = Flask(__name__)
 app.secret_key = "HV44H6oH-eKMqJDU0W6Xw6ch_c4wpmDWf5tgD0p-0Gc"
 app.config.from_pyfile("config.py")
 
-# Caching, make sure the filesystem dir existsif CACHE_TYPE  is FileSystemCache 
-if app.config["CACHE_TYPE"] == "FileSystemCache" and not os.path.exists(app.config["CACHE_DIR"]):
+# Caching, make sure the filesystem dir existsif CACHE_TYPE  is FileSystemCache
+if app.config["CACHE_TYPE"] == "FileSystemCache" and not os.path.exists(
+    app.config["CACHE_DIR"]
+):
     os.makedirs(app.config["CACHE_DIR"])
 
 cache.init_app(app)

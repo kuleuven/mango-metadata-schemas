@@ -218,7 +218,10 @@ def archive_meta_data_schema():
         + f"?schema_name={request.form['schema_name']}&schema_version={request.form.get('current_version', '')}"
     )
 
-@metadata_schema_editor_bp.route("/metadata-schema/library", methods=["GET"], defaults={"realm":"general"})
+
+@metadata_schema_editor_bp.route(
+    "/metadata-schema/library", methods=["GET"], defaults={"realm": "general"}
+)
 @metadata_schema_editor_bp.route("/metadata-schema/library/<realm>", methods=["GET"])
 @cache.cached(timeout=3600)
 def get_library_fields(realm):
