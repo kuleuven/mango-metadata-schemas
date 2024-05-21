@@ -29,6 +29,8 @@ from pathlib import Path
 from pprint import pprint
 import base64
 
+from cache import cache
+
 # from flask_wtf import CSRFProtect
 # from csrf import csrf
 
@@ -217,10 +219,14 @@ def archive_meta_data_schema():
     )
 
 
-@metadata_schema_editor_bp.route("/metadata-schema/library", methods=["GET"])
-def get_library_fields():
+@metadata_schema_editor_bp.route(
+    "/metadata-schema/library", methods=["GET"], defaults={"realm": "general"}
+)
+@metadata_schema_editor_bp.route("/metadata-schema/library/<realm>", methods=["GET"])
+@cache.cached(timeout=3600)
+def get_library_fields(realm):
     field_files = [
-        x for x in Path("storage", "library").iterdir() if x.suffix == ".json"
+        x for x in Path("storage", "library", realm).iterdir() if x.suffix == ".json"
     ]
     if field_files:
         field_files.sort()
@@ -228,3 +234,8 @@ def get_library_fields():
         return json.dumps(fields)
     else:
         return Response("error, no fields available in the library", status=404)
+
+@metadata_schema_editor_bp.route("/metadata-schema/library-realms", methods=["GET"])
+def get_library_realms():
+    realms = [realm.parts[-1] for realm in Path("storage", "library").iterdir() if realm.is_dir()]
+    return json.dumps(realms)
