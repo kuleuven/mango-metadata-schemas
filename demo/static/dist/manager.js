@@ -45,6 +45,8 @@ const realm = urls.realm;
  */
 const schemas = {};
 const schema_infos = {};
+const field_ids = [];
+const prefix = "mgs";
 /**
  * REGEX Pattern to control possible schema names. This pattern is then filled with existing names.
  * @type {String}
@@ -60,6 +62,7 @@ tab_prefixes = {
   copy: "child",
   new: "new",
 };
+const designer = new Designer();
 const library_request = new LibraryRequest();
 library_request.retrieve();
 const json_input = new JsonInput();

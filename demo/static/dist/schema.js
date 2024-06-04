@@ -71,7 +71,7 @@ class ComplexField {
    */
   fields_to_json() {
     this.properties = Object.fromEntries(
-      this.fields.map((field) => [field.id, field.json])
+      this.fields.map((field) => [field.name, field.json])
     );
   }
 
@@ -87,36 +87,31 @@ class ComplexField {
    * Capture data from the JSON representation of a schema.
    * @param {SchemaContents} data JSON representation of a schema
    */
-  from_json(data, id = null) {
+  from_json(data) {
     // The ID of the schema is coded as `schema_name` for the schemas
-    this.name = id == null ? data.schema_name : id;
     this.title = data.title;
     this.status = data.status; // only relevant for Schema class
-    this.data_status = this.set_data_status();
-    if (!this.data_status.startsWith("object")) {
-      this.ls_id = `_mgs_${this.card_id}_${this.data_status}`;
-    }
-    if (this.ls_id != undefined && this.ls_id in localStorage) {
+    if (
+      this.status == "draft" &&
+      this.ls_id != undefined &&
+      this.ls_id in localStorage
+    ) {
       let schema_from_ls = JSON.parse(localStorage.getItem(this.ls_id));
-      this.properties_from_json(schema_from_ls);
+      this.properties_from_json(schema_from_ls.properties);
       this.wip = schema_from_ls.wip;
     } else {
-      this.properties_from_json(data);
+      this.properties_from_json(data.properties);
     }
   }
 
-  properties_from_json(data) {
-    const is_manager = !this.data_status.endsWith("undefined");
-    Object.entries(data.properties).forEach((field) => {
-      let new_field = InputField.choose_class(this, null, field);
-      if (is_manager) {
-        new_field.create_editor();
-      }
+  properties_from_json(properties) {
+    Object.entries(properties).forEach((field) => {
+      let new_field = InputField.choose_class(field);
+      new_field.attach_schema(this);
+      new_field.create_editor();
       this.fields.push(new_field);
     });
-    if (is_manager) {
-      this.update_field_id_regex();
-    }
+    this.update_field_id_regex();
   }
 
   /**
@@ -147,7 +142,7 @@ class ComplexField {
     let form = this.form_div;
 
     // Check if any field is a duplicate
-    const has_duplicates = this.fields.some((field) => field.is_duplicate);
+    const has_duplicates = this.fields.some((field) => field.is_duplicate); // not gonna happen
     const has_wip_composites = this.fields.some(
       (field) => field.minischema && field.minischema.wip.length > 0
     );
@@ -253,7 +248,7 @@ class ComplexField {
   static add_field_viewer(subfield, active = false) {
     // create a div for the input field
     let small_div = Field.quick("div", "mini-viewer");
-    small_div.setAttribute("data-field-name", subfield.id);
+    small_div.setAttribute("data-field-name", subfield.name);
     let label;
 
     // special box and label if the field is a composite field
@@ -424,23 +419,6 @@ class ObjectEditor extends ComplexField {
         .setAttribute("disabled", "");
     }
     this.composite.schema.toggle_saving();
-  }
-
-  set new_name(name) {
-    const current_ids = Object.fromEntries(
-      this.fields.map((field) => [field.id, field.editing_modal_id])
-    );
-    this.name = name;
-    this.composite.id = name;
-    const new_ids = Object.fromEntries(
-      this.fields.map((field) => [field.id, field.editing_modal_id])
-    );
-    this.fields.forEach((field) => {
-      const old_modal = document.getElementById(current_ids[field.id]);
-      if (old_modal != null) {
-        old_modal.id = new_ids[field.id];
-      }
-    });
   }
 }
 
@@ -803,14 +781,14 @@ class Schema extends ComplexField {
 
     // checkboxes to select fields
     let field_checkboxes = Field.quick("div", "border rounded p-2 mb-1");
-    this.field_ids.forEach((field) => {
+    this.fields.forEach((field) => {
       let field_div = Field.quick("div", "form-check form-check-inline");
 
       let input = Field.quick("input", "form-check-input");
       input.type = "checkbox";
-      input.id = `download-${field}`;
-      input.value = field;
-      input.setAttribute("aria-label", `select-${field}`);
+      input.id = `download-${field.name}`;
+      input.value = field.name;
+      input.setAttribute("aria-label", `select-${field.name}`);
       input.setAttribute("checked", "");
       input.addEventListener("change", () => {
         let selected = [
@@ -847,9 +825,9 @@ class Schema extends ComplexField {
       let label = Field.quick(
         "label",
         "form-check-label font-monospace",
-        field
+        field.name
       );
-      label.setAttribute("for", `download-${field}`);
+      label.setAttribute("for", `download-${field.name}`);
       field_div.appendChild(input);
       field_div.appendChild(label);
       field_checkboxes.appendChild(field_div);
