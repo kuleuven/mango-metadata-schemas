@@ -1,9 +1,6 @@
 /**
  * Master class to represent schemas and mini-schemas. Only the child classes are actually instantiated.
- * @property {String} modal_id ID of the modal through which a new input field can be chosen.
- * @property {String} initial_name Placeholder name for DOM element IDs.
  * @property {String} title User-facing label of the schema (or composite field).
- * @property {String} data_status Derived status used for IDs of DOM elements, e.g. 'new', 'copy', 'draft'...
  * @property {Object<String,InputField>} placeholders Collection of empty fields to start creating.
  * @property {TypedInput} placeholders.typed Placeholder for a simple field.
  * @property {SelectInput} placeholders.select Placeholder for a single-value multiple-choice field.
@@ -28,14 +25,7 @@ class ComplexField {
       this.data_status = data_status;
     }
     this.field_id_regex = "[a-zA-Z0-9_\\-]+";
-
-    // Placeholder fields to start with
-    this.placeholders = {
-      typed: new TypedInput(this),
-      select: new SelectInput(this),
-      checkbox: new CheckboxInput(this),
-      object: new ObjectInput(this),
-    };
+    this.name = name;
 
     // initial state before adding any fields
     this.fields = [];
@@ -45,12 +35,8 @@ class ComplexField {
 
   is_composite = false;
 
-  get prefix() {
-    return `mgs__${this.name}`;
-  }
-
-  get modal_id() {
-    return `m-${this.prefix}-${this.data_status}`;
+  get prefixed() {
+    return `${this.prefix || prefix}.${this.name}`;
   }
 
   get field_ids() {
@@ -78,9 +64,6 @@ class ComplexField {
       "$|^"
     )}$)[a-z0-9_\\-]+)+$`;
     this.fields.forEach((field) => field.update_id_regex(this.field_id_regex));
-    Object.keys(this.placeholders).forEach((key) => {
-      this.placeholders[key].update_id_regex(this.field_id_regex);
-    });
   }
 
   /**
@@ -156,49 +139,6 @@ class ComplexField {
   }
 
   /**
-   * Compute the `data_status` property based on the status of the version.
-   * @returns {String}
-   */
-  set_data_status() {
-    return;
-  }
-
-  /**
-   * Create a modal that offers the different fields that can be added and fill it when shown.
-   */
-  display_options() {
-    if (this.data_status.endsWith("library")) {
-      return;
-    }
-    this.data_status = this.set_data_status(); // to make sure it's correct (but maybe this is redundant)
-    this.ls_id = `_mgs_${this.card_id}_${this.data_status}`;
-
-    // create a div to fill in with the different field examples
-    let design_modal_contents = Field.quick("div", "formContainer");
-    design_modal_contents.id = this.data_status + "-templates";
-
-    // create the modal and add the div
-    let design_modal = new Modal(
-      this.modal_id + "-design",
-      "What form element would you like to create?"
-    );
-    design_modal.create_modal([design_modal_contents], "lg");
-
-    // when the modal is first shown, render all the placeholder fields
-    let design_modal_modal = document.getElementById(this.modal_id + "-design");
-    design_modal_modal.addEventListener("show.bs.modal", () => {
-      let design_modal_contents =
-        design_modal_modal.querySelector("div.formContainer");
-      if (design_modal_contents.childNodes.length == 0) {
-        Object.values(this.placeholders).forEach((placeholder) => {
-          placeholder.data_status = this.data_status;
-          design_modal_contents.appendChild(placeholder.render());
-        });
-      }
-    });
-  }
-
-  /**
    * Disable or enable saving a (mini-)schema based on whether any of the existing fields is a duplicate.
    * Duplicates don't have ids, so we cannot save a schema until that issue is resolved.
    */
@@ -249,37 +189,20 @@ class ComplexField {
     button_pre.prepend(plus_icon);
     div.appendChild(button_pre);
 
-    let buttons = [
-      { id: "library", message: "Browse library", modal_id: Library.modal_id },
-      {
-        id: "design",
-        message: "Design from scratch",
-        modal_id: `${this.modal_id}-design`,
-      },
-      { id: "file", message: "Upload JSON", modal_id: JsonInput.modal_id },
-    ];
+    let input_methods = [library_request.library, designer, json_input];
 
-    buttons.forEach((button) => {
+    input_methods.forEach((im) => {
       let btn = Field.quick(
         "button",
         "btn btn-primary btn-sm fw-bold ms-1",
-        button.message
+        im.message
       );
       btn.type = "button";
-      btn.id = button.id;
+      btn.id = im.name;
       btn.setAttribute("data-bs-toggle", "modal");
-      btn.setAttribute("data-bs-target", `#${button.modal_id}`);
+      btn.setAttribute("data-bs-target", `#${im.modal_id}`);
       // on click, the modal will also update `new_field_idx` based on the index of the field on top of it
-      btn.addEventListener("click", () => {
-        this.new_field_idx = div.previousSibling.classList.contains("viewer")
-          ? this.field_ids.indexOf(div.previousSibling.id) + 1
-          : 0;
-        if (button.id == "library") {
-          library_request.library.attach_schema(this);
-        } else if (button.id == "file") {
-          json_input.attach_schema(this);
-        }
-      });
+      btn.addEventListener("click", () => im.attach_schema(this));
       div.appendChild(btn);
     });
 
@@ -411,7 +334,6 @@ class DummyObject extends ComplexField {
     // Initialize the basics - all we care about is actually the viewer
     let schema_name = "example";
     super(schema_name, schema_name);
-    delete this.placeholders;
 
     // Create a simple field of type 'text' for illustration
     let name = new TypedInput(schema_name);
@@ -990,9 +912,6 @@ class Schema extends ComplexField {
         tab_prefixes[this.status],
         "Edit"
       );
-
-      // create the modal to show the options for new fields
-      this.display_options();
 
       // fill in the name and titles
       this.form.form.querySelector('[name="schema_name"]').value = this.name; // id

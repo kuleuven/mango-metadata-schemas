@@ -1,31 +1,86 @@
+class Designer {
+  modal_id = "design-modal";
+  message = "Design from scratch";
+  name = "designer";
+  constructor() {
+    this.fields = [
+      new TypedInput(),
+      new SelectInput(),
+      new CheckboxInput(),
+      new ObjectInput(),
+    ];
+    this.create_navbar();
+    this.create_modal();
+  }
+
+  create_modal() {
+    // create the modal and add the div
+    let design_modal = new Modal(
+      this.modal_id,
+      "What form element would you like to create?"
+    );
+    design_modal.create_modal([this.nav_content], "xl");
+    this.card = this.nav_content;
+  }
+
+  create_navbar() {
+    this.nav_content = Field.quick("div", "row");
+    const sidebar = Field.quick("aside", "col-4");
+    const mainbar = Field.quick("main", "col");
+    const nav_bar = new NavBar("designer-nav", ["flex-column", "nav-pills"]);
+    this.fields.forEach((field, i) => {
+      nav_bar.add_item(field.id, field.button_title, i == 0);
+      const tab = document.createElement("div");
+      tab.appendChild(field.render());
+      // create the button that triggers the modal
+      let new_button = Field.quick(
+        "button",
+        "btn btn-primary choice-button",
+        `Create a ${field.button_title.toLowerCase()}`
+      );
+      field.setup_rendering_button(new_button);
+      tab.appendChild(new_button);
+
+      nav_bar.add_tab_content(field.id, tab);
+    });
+    sidebar.appendChild(nav_bar.nav_bar);
+    mainbar.appendChild(nav_bar.tab_content);
+    this.nav_content.appendChild(sidebar);
+    this.nav_content.appendChild(mainbar);
+  }
+
+  attach_schema(schema) {
+    this.fields.forEach((field) => {
+      field.attach_schema(schema);
+      field.update_id_regex(schema.field_id_regex);
+    });
+  }
+}
+
 class Library {
-  static modal_id = "library-modal";
+  modal_id = "library-modal";
+  message = "Browse library";
+  name = "library";
 
   constructor(library_fields) {
-    this.fields = {};
     this.library_fields = library_fields;
-    this.field_id_regex = ".+";
-    this.prefix = "library";
-    library_fields.forEach((field, i) => {
+    this.fields = this.library_fields.map((field) => {
       let field_object;
-      const data_status = "library";
       if (field.data.type == "object") {
-        field_object = new ObjectInput(this, data_status);
-      } else if ((field.data.type = "select")) {
+        field_object = new ObjectInput();
+      } else if (field.data.type == "select") {
         field_object = field.data.multiple
-          ? new CheckboxInput(this, data_status)
-          : new SelectInput(this, data_status);
+          ? new CheckboxInput()
+          : new SelectInput();
       } else {
-        field_object = new TypedInput(this, data_status);
+        field_object = new TypedInput();
       }
-      field_object.id = field.name;
-      field_object.create_editor();
+      field_object.name = field.name;
       field_object.from_json(field.data);
       if (field.data.type == "object") {
-        field_object.minischema.from_json(field_object.json_source);
+        field_object.init_minischema();
       }
-
-      this.fields[i.toString()] = field_object;
+      return field_object;
     });
     this.buttons = [];
     this.create_navbar();
@@ -33,15 +88,14 @@ class Library {
   }
 
   create_modal() {
-    this.modal = new Modal(Library.modal_id, "Choose a pre-made form element.");
+    this.modal = new Modal(this.modal_id, "Choose a pre-made form element.");
     this.modal.create_modal([this.nav_content], "lg");
     this.card = this.nav_content;
-    this.library_fields.forEach((field, i) => {
-      const f = this.fields[i.toString()];
-      if (f.type == "object") {
-        f.minischema.activate_autocompletes();
+    this.fields.forEach((field) => {
+      if (field.type == "object") {
+        field.minischema.activate_autocompletes();
       } else {
-        f.activate_autocomplete();
+        field.activate_autocomplete();
       }
     });
   }
@@ -51,13 +105,17 @@ class Library {
     const sidebar = Field.quick("aside", "col-3");
     const mainbar = Field.quick("main", "col");
     const nav_bar = new NavBar("library-nav", ["flex-column", "nav-pills"]);
-    this.library_fields.forEach((field, i) => {
-      nav_bar.add_item(field.name, field.data.title, i == 0);
+    this.fields.forEach((field, i) => {
+      nav_bar.add_item(field.name, field.title, i == 0);
       const tab = document.createElement("div");
-      const description = Field.quick("p", "fw-light", `From ${field.source}.`);
-      const button = this.create_button(i.toString());
+      const description = Field.quick(
+        "p",
+        "fw-light",
+        `From ${this.library_fields[i].source}.`
+      );
+      const button = this.create_button(i);
       tab.appendChild(description);
-      tab.appendChild(ComplexField.add_field_viewer(this.fields[i.toString()]));
+      tab.appendChild(ComplexField.add_field_viewer(field));
       tab.appendChild(button);
       this.buttons.push({ button: button, i: i });
       nav_bar.add_tab_content(field.name, tab);
@@ -69,12 +127,13 @@ class Library {
   }
 
   create_button(i) {
+    const field = this.fields[i];
     const button = Field.quick(
       "button",
       "btn btn-primary mt-1",
-      `Add "${this.fields[i].title}"`
+      `Add "${field.title}"`
     );
-    button.id = `library-add-${i}`;
+    button.id = field.get_domel_id("library");
     return button;
   }
 
@@ -82,7 +141,7 @@ class Library {
     this.buttons = this.buttons.map((button_group) => {
       const { button, i } = button_group;
       const field_json = this.library_fields[i];
-      const new_button = this.create_button(i.toString());
+      const new_button = this.create_button(i);
       const name_exists = schema.field_ids.indexOf(field_json.name) > -1;
       const parent = button.parentElement;
       new_button.addEventListener("click", () => {
@@ -93,7 +152,7 @@ class Library {
               field_json.data,
             ],
           ]),
-          Library.modal_id
+          this.modal_id
         );
       });
       parent.replaceChild(new_button, button);
@@ -120,15 +179,17 @@ class JsonInput {
     this.create_contents();
     this.create_modal();
   }
-  static modal_id = "json-upload-modal";
+  modal_id = "json-upload-modal";
+  message = "Upload JSON";
+  name = "file";
 
   create_modal() {
     this.modal = new Modal(
-      JsonInput.modal_id,
+      this.modal_id,
       "Upload a JSON file with one or more form elements."
     );
     this.modal.create_modal([this.json_div], "lg");
-    this.modal_modal = document.getElementById(JsonInput.modal_id);
+    this.modal_modal = document.getElementById(this.modal_id);
     this.modal_modal.addEventListener("hidden.bs.modal", () => {
       this.reset();
     });
@@ -151,7 +212,7 @@ class JsonInput {
     // it is possible to load something
     this.button.addEventListener("click", () => {
       if (this.fields) {
-        schema.add_fields_from_json(this.fields, JsonInput.modal_id);
+        schema.add_fields_from_json(this.fields, this.modal_id);
       }
     });
     this.existing_names = schema.field_ids;
