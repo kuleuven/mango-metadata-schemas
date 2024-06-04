@@ -677,31 +677,27 @@ class InputField {
    * Select and instantiate the right class depending on the value of the JSON-originated date.
    * @static
    * @param {String} schema_name Name of the schema the field is attached to, for DOM ID purposes.
-   * @param {String} data_status Status of the schema version the field is attached to, for DOM ID purposes.
    * @param {String} id ID of the field to create.
    * @param {FieldInfo} data Contents of the field to create.
    * @returns {InputField} The right input field with the data from the FieldInfo object.
    */
-  static choose_class(schema, data_status = null, [id, data] = []) {
+  static choose_class([name, data] = []) {
     let new_field;
-    data_status = data_status == null ? schema.data_status : data_status;
 
     // if the type is 'object', create a composite field
     if (data.type == "object") {
-      new_field = new ObjectInput(schema, data_status);
+      new_field = new ObjectInput();
     } else if (data.type == "select") {
       // if the type is 'select', create a multiple-value or single-value multiple choice, depending on the value of 'multiple'
       new_field = data.multiple
-        ? new CheckboxInput(schema, data_status)
-        : new SelectInput(schema, data_status);
+        ? new CheckboxInput()
+        : new SelectInput();
     } else {
       // the other remaining option is the single field
-      new_field = new TypedInput(schema, data_status);
+      new_field = new TypedInput();
     }
     // fill in the basic information not present in the FieldInfo object
-    new_field.field_id = id;
-    new_field.id = id;
-
+    new_field.name = name;
     new_field.mode = "mod";
 
     // read the FieldInfo object to retrieve and register the data
@@ -1511,14 +1507,7 @@ class TypedInput extends InputField {
  * @property {FieldInfo} json_source Contents coming from a JSON file, used to fill in the `editor`.
  */
 class ObjectInput extends InputField {
-  /**
-   * Initialize a new Field in a (mini-)schema.
-   * @class
-   */
-  constructor(schema, data_status = null) {
-    super(schema, data_status);
-  }
-
+  
   form_type = "object";
   button_title = "Composite field";
   description =
@@ -1811,8 +1800,8 @@ class MultipleInput extends InputField {
    * Initialize a new MultipleInput Field in a (mini-)schema.
    * @class
    */
-  constructor(schema, data_status = null) {
-    super(schema, data_status);
+  constructor() {
+    super();
     this.type = "select";
     this.values.values = [];
   }
@@ -2567,8 +2556,8 @@ class SelectInput extends MultipleInput {
    * Initialize a new SelectInput Field in a (mini-)schema.
    * @class
    */
-  constructor(schema, data_status = null) {
-    super(schema, data_status);
+  constructor() {
+    super();
     this.values.multiple = false;
     this.values.ui = "radio";
   }
@@ -2689,10 +2678,9 @@ class CheckboxInput extends MultipleInput {
    * Initialize a new CheckboxInput Field in a (mini-)schema.
    * @class
    * @param {String} schema_name Name of the schema that the field is attached to, for form identification purposes.
-   * @param {String} [data_status=draft] Status of the schema version that the field is attached to, for form identification purposes.
    */
-  constructor(schema, data_status = null) {
-    super(schema, data_status);
+  constructor() {
+    super();
     this.values.multiple = true;
     this.values.ui = "checkbox";
   }

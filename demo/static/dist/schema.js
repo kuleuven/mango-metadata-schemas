@@ -15,15 +15,9 @@ class ComplexField {
    * Initialize a Schema, mini-schema for a composite field or dummy mini-schema for illustrating a composite field.
    * @class
    * @param {String} name Initial name of the schema, for IDs of the DOM elements.
-   * @param {String} data_status Derived status used in IDs of DOM elements.
    */
-  constructor(name, data_status = "draft") {
+  constructor(name) {
     // properties of the schema itself
-    this.initial_name = name;
-
-    if (!String(data_status).endsWith("undefined")) {
-      this.data_status = data_status;
-    }
     this.field_id_regex = "[a-zA-Z0-9_\\-]+";
     this.name = name;
 
@@ -120,10 +114,8 @@ class ComplexField {
    */
   add_fields_from_json(data, modal_id) {
     Object.keys(data).forEach((field_id) => {
-      let new_field = InputField.choose_class(this, null, [
-        field_id,
-        data[field_id],
-      ]);
+      let new_field = InputField.choose_class([field_id, data[field_id]]);
+      new_field.attach_schema(this);
       new_field.create_editor();
       new_field.add_to_schema();
     });
@@ -216,7 +208,7 @@ class ComplexField {
       this.name = "schema-editor"; // then the name should be 'schema-editor'
     } else if (this.parent) {
       // if this is the clone of another schema
-      this.name = this.parent.match(/(.+)-\d+\.\d\.\d/)[1]; // get the name of the parent (no versions)
+      this.name = this.parent.match(/(.+)-\d+\.\d\.\d/)[1] + "-copy"; // get the name of the parent (no versions)
     }
   }
 
@@ -237,7 +229,6 @@ class ComplexField {
         : Field.quick("div", "input-view");
 
     // go through each of the fields
-    // QUESTION should the code inside the forEach be defined in the InputField classes?
     schema.fields.forEach((field) => {
       div.appendChild(ComplexField.add_field_viewer(field, active));
     });
@@ -355,10 +346,8 @@ class DummyObject extends ComplexField {
 
 /**
  * Class for mini-schemas connected to a composite field.
- * `data_status` always starts with 'object', followed by the `data_status`
  * of the schema that the composite field belongs to.
  * @extends ComplexField
- * @property {String} parent_status `data_status` of the (mini-)schema the composite field belongs to.
  * @property {String} form_id ID of the editing form of the composite field this is linked to.
  * @property {String} card_id ID of the editing modal of the composite field this is linked to. Assigned by `ObjectInput.create_editor()`.
  */
@@ -368,11 +357,7 @@ class ObjectEditor extends ComplexField {
    * @param {ObjectInput} parent Composite field this mini-schema is linked to.
    */
   constructor(parent) {
-    const parent_status = String(parent.data_status);
-    super(
-      parent.id,
-      `${parent_status.startsWith("object") ? "" : "object-"}${parent_status}`
-    );
+    super(parent.id);
     this.composite = parent;
     if (this.composite.form_field != undefined) {
       this.form_div = this.composite.form_field.form;
@@ -381,22 +366,9 @@ class ObjectEditor extends ComplexField {
 
   is_composite = true;
 
-  get prefix() {
-    return `${this.composite.schema.prefix}-${this.composite.id}`;
-  }
-
   reset_wip() {
     this.wip = [];
     this.toggle_saving();
-  }
-  /**
-   * Obtain the data_status of the mini-schema.
-   * @returns {String} Derived status as used in IDs for DOM elements.
-   */
-  set_data_status() {
-    return String(this.composite.data_status).endsWith("undefined")
-      ? "undefined"
-      : this.data_status;
   }
 
   get card() {
@@ -447,19 +419,18 @@ class Schema extends ComplexField {
    * @param {String} container_id ID of the parent DIV.
    * @param {UrlsList} urls Collection of URLs and other information obtained from the server side.
    * @param {String} [version=1.0.0] Version number of this version of the schema.
-   * @param {String} [data_status=draft] Derived status used for IDs of DOM elements.
    */
-  constructor(
-    card_id,
-    container_id,
-    urls,
-    version = "1.0.0",
-    data_status = "draft"
-  ) {
-    super(card_id, data_status);
-    this.card_id = card_id;
-    this.ls_id = `_mgs_${this.card_id}_${this.data_status}`;
-    this.name = card_id.match(/^(.*)-\d+\d\d$/)[1];
+  constructor(card_id, container_id, urls, version = "1.0.0") {
+    const card_id_match = card_id.match(/^(.*)-(\d+\d+\d+)(-copy)?$/);
+    const clean_card_id = `${card_id_match[1]}-${card_id_match[2]}`;
+    super(clean_card_id);
+    this.card_id = clean_card_id;
+    this.name =
+      card_id_match[3] == undefined
+        ? card_id_match[1]
+        : card_id_match[1] + card_id_match[3];
+    this.ls_id = `_mgs_${card_id}`;
+    this.prefix = prefix;
     this.version = version;
     this.container = container_id;
     this.urls = urls;
@@ -475,44 +446,24 @@ class Schema extends ComplexField {
   from_json(data) {
     this.saved_json = data;
     super.from_json(data);
-    this.create_editor();
 
     // retrieve schema-specific information
     this.name = data.schema_name;
     this.version = data.version;
     this.parent = data.parent;
-  }
 
-  /**
-   * Obtain the data_status of the schema.
-   * This is used in the IDs of DOM elements related to editing a schema.
-   * - 'new' indicates a new draft from a published version.
-   * - 'draft' indicates a new schema from scratch or an existing draft version.
-   * - 'copy' indicates a clone of a published version (before it has been saved as draft).
-   * @returns {String} Derived status as used in IDs for DOM elements.
-   */
-  set_data_status() {
-    if (this.status == "published") {
-      return "new";
-    } else if (this.origin == undefined) {
-      return "draft";
-    } else {
-      return "copy";
-    }
+    this.create_editor();
   }
 
   /**
    * Create the editing form and option-display for a new schema to design from scratch.
    */
   create_creator() {
-    this.status = "draft";
-
     if (this.ls_id in localStorage && this.fields.length == 0) {
       let schema_from_ls = JSON.parse(localStorage.getItem(this.ls_id));
-      this.properties_from_json(schema_from_ls);
+      this.properties_from_json(schema_from_ls.properties);
     }
-    // Create modal that shows the possible fields to add
-    this.display_options();
+    this.status = "draft";
 
     // Create the form to assign ID and label and add fields
     this.create_editor();
@@ -543,7 +494,7 @@ class Schema extends ComplexField {
   create_editor() {
     // define if this is the first draft of a schema and it has never been saved
     let is_new =
-      this.data_status == "copy" || this.card_id.startsWith("schema-editor");
+      this.name.endsWith("copy") || this.card_id.startsWith("schema-editor");
 
     // create and add an input field for the ID (or 'name')
     this.form.add_input("Schema ID", this.card_id + "-name", {
@@ -576,10 +527,9 @@ class Schema extends ComplexField {
       this.temp_title = title_input.value;
       this.add_wip(".title");
     });
-
     if (this.ls_id in localStorage) {
       let ls_data = JSON.parse(localStorage.getItem(this.ls_id));
-      if (is_new) {
+      if (is_new && "name" in ls_data) {
         name_input.value = this.temp_name = ls_data.name;
       }
       if ("title" in ls_data && ls_data.title !== undefined) {
@@ -614,7 +564,7 @@ class Schema extends ComplexField {
       } else {
         // trigger confirmation message, which also has its hidden fields
         let second_sentence =
-          this.data_status != "copy" &&
+          !this.card_id.endsWith("-copy") &&
           schemas[this.name] &&
           schemas[this.name].published.length > 0
             ? ` Version ${schemas[this.name].published[0]} will be archived.`
@@ -667,38 +617,42 @@ class Schema extends ComplexField {
    */
   from_parent(parent) {
     this.parent = `${parent.name}-${parent.version}`; // register name and version of the parent
-    this.initial_name = `${parent.name}-new`;
-    this.status = "draft"; // start as draft (but data_status will be 'copy')
+    this.status = "draft";
     this.origin = {
       json: { ...parent.properties },
     };
+    if (this.ls_id != undefined && this.ls_id in localStorage) {
+      let schema_from_ls = JSON.parse(localStorage.getItem(this.ls_id));
+      this.properties_from_json(schema_from_ls.properties);
+      this.wip = schema_from_ls.wip;
+    } else {
+      this.properties_from_json(parent.properties);
+    }
+    this.create_editor(); // create form
     this.nav_bar = parent.nav_bar;
-    // go through each existing field and clone it
-    Object.entries(parent.properties).forEach((entry) => {
-      let new_field = InputField.choose_class(this, "child", entry);
-      new_field.create_editor();
-      this.fields.push(new_field);
-    });
   }
 
   /**
    * For published versions: create a clone/child as base for a new schema.
    */
   setup_copy() {
-    // get the object-version of the current fields
-    this.fields_to_json();
-
     // initialize a new schema and transfer the contents
     this.child = new Schema(
-      this.card_id,
+      this.card_id + "-copy",
       this.container,
       this.urls,
-      "1.0.0",
-      "copy"
+      "1.0.0"
     );
-    this.child.create_editor(); // create form
 
     this.child.from_parent(this);
+    this.nav_bar_btn_ids["create_new_schema_draft"] = this.nav_bar.add_item(
+      tab_prefixes["copy"],
+      "Copy to new schema"
+    ); // add to tabs
+    this.nav_bar.add_tab_content(tab_prefixes["copy"], this.child.form.form); // add form to tab
+    if (this.child.ls_id in localStorage) {
+      this.child.offer_reset_ls();
+    }
   }
 
   prepare_json_download() {
@@ -927,21 +881,18 @@ class Schema extends ComplexField {
         }
       );
     } else if (this.status == "published") {
-      // create modal and form for a new draft
+      // get the object-version of the current fields
+      this.fields_to_json();
+
+      // create a form for a new draft
       // checks also for the existence of a draft version
-      this.draft_from_publish();
+      // only if there are no existing drafts
+      if (schemas[this.name].draft.length == 0) {
+        this.setup_draft();
+      }
 
       // initalize a new schema as child/clone and create its modal and form
       this.setup_copy();
-      this.child.display_options(); // create field-choice modal
-      this.nav_bar_btn_ids["create_new_schema_draft"] = this.nav_bar.add_item(
-        tab_prefixes["copy"],
-        "Copy to new schema"
-      ); // add to tabs
-      this.nav_bar.add_tab_content(tab_prefixes["copy"], this.child.form.form); // add form to tab
-      if (this.child.ls_id in localStorage) {
-        this.child.offer_reset_ls();
-      }
 
       // add a json view
       this.prepare_json_download();
@@ -966,25 +917,42 @@ class Schema extends ComplexField {
     }
   }
 
+  setup_draft() {
+    this.nav_bar_btn_ids["create_draft"] = this.nav_bar.add_item(
+      tab_prefixes["new"],
+      "New (draft) version",
+      false,
+      1
+    ); // create tab
+
+    let incremented_major = parseInt(this.version.split(".")[0]) + 1;
+    this.temp = new Schema(
+      this.card_id,
+      this.container,
+      this.urls,
+      `${incremented_major}.0.0`
+    );
+    schemas[this.name].draft = this.temp.draft_from_publish(this);
+    // this.nav_bar.add_tab_content(tab_prefixes["new"], this.temp.form.form);
+  }
+
   /**
    * Set up an editor for a draft from a published version
    */
-  draft_from_publish() {
-    // only if there are no existing drafts
-    if (schemas[this.name].draft.length == 0) {
-      this.display_options(); // create field-choice modal
-      this.nav_bar_btn_ids["create_draft"] = this.nav_bar.add_item(
-        tab_prefixes["new"],
-        "New (draft) version",
-        false,
-        1
-      ); // create tab
-
-      // fill in name and title
-      this.form.form.querySelector('[name="schema_name"]').value = this.name; // id
-      this.form.form.querySelector('[name="title"]').value = this.title; // label
-
-      this.nav_bar.add_tab_content(tab_prefixes["new"], this.form.form); // add form to tab
+  draft_from_publish(previous_version) {
+    this.from_json({
+      schema_name: previous_version.name,
+      title: previous_version.title,
+      status: "draft",
+      version: this.version,
+      properties: { ...previous_version.properties },
+    });
+    this.nav_bar = previous_version.nav_bar; // fill in name and title
+    this.form.form.querySelector('[name="schema_name"]').value = this.name; // id
+    this.form.form.querySelector('[name="title"]').value = this.title; // label
+    this.nav_bar.add_tab_content(tab_prefixes["new"], this.form.form); // add form to tab
+    if (this.ls_id in localStorage) {
+      this.offer_reset_ls();
     }
   }
 
@@ -1012,7 +980,7 @@ class Schema extends ComplexField {
       }
     });
 
-    if (this.ls_id in localStorage) {
+    if (this.status == "draft" && this.ls_id in localStorage) {
       let schema_from_ls = JSON.parse(localStorage.getItem(this.ls_id));
       if (
         this.latest_saved == undefined ||
@@ -1041,6 +1009,9 @@ class Schema extends ComplexField {
 
     if (this.status == "published") {
       this.child.fields.forEach((field) => field.view_field());
+      if (this.temp) {
+        this.temp.fields.forEach((field) => field.view_field());
+      }
     }
 
     if (last_mod_ls in localStorage) {
@@ -1068,11 +1039,6 @@ class Schema extends ComplexField {
     // update the status
     let status = action == "publish" ? "published" : "draft";
 
-    // if this is a new version from an existing published one, increment the versio number
-    if (this.data_status == "new") {
-      let incremented_major = parseInt(this.version.split(".")[0]) + 1;
-      this.version = `${incremented_major}.0.0`;
-    }
     this.name = this.form.form.querySelector('[name="schema_name"]').value;
     this.title = this.form.form.querySelector('[name="title"]').value;
 
@@ -1118,7 +1084,7 @@ class Schema extends ComplexField {
       wip: this.wip,
     };
     if (
-      this.data_status == "copy" ||
+      this.card_id.endsWith("copy") ||
       this.card_id.startsWith("schema-editor")
     ) {
       to_save.name = this.temp_name ? this.temp_name : this.name;
@@ -1135,9 +1101,7 @@ class Schema extends ComplexField {
           timestamp: Date.now() / 1000,
           schema_name: this.name,
           schema_version: this.version,
-          editing_tab: `#${tab_prefixes[this.data_status]}-tab-${
-            this.nav_bar.id
-          }`,
+          editing_tab: this.editing_tab,
         })
       );
     }
@@ -1145,7 +1109,8 @@ class Schema extends ComplexField {
 
   offer_reset_ls() {
     const is_new =
-      this.data_status == "copy" || this.card_id.startsWith("schema-editor");
+      this.card_id.endsWith("-copy") ||
+      this.card_id.startsWith("schema-editor");
 
     const msg_row = Field.quick(
       "div",
@@ -1301,7 +1266,9 @@ class SchemaGroup {
       this.urls,
       version.version
     );
-    schema.latest_saved = this.latest_saved;
+    if (version.status == "draft") {
+      schema.latest_saved = this.latest_saved;
+    }
     schema.loaded = false;
     const accordion = nav_bar.tab_content.parentElement.parentElement;
 

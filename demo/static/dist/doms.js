@@ -1032,7 +1032,7 @@ class SchemaDraftForm extends BasicForm {
    */
   constructor(schema) {
     // initialize a BasicForm
-    super(`${schema.card_id}-${schema.data_status}`);
+    super(`${schema.card_id}`);
 
     // add action and method attributes for submission
     this.form.setAttribute("action", schema.urls.new);
