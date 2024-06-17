@@ -43,7 +43,8 @@ class InputField {
     this.description = "";
     this.dummy_title = "Informative label";
 
-    this.generate_id();
+    this.id = InputField.validate_random_id(InputField.make_id());
+    field_ids.push(this.id);
 
     // Attributes to limit some behavior
     this.mode = "add";
@@ -69,14 +70,9 @@ class InputField {
 
   static validate_random_id(random_id) {
     while (field_ids.indexOf(random_id) > -1) {
-      random_id = make_id();
+      random_id = InputField.make_id();
     }
     return random_id;
-  }
-
-  generate_id() {
-    this.id = InputField.validate_random_id(InputField.make_id());
-    field_ids.push(this.id);
   }
 
   
