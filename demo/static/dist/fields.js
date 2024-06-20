@@ -583,7 +583,7 @@ class InputField {
    * @returns {InputField} Updated version of the input field.
    */
   register_fields() {
-    let target = this.mode == "mod" ? this : this.clone();
+    let target = this.mode == "mod" ? this : this.clone(); // TODO check if it makes sense
     target.attach_schema(this.schema);
     target.recover_fields(this); // update the field
 
@@ -607,21 +607,20 @@ class InputField {
    *
    * @returns {InputField} A new field with data from the form, to be added to the schema.
    */
-  clone(duplicate = false) {
-    let clone = new this.constructor(this.schema);
+  clone(add_suffix = false) {
+    let clone = new this.constructor();
 
     // register the main info
-    if (duplicate) {
-      clone.name = this.name + "-new";
-      clone.title = title;
-      clone.required = this.required;
-      clone.repeatable = this.repeatable;
-      clone.default = this.default;
-      clone.help = this.help;
-      clone.help_is_custom = this.help_is_custom;
-      clone.values = { ...this.values };
-      clone.mode = "mod";
-    }
+    clone.name = this.name + (add_suffix ? "-new" : "");
+    clone.title = this.title;
+    clone.required = this.required;
+    clone.repeatable = this.repeatable;
+    clone.default = this.default;
+    clone.help = this.help;
+    clone.help_is_custom = this.help_is_custom;
+    clone.values = { ...this.values };
+    clone.mode = "mod";
+  
     return clone;
   }
 
@@ -1293,8 +1292,8 @@ class TypedInput extends InputField {
    * @param {String} title User-facing label of the clone, retrieved from the form
    * @returns {InputField} A new field with data from the form, to be added to the schema.
    */
-  clone() {
-    let clone = super.clone();
+  clone(add_suffix = false) {
+    let clone = super.clone(add_suffix);
     clone.type = this.type;
     clone.temp_values = { ...this.temp_values };
     return clone;

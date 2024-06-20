@@ -54,9 +54,9 @@ class ComplexField {
   }
 
   update_field_id_regex() {
-    this.field_id_regex = `^((?!^${this.field_ids.join(
-      "$|^"
-    )}$)[a-z0-9_\\-]+)+$`;
+    this.field_id_regex = `^((?!^${this.fields
+      .map((x) => x.name)
+      .join("$|^")}$)[a-z0-9_\\-]+)+$`;
     this.fields.forEach((field) => field.update_id_regex(this.field_id_regex));
   }
 

@@ -328,6 +328,7 @@ class MovingViewer extends MovingField {
   duplicate(field) {
     // Transfer values of the original field to the copy
     const clone = field.clone(true);
+    clone.attach_schema(field.schema);
     // Create the form and the modal corresponding to the clone field
     clone.create_editor();
     // Add the cloned field to the (mini-)schema it belongs to
@@ -336,9 +337,8 @@ class MovingViewer extends MovingField {
     // Transfer the mini-schema if the field is composite
     if (this.is_composite) {
       field.minischema.fields.forEach((subfield) => {
-        const miniclone = subfield.clone(subfield.id, subfield.title);
-        miniclone.schema = clone.minischema;
-        miniclone.id_regex = clone.minischema.field_id_regex;
+        const miniclone = subfield.clone();
+        miniclone.attach_schema(clone.minischema);
         miniclone.create_editor();
         miniclone.add_to_schema();
       });
