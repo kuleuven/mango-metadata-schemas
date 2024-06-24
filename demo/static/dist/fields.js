@@ -2269,6 +2269,10 @@ class MultipleInput extends InputField {
           );
           this.listen_to_movers(active_tab.querySelector(".mover-container"));
         }
+        
+        this.toggle_dropdown_switch();
+        this.update_default_field();
+        this.update_help();
       });
       col_right.appendChild(btn);
 
