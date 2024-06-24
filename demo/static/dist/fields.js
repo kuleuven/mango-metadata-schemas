@@ -175,7 +175,7 @@ class InputField {
 
     // Identify the form with MovingViewers and the MovingViewer itself
     const viewer = this.schema.field_box.querySelector(
-      this.get_domel_id("viewer")
+      "#" + this.get_domel_id("viewer")
     );
 
     // Update the title of the MovingViewer
@@ -511,17 +511,6 @@ class InputField {
           // recreate the updated (probably cleaned) form
           modal_dom.querySelector(".modal-body").appendChild(form);
 
-          // if the new field is completely new or has changed ID
-          if (clone.editing_modal_id != this.get_domel_id("editor")) {
-            // fill the new field's modal with its form
-            let clone_modal_dom = document.getElementById(
-              clone.editing_modal_id
-            );
-            let clone_form = clone.form_field.form;
-            clone_modal_dom
-              .querySelector(".modal-body")
-              .appendChild(clone_form);
-          }
         }
       },
       false
