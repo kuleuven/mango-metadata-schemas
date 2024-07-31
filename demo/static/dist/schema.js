@@ -56,7 +56,7 @@ class ComplexField {
   update_field_id_regex() {
     this.field_id_regex = `^((?!^${this.fields
       .map((x) => x.name)
-      .join("$|^")}$)[a-z0-9_\\-]+)+$`;
+      .join("$|^")}$)[a-zA-Z0-9_\\-]+)+$`;
     this.fields.forEach((field) => field.update_id_regex(this.field_id_regex));
   }
 
@@ -565,8 +565,8 @@ class Schema extends ComplexField {
         // trigger confirmation message, which also has its hidden fields
         let second_sentence =
           !this.card_id.endsWith("-copy") &&
-          schemas[this.name] &&
-          schemas[this.name].published.length > 0
+            schemas[this.name] &&
+            schemas[this.name].published.length > 0
             ? ` Version ${schemas[this.name].published[0]} will be archived.`
             : "";
         let starting_data = {
@@ -596,7 +596,7 @@ class Schema extends ComplexField {
       name_input.setAttribute("readonly", ""); // name cannot be changed if a version has been saved
       if (
         schemas[this.name].published.length +
-          schemas[this.name].archived.length >
+        schemas[this.name].archived.length >
         0
       ) {
         title_input.setAttribute("readonly", ""); // title cannot be changed if there is a published or archived version in history
@@ -680,11 +680,11 @@ class Schema extends ComplexField {
     full_link.addEventListener(
       "click",
       (e) =>
-        (e.target.href = `data:text/json;charset=utf-8,${JSON.stringify(
-          this.saved_json,
-          null,
-          "  "
-        )}`)
+      (e.target.href = `data:text/json;charset=utf-8,${JSON.stringify(
+        this.saved_json,
+        null,
+        "  "
+      )}`)
     );
     for_download_full.appendChild(full_link);
 
@@ -709,11 +709,11 @@ class Schema extends ComplexField {
     fields_link.addEventListener(
       "click",
       (e) =>
-        (e.target.href = `data:text/json;charset=utf-8,${JSON.stringify(
-          to_download,
-          null,
-          "  "
-        )}`)
+      (e.target.href = `data:text/json;charset=utf-8,${JSON.stringify(
+        to_download,
+        null,
+        "  "
+      )}`)
     );
     for_download_full.appendChild(fields_link);
 

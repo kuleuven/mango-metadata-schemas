@@ -51,7 +51,7 @@ const prefix = "mgs";
  * REGEX Pattern to control possible schema names. This pattern is then filled with existing names.
  * @type {String}
  */
-let schema_pattern = "[a-z][a-z0-9_\\-]*";
+let schema_pattern = "[a-zA-Z][a-zA-Z0-9_\\-]*";
 
 /**
  * Name for information of last modified schema in localStorage
@@ -153,4 +153,4 @@ function checkAllPermissions(target, permissionArray = []) {
 // ide: use centralized id generator functions, there are a few variants across the code
 // placeholders for now
 
-function genid_tab_action_button() {}
+function genid_tab_action_button() { }
