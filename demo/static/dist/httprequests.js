@@ -168,7 +168,12 @@ class TemplatesRequest extends MangoRequest {
         )}$)${schema_pattern})$`;
         document
           .querySelectorAll('input[name="schema_name"]')
-          .forEach((input) => input.setAttribute("pattern", schema_pattern));
+          .forEach((input) => {
+            input.setAttribute("pattern", schema_pattern);
+            input.nextSibling.nextSibling.innerHTML = `Cannot use any of: ${existing_names.join(
+              ", "
+            )}`;
+          });
       }
 
       // but first, if the starting schema was being edited, focus on that
