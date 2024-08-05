@@ -53,6 +53,11 @@ const prefix = "mgs";
  */
 let schema_pattern = "[a-zA-Z][a-zA-Z0-9_\\-]*";
 
+// Default description message for schema or field ID.
+let description_text = "Use letters, numbers, no spaces, no special characters other than '_' and '-'. Existing IDs cannot be reused."
+// Default validation message to ensure validity of schema or field ID.
+let validation_text = "This ID is invalid."
+
 /**
  * Name for information of last modified schema in localStorage
  */

@@ -241,9 +241,8 @@ class MovingField {
    */
   add_btn(className, symbol, action = false, color = "primary") {
     // use outlines for MovingViewer and filled buttons for MovingChoice
-    let button_color = `btn-${
-      this.constructor.name == "MovingViewer" ? "outline-" : ""
-    }${color}`;
+    let button_color = `btn-${this.constructor.name == "MovingViewer" ? "outline-" : ""
+      }${color}`;
     let btn = Field.quick("button", `btn ${button_color} mover ${className}`);
     btn.id = `${this.idx}-${className}`;
     // what should the button do on click?
@@ -685,7 +684,7 @@ class BasicForm {
    * @param {String} [placeholder="Some text"] A placeholder for the input field.
    * @param {String|Boolean} [value=false] Value to fill into the input field, if it exists.
    * @param {String} [validation_message="This field is compulsory"] Message to show when the input field does not fulfill the validation criteria on form submission.
-   * @param {String} [pattenr=".*"] A regular expression that the (text) input field must match to be accepted on submission.
+   * @param {String} [pattern=".*"] A regular expression that the (text) input field must match to be accepted on submission.
    * @param {Boolean} [required=true] Whether the input field should be required.
    */
   add_input(

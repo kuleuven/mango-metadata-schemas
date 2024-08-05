@@ -170,9 +170,9 @@ class TemplatesRequest extends MangoRequest {
           .querySelectorAll('input[name="schema_name"]')
           .forEach((input) => {
             input.setAttribute("pattern", schema_pattern);
-            input.nextSibling.nextSibling.innerHTML = `Cannot use any of: ${existing_names.join(
+            input.nextSibling.nextSibling.innerHTML = validation_text + ` Existing schema IDs are: ${existing_names.join(
               ", "
-            )}`;
+            )}.`;
           });
       }
 
@@ -198,9 +198,8 @@ class TemplatesRequest extends MangoRequest {
           schemas[schema_group_name].draft.indexOf(schema_version) > -1;
         // check if this is a temp draft from a published version
         console.log(schema_version);
-        const previous_version = `${
-          parseInt(schema_version.split(".")[0]) - 1
-        }.0.0`;
+        const previous_version = `${parseInt(schema_version.split(".")[0]) - 1
+          }.0.0`;
         const is_unsaved_draft =
           schema_group_name in schemas &&
           schemas[schema_group_name].draft.length == 0 &&

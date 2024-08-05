@@ -75,7 +75,7 @@ class InputField {
     return random_id;
   }
 
-  
+
   get_form_div(key) {
     return this.form_field.form.querySelector(`#div-${this.get_domel_id(key)}`);
   }
@@ -354,7 +354,7 @@ class InputField {
   }
 
   /**
-   * Initalize a form to edit the field and add the components at the beginning of the form.
+   * Initialize a form to edit the field and add the components at the beginning of the form.
    */
   setup_form() {
     // create a new form
@@ -365,14 +365,14 @@ class InputField {
       `ID for ${this.form_type} (underlying label)`,
       this.get_domel_id("name"),
       {
-        description:
-          "Use lowercase or numbers, no spaces, no special characters other than '_'.",
+        description: description_text,
         value: this.name,
-        validation_message:
-          "This field is compulsory. Use only lowercase, numbers, and '_'. Existing names cannot be reused.",
+        validation_message: validation_text,
         pattern: this.id_regex,
       }
     );
+
+    console.log("check: " + this.id_regex) // TO DO: Use for displaying existing field names.
 
     // add an input field to provide the title of the field
     this.form_field.add_input(
@@ -609,7 +609,7 @@ class InputField {
     clone.help_is_custom = this.help_is_custom;
     clone.values = { ...this.values };
     clone.mode = "mod";
-  
+
     return clone;
   }
 
@@ -1047,8 +1047,8 @@ class TypedInput extends InputField {
         ? " " + this.print_range() // specify the range
         : this.temp_values.pattern != undefined && // if it has a pattern
           this.temp_values.pattern.length > 0
-        ? ` fully matching /${this.temp_values.pattern}/` // specify the pattern
-        : "";
+          ? ` fully matching /${this.temp_values.pattern}/` // specify the pattern
+          : "";
     return `Input type: ${this.temp_values.type}${par_text}`;
   }
 
@@ -1224,8 +1224,8 @@ class TypedInput extends InputField {
         input.type == "number"
           ? " " + this.print_range() // if it's a number, message about the range
           : this.values.pattern != undefined && this.values.pattern.length > 0 // otherwise if there is a regex pattern...
-          ? ` matching the regular expression /^${this.values.pattern}$/`
-          : "";
+            ? ` matching the regular expression /^${this.values.pattern}$/`
+            : "";
       const validator_message = Field.quick(
         "div",
         "invalid-feedback",
@@ -1489,7 +1489,7 @@ class TypedInput extends InputField {
  * @property {FieldInfo} json_source Contents coming from a JSON file, used to fill in the `editor`.
  */
 class ObjectInput extends InputField {
-  
+
   form_type = "object";
   button_title = "Composite field";
   description =
@@ -1554,9 +1554,8 @@ class ObjectInput extends InputField {
   }
 
   get default_help() {
-    return `Nested form with ${
-      this.minischema ? this.minischema.fields.length : " "
-    }subfields that go together.`;
+    return `Nested form with ${this.minischema ? this.minischema.fields.length : " "
+      }subfields that go together.`;
   }
 
   /**
@@ -1644,7 +1643,7 @@ class ObjectInput extends InputField {
 
   attach_schema(schema) {
     super.attach_schema(schema);
-    
+
   }
 
   render() {
@@ -1809,9 +1808,8 @@ class MultipleInput extends InputField {
   }
 
   get default_help() {
-    return `Choose ${this.values.multiple ? "at least " : ""}one of ${
-      this.temp_options.length
-    } options.`;
+    return `Choose ${this.values.multiple ? "at least " : ""}one of ${this.temp_options.length
+      } options.`;
   }
 
   update_field() {
@@ -1885,8 +1883,7 @@ class MultipleInput extends InputField {
     return Field.quick(
       "div",
       "invalid-feedback",
-      `${is_required_msg}Please provide ${
-        this.values.multiple ? "at least " : ""
+      `${is_required_msg}Please provide ${this.values.multiple ? "at least " : ""
       }one of the accepted options.`
     );
   }
@@ -1924,7 +1921,7 @@ class MultipleInput extends InputField {
       },
     });
     this.autocomplete_selector.parentElement.appendChild(this.validator_message);
-  
+
   }
 
   read_autocomplete() {
@@ -2267,7 +2264,7 @@ class MultipleInput extends InputField {
           );
           this.listen_to_movers(active_tab.querySelector(".mover-container"));
         }
-        
+
         this.toggle_dropdown_switch();
         this.update_default_field();
         this.update_help();
@@ -2372,7 +2369,7 @@ class MultipleInput extends InputField {
       }
     }
 
-    
+
   }
 
   update_default_field() {

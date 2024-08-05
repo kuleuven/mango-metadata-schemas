@@ -499,11 +499,10 @@ class Schema extends ComplexField {
     // create and add an input field for the ID (or 'name')
     this.form.add_input("Schema ID", this.card_id + "-name", {
       placeholder: "schema-name",
-      validation_message:
-        "This field is compulsory, please only use lower case letters or numbers, '_' and '-'. Existing IDs cannot be reused.",
+      validation_message: validation_text,
       pattern: schema_pattern,
       description: is_new
-        ? "This cannot be changed after the draft is saved."
+        ? "This cannot be changed after the draft is saved." + " " + description_text
         : false,
     });
     const name_input = this.form.form.querySelector(`#${this.card_id}-name`);
