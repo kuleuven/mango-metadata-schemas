@@ -1082,8 +1082,6 @@ class TypedInput extends InputField {
       if (divider.nextSibling != placeholder_div) {
         this.form_field.form.insertBefore(placeholder_div, divider.nextSibling);
       }
-    } else {
-      this.get_form_input("placeholder").value = "";
     }
   }
 
@@ -1307,7 +1305,7 @@ class TypedInput extends InputField {
 
     if (TypedInput.types_with_placeholder.indexOf(this.type) > -1) {
       let placeholder = data.get(field.get_domel_id("placeholder"));
-      if (placeholder) this.values.placeholder = placeholder.trim();
+      this.values.placeholder = placeholder.trim();
     } else {
       this.values.placeholder = "";
     }
