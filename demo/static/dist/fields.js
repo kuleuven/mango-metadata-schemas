@@ -2016,6 +2016,7 @@ class MultipleInput extends InputField {
       input.addEventListener("change", () => {
         this.toggle_editing_navbar("movers");
         this.toggle_dropdown_switch();
+        this.update_default_field();
         this.update_help();
         this.alert_repeated_movers(moving_div);
       });
@@ -2023,9 +2024,13 @@ class MultipleInput extends InputField {
     moving_div.querySelectorAll("button.rem").forEach((input) => {
       input.addEventListener("click", () => {
         this.toggle_dropdown_switch();
-        this.update_default_field();
         this.update_help();
         this.alert_repeated_movers(moving_div);
+      });
+    });
+    moving_div.querySelectorAll("button.mover").forEach((input) => {
+      input.addEventListener("click", () => {
+        this.update_default_field();
       });
     });
   }
@@ -2098,6 +2103,7 @@ class MultipleInput extends InputField {
         msg_row.remove();
 
         this.toggle_dropdown_switch();
+        this.update_default_field();
         this.update_help();
       });
       col_right.appendChild(btn);
