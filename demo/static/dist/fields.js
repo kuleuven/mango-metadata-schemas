@@ -75,13 +75,14 @@ class InputField {
     return random_id;
   }
 
-
   get_form_div(key) {
     return this.form_field.form.querySelector(`#div-${this.get_domel_id(key)}`);
   }
 
   get_form_input(key) {
-    return this.form_field.form.querySelector(`input#${this.get_domel_id(key)}`);
+    return this.form_field.form.querySelector(
+      `input#${this.get_domel_id(key)}`
+    );
   }
 
   activate_autocomplete() {
@@ -372,7 +373,7 @@ class InputField {
       }
     );
 
-    console.log("check: " + this.id_regex) // TO DO: Use for displaying existing field names.
+    console.log("check: " + this.id_regex); // TO DO: Use for displaying existing field names.
 
     // add an input field to provide the title of the field
     this.form_field.add_input(
@@ -427,7 +428,7 @@ class InputField {
 
     // define the behavior of the 'required' switch
     if (requirable) {
-      let req_input = this.get_form_input("required")
+      let req_input = this.get_form_input("required");
       // if it's a simple field with a checkbox
       if (this.type == "checkbox") {
         req_input.setAttribute("disabled", "");
@@ -510,7 +511,6 @@ class InputField {
 
           // recreate the updated (probably cleaned) form
           modal_dom.querySelector(".modal-body").appendChild(form);
-
         }
       },
       false
@@ -548,7 +548,6 @@ class InputField {
   setup_rendering_button(button, parent_modal) {
     button.setAttribute("data-bs-toggle", "modal");
     button.setAttribute("data-bs-target", "#" + this.get_domel_id("editor"));
-
   }
 
   // /**
@@ -673,9 +672,7 @@ class InputField {
       new_field = new ObjectInput();
     } else if (data.type == "select") {
       // if the type is 'select', create a multiple-value or single-value multiple choice, depending on the value of 'multiple'
-      new_field = data.multiple
-        ? new CheckboxInput()
-        : new SelectInput();
+      new_field = data.multiple ? new CheckboxInput() : new SelectInput();
     } else {
       // the other remaining option is the single field
       new_field = new TypedInput();
@@ -809,7 +806,6 @@ class TypedInput extends InputField {
       .querySelector(`#${this.get_domel_id("viewer")} .card-body`)
       .firstChild.replaceWith(this.viewer_input());
   }
-
 
   toggle_placeholder() {
     if (TypedInput.types_with_placeholder.indexOf(this.temp_values.type) > -1) {
@@ -1047,8 +1043,8 @@ class TypedInput extends InputField {
         ? " " + this.print_range() // specify the range
         : this.temp_values.pattern != undefined && // if it has a pattern
           this.temp_values.pattern.length > 0
-          ? ` fully matching /${this.temp_values.pattern}/` // specify the pattern
-          : "";
+        ? ` fully matching /${this.temp_values.pattern}/` // specify the pattern
+        : "";
     return `Input type: ${this.temp_values.type}${par_text}`;
   }
 
@@ -1070,11 +1066,15 @@ class TypedInput extends InputField {
   add_placeholder_field() {
     // if the field does not exist yet (it may have been removed for textarea and checkbox)
     if (this.get_form_div("placeholder") == undefined) {
-      this.form_field.add_input("Placeholder", this.get_domel_id("placeholder"), {
-        description: "Example of a value for this field.",
-        value: this.values.placeholder,
-        required: false,
-      });
+      this.form_field.add_input(
+        "Placeholder",
+        this.get_domel_id("placeholder"),
+        {
+          description: "Example of a value for this field.",
+          value: this.values.placeholder,
+          required: false,
+        }
+      );
       let placeholder_div = this.get_form_div("placeholder");
       let divider = this.form_field.form.querySelector(
         `hr#${this.get_domel_id("divider")}`
@@ -1224,8 +1224,8 @@ class TypedInput extends InputField {
         input.type == "number"
           ? " " + this.print_range() // if it's a number, message about the range
           : this.values.pattern != undefined && this.values.pattern.length > 0 // otherwise if there is a regex pattern...
-            ? ` matching the regular expression /^${this.values.pattern}$/`
-            : "";
+          ? ` matching the regular expression /^${this.values.pattern}$/`
+          : "";
       const validator_message = Field.quick(
         "div",
         "invalid-feedback",
@@ -1253,7 +1253,9 @@ class TypedInput extends InputField {
     );
 
     // when selecting from the dropdown, adapt the contents of the form
-    const format_select = this.form_field.form.querySelector("#" + this.get_domel_id("format"));
+    const format_select = this.form_field.form.querySelector(
+      "#" + this.get_domel_id("format")
+    );
     format_select.addEventListener("change", () => {
       this.temp_values.type = format_select.value;
       this.manage_format();
@@ -1489,7 +1491,6 @@ class TypedInput extends InputField {
  * @property {FieldInfo} json_source Contents coming from a JSON file, used to fill in the `editor`.
  */
 class ObjectInput extends InputField {
-
   form_type = "object";
   button_title = "Composite field";
   description =
@@ -1554,8 +1555,9 @@ class ObjectInput extends InputField {
   }
 
   get default_help() {
-    return `Nested form with ${this.minischema ? this.minischema.fields.length : " "
-      }subfields that go together.`;
+    return `Nested form with ${
+      this.minischema ? this.minischema.fields.length : " "
+    }subfields that go together.`;
   }
 
   /**
@@ -1638,12 +1640,10 @@ class ObjectInput extends InputField {
         this.schema.add_wip(this.id);
       }
     });
-
   }
 
   attach_schema(schema) {
     super.attach_schema(schema);
-
   }
 
   render() {
@@ -1651,7 +1651,6 @@ class ObjectInput extends InputField {
   }
 
   setup_rendering_button(button, parent_modal) {
-
     button.addEventListener("click", () => {
       const clone = new ObjectInput();
       clone.attach_schema(this.schema);
@@ -1669,14 +1668,15 @@ class ObjectInput extends InputField {
       ".card-header h5"
     ).innerHTML = this.title;
     this.minischema.prefix = this.schema.prefixed;
-    this.minischema.name = this.name;;
+    this.minischema.name = this.name;
   }
 
   update_field() {
     super.update_field();
     this.get_form_input("title").value = this.title;
-    this.get_form_input("repeatable") = this.repeatable;
-    document.querySelector(`textarea#${this.get_domel_id("help")}`).value = this.help
+    this.get_form_input("repeatable").value = this.repeatable;
+    document.querySelector(`textarea#${this.get_domel_id("help")}`).value = this
+      .help
       ? this.help
       : "";
   }
@@ -1808,8 +1808,9 @@ class MultipleInput extends InputField {
   }
 
   get default_help() {
-    return `Choose ${this.values.multiple ? "at least " : ""}one of ${this.temp_options.length
-      } options.`;
+    return `Choose ${this.values.multiple ? "at least " : ""}one of ${
+      this.temp_options.length
+    } options.`;
   }
 
   update_field() {
@@ -1883,7 +1884,8 @@ class MultipleInput extends InputField {
     return Field.quick(
       "div",
       "invalid-feedback",
-      `${is_required_msg}Please provide ${this.values.multiple ? "at least " : ""
+      `${is_required_msg}Please provide ${
+        this.values.multiple ? "at least " : ""
       }one of the accepted options.`
     );
   }
@@ -1920,8 +1922,9 @@ class MultipleInput extends InputField {
         highlight: true,
       },
     });
-    this.autocomplete_selector.parentElement.appendChild(this.validator_message);
-
+    this.autocomplete_selector.parentElement.appendChild(
+      this.validator_message
+    );
   }
 
   read_autocomplete() {
@@ -2357,8 +2360,9 @@ class MultipleInput extends InputField {
           values_as_text;
       }
 
-
-      let default_field = this.form_field.form.querySelector(`select#${this.get_domel_id("default")}`);
+      let default_field = this.form_field.form.querySelector(
+        `select#${this.get_domel_id("default")}`
+      );
       if (default_field !== null) {
         let selected = default_field.querySelector("option[selected]");
         let selected_value = selected == null ? null : selected.value.trim();
@@ -2374,8 +2378,6 @@ class MultipleInput extends InputField {
         }
       }
     }
-
-
   }
 
   update_default_field() {
