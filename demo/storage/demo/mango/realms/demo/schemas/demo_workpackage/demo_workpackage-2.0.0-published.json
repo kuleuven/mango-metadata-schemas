@@ -1,0 +1,87 @@
+{
+  "schema_name": "demo_workpackage",
+  "version": "2.0.0",
+  "status": "published",
+  "properties": {
+    "wp_title": {
+      "title": "Work Package Title",
+      "type": "text",
+      "placeholder": "",
+      "pattern": "",
+      "required": true,
+      "help": "Input type: text"
+    },
+    "wp_description": {
+      "title": "Work Package Description",
+      "type": "text",
+      "placeholder": "",
+      "pattern": "",
+      "required": true,
+      "help": "Input type: text"
+    },
+    "protocol_link": {
+      "title": "Associated Protocol(s)",
+      "type": "text",
+      "placeholder": "",
+      "pattern": "",
+      "required": true,
+      "repeatable": true,
+      "help": "The path to each associated protocol."
+    },
+    "status": {
+      "title": "Status",
+      "type": "select",
+      "values": [
+        "not started",
+        "planned",
+        "in progress",
+        "completed"
+      ],
+      "multiple": false,
+      "ui": "radio",
+      "required": true,
+      "default": "planned"
+    },
+    "start_date": {
+      "title": "Start Date",
+      "type": "date",
+      "placeholder": "",
+      "pattern": "",
+      "help": "Input type: date"
+    },
+    "end_date": {
+      "title": "End Date",
+      "type": "date",
+      "placeholder": "",
+      "pattern": "",
+      "help": "Input type: date"
+    },
+    "institution": {
+      "title": "Institution(s)",
+      "type": "select",
+      "values": [
+        "KU Leuven",
+        "University of Galway",
+        "University of Copenhagen",
+        "Antwerp Maritime Academy"
+      ],
+      "multiple": true,
+      "ui": "checkbox",
+      "help": "Institution(s) affiliated with this WP"
+    },
+    "exp_plan_nr": {
+      "title": "Number of Planned Experiments",
+      "type": "integer",
+      "minimum": "0",
+      "maximum": "100",
+      "placeholder": "",
+      "pattern": "",
+      "required": true,
+      "help": "Input type: integer between 0 and 100"
+    }
+  },
+  "edited_by": "u0112360",
+  "realm": "datateam_set",
+  "title": "Demo Work Package",
+  "parent": ""
+}
