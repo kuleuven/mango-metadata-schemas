@@ -1,0 +1,140 @@
+{
+  "schema_name": "demo_sample",
+  "version": "1.0.0",
+  "status": "published",
+  "properties": {
+    "status": {
+      "title": "Status",
+      "type": "select",
+      "values": [
+        "not started",
+        "planned",
+        "in progress",
+        "completed"
+      ],
+      "multiple": false,
+      "ui": "radio",
+      "required": true,
+      "default": "not started"
+    },
+    "identifiers": {
+      "title": "Identifier(s)",
+      "type": "integer",
+      "minimum": "0",
+      "maximum": "9999",
+      "placeholder": "",
+      "pattern": "",
+      "repeatable": true,
+      "help": "Input type: integer between 0 and 9999"
+    },
+    "type": {
+      "title": "Type",
+      "type": "select",
+      "values": [
+        "Type A",
+        "Type B",
+        "Type C",
+        "Type D",
+        "Type E"
+      ],
+      "multiple": false,
+      "ui": "dropdown"
+    },
+    "collection_date": {
+      "title": "Collection Date",
+      "type": "date",
+      "placeholder": "",
+      "pattern": "",
+      "help": "Input type: date"
+    },
+    "collection_location": {
+      "title": "Collection Location",
+      "type": "text",
+      "placeholder": "",
+      "pattern": "",
+      "help": "Input type: text"
+    },
+    "storage_conditions": {
+      "title": "Storage Conditions",
+      "type": "select",
+      "values": [
+        "Condition-1",
+        "Condition-2",
+        "Condition-3",
+        "Condition-4",
+        "Condition-5",
+        "Condition-6"
+      ],
+      "multiple": true,
+      "ui": "dropdown"
+    },
+    "processing": {
+      "title": "Processing",
+      "properties": {
+        "step1": {
+          "title": "Step-1",
+          "type": "select",
+          "values": [
+            "option-1",
+            "option-2",
+            "option-3"
+          ],
+          "multiple": false,
+          "ui": "radio"
+        },
+        "step2": {
+          "title": "Step-2",
+          "type": "select",
+          "values": [
+            "option-1",
+            "option-2",
+            "option-3"
+          ],
+          "multiple": false,
+          "ui": "radio"
+        },
+        "step3": {
+          "title": "Step-3",
+          "type": "select",
+          "values": [
+            "option-1",
+            "option-2",
+            "option-3"
+          ],
+          "multiple": false,
+          "ui": "radio"
+        },
+        "step4": {
+          "title": "Step-4",
+          "type": "select",
+          "values": [
+            "option-1",
+            "option-2",
+            "option-3"
+          ],
+          "multiple": false,
+          "ui": "radio"
+        }
+      },
+      "type": "object"
+    },
+    "storage_location": {
+      "title": "Storage Location",
+      "type": "text",
+      "placeholder": "",
+      "pattern": "",
+      "help": "Input type: text"
+    },
+    "disposal_date": {
+      "title": "Disposal Date",
+      "type": "date",
+      "placeholder": "",
+      "pattern": "",
+      "help": "Could this field get a value automatically based on the date the field 'status' turns into f.i. 'completed'?"
+    }
+  },
+  "edited_by": "u0112360",
+  "realm": "datateam_set",
+  "title": "Demo Lab Sample",
+  "parent": "sample-1.0.0"
+}
