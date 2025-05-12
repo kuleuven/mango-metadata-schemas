@@ -1,0 +1,130 @@
+{
+  "schema_name": "demo_datagen",
+  "version": "2.0.0",
+  "status": "published",
+  "properties": {
+    "status": {
+      "title": "Status",
+      "type": "select",
+      "values": [
+        "not started",
+        "planned",
+        "in progress",
+        "completed"
+      ],
+      "multiple": false,
+      "ui": "radio",
+      "required": true,
+      "default": "not started"
+    },
+    "start_date": {
+      "title": "Start Date",
+      "type": "date",
+      "placeholder": "",
+      "pattern": "",
+      "help": "Input type: date"
+    },
+    "end_date": {
+      "title": "End Date",
+      "type": "date",
+      "placeholder": "",
+      "pattern": "",
+      "help": "Input type: date"
+    },
+    "responsible": {
+      "title": "Responsible",
+      "type": "select",
+      "values": [
+        "Person-1",
+        "Person-2",
+        "Person-3",
+        "Person-4",
+        "Person-5"
+      ],
+      "multiple": false,
+      "ui": "dropdown",
+      "required": true,
+      "default": "Person-1"
+    },
+    "sop": {
+      "title": "Standard Operating Procedures (SOP)",
+      "type": "text",
+      "placeholder": "",
+      "pattern": "",
+      "help": "SOP used"
+    },
+    "protocol_deviation": {
+      "title": "Deviations from Protocol",
+      "properties": {
+        "deviation_bool": {
+          "title": "Yes/No",
+          "type": "select",
+          "values": [
+            "Yes",
+            "No"
+          ],
+          "multiple": false,
+          "ui": "radio",
+          "required": true,
+          "default": "No"
+        },
+        "dev_desc": {
+          "title": "Description of Deviations",
+          "type": "text",
+          "placeholder": "",
+          "pattern": "",
+          "help": "If there are deviations from the relevant protocols, please provide a description."
+        }
+      },
+      "type": "object",
+      "help": "Are there any deviations from the relevant protocols?"
+    },
+    "raw_material": {
+      "title": "Raw Material",
+      "properties": {
+        "raw_spec": {
+          "title": "Specification",
+          "type": "text",
+          "placeholder": "",
+          "pattern": "",
+          "help": "Input type: text"
+        },
+        "raw_inv": {
+          "title": "Inventory",
+          "type": "text",
+          "placeholder": "",
+          "pattern": "",
+          "help": "Input type: text"
+        }
+      },
+      "type": "object",
+      "repeatable": true,
+      "help": "Raw Material Specification and Inventory"
+    },
+    "setup": {
+      "title": "Set Up",
+      "type": "text",
+      "placeholder": "",
+      "pattern": "",
+      "help": "Input type: text"
+    },
+    "instrument": {
+      "title": "Instrument(s)",
+      "type": "select",
+      "values": [
+        "Instrument-1",
+        "Instrument-2",
+        "Instrument-3",
+        "Instrument-4",
+        "Instrument-5",
+        "Instrument-6"
+      ],
+      "multiple": true,
+      "ui": "dropdown"
+    }
+  },
+  "edited_by": "u0112360",
+  "realm": "datateam_set",
+  "title": "Demo Lab Data Generation",
+  "parent": ""
+}
