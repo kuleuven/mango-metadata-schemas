@@ -1,7 +1,7 @@
 {
   "schema_name": "demo_sample",
   "version": "1.0.0",
-  "status": "published",
+  "status": "draft",
   "properties": {
     "status": {
       "title": "Status",
